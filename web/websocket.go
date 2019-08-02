@@ -7,11 +7,18 @@ import (
 	"time"
 )
 
+type ErrorStop struct{}
+
+func (e ErrorStop) Error() string {
+	return "Cannot send: connection closed"
+}
+
 type ServerSession interface {
 	Close()
 	NewMessageHolder() interface{}
 	OnMessage(interface{})
-	BeginSend(chan <-interface{})
+	// send nil to close connection
+	BeginSend(func(interface{}) error)
 }
 
 type ServerAPI interface {
@@ -72,15 +79,30 @@ func (wss *WebSocketServer) handleSessionTransmit(session ServerSession, conn *w
 
 func (wss *WebSocketServer) handleSessionReceive(session ServerSession, conn *websocket.Conn) {
 	ticker := time.NewTicker(40 * time.Second)
+	sendChannel := make(chan interface{})
+	terminated := false
 	defer func() {
+		terminated = true
 		ticker.Stop()
 		err := conn.Close()
 		if err != nil {
 			log.Printf("error during session close: %v", err)
 		}
+		for range sendChannel {
+			log.Printf("still receiving messages after close")
+		}
 	}()
-	sendChannel := make(chan interface{})
-	session.BeginSend(sendChannel)
+	session.BeginSend(func(message interface{}) error {
+		if message == nil {
+			close(sendChannel)
+			return nil
+		} else if terminated {
+			return ErrorStop{}
+		} else {
+			sendChannel <- message
+			return nil
+		}
+	})
 	for {
 		err := conn.SetWriteDeadline(time.Now().Add(time.Second * 60))
 		if err != nil {

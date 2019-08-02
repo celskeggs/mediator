@@ -60,6 +60,7 @@ function prepareGame(canvas) {
     var isTerminated = false;
     var gameActive = false;
     var width = 640, height = 480;
+    var gameSprites = {};
 
     function renderLoading(ctx) {
         ctx.fillStyle = 'rgb(240,240,240)';
@@ -85,7 +86,17 @@ function prepareGame(canvas) {
     function renderGame(ctx) {
         ctx.fillStyle = 'rgb(0,0,0)';
         ctx.fillRect(0, 0, width, height);
-        ctx.drawImage(images["wall.dmi"], 0, 0, 32, 32, 0, 0, 32, 32);
+        for (var spriteId in gameSprites) {
+            var sprite = gameSprites[spriteId];
+            if (sprite.icon && sprite.x !== undefined && sprite.y !== undefined) {
+                var image = images[sprite.icon];
+                var sw = sprite.sw || image.width;
+                var sh = sprite.sh || image.height;
+                ctx.drawImage(image,
+                    sprite.sx || 0, sprite.sy || 0, sw, sh,
+                    sprite.x, sprite.y, sprite.w || sw, sprite.h || sh);
+            }
+        }
     }
 
     function draw() {
@@ -104,7 +115,9 @@ function prepareGame(canvas) {
         if (!gameActive) {
             gameActive = true;
         }
-        console.log("received message", data);
+        var message = JSON.parse(data);
+        gameSprites = message.sprites || {};
+        console.log("received message", message);
     }
 
     function onConnectionClosed() {
