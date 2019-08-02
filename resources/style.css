@@ -1,3 +1,9 @@
-#test {
-    font-weight: bold;
+.container {
+    width: 960px;
+    margin: 0 auto;
+}
+
+#playspace {
+    width: 960px;
+    height: 720px;
 }
