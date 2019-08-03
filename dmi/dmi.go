@@ -8,6 +8,8 @@ import (
 )
 
 type DMIState struct {
+	// Index starts at 0
+	Index      uint
 	Directions int
 	Frames     int
 	Rewind     bool
@@ -160,6 +162,7 @@ func ParseDMI(png []byte) (*DMIInfo, error) {
 		if err != nil {
 			return nil, err
 		}
+		state.Index = uint(i - 1)
 		if _, alreadyExists := states[key]; alreadyExists {
 			return nil, errors.New("duplicate state")
 		}
