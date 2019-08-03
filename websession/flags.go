@@ -4,14 +4,21 @@ import "flag"
 
 var coreResources = flag.String("core", "resources", "the path to the core resources/ directory")
 var extraResources = flag.String("resources", "icons", "the path to the game-specific icons/ directory")
+var parsed = false
 
 func SetDefaultFlags(coreResourcesDir, extraResourcesDir string) {
+	if parsed {
+		panic("already parsed flags")
+	}
 	*coreResources = coreResourcesDir
 	*extraResources = extraResourcesDir
 }
 
 func ParseFlags() (string, string) {
-	flag.Parse()
+	if !parsed {
+		flag.Parse()
+		parsed = true
+	}
 	return *coreResources, *extraResources
 }
 
