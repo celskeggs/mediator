@@ -1,6 +1,6 @@
 package datum
 
-var TRACE = true
+var TRACE = false
 
 type Realm struct {
 	datums map[*Datum]struct{}
