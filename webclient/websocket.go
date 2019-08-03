@@ -1,6 +1,7 @@
-package web
+package webclient
 
 import (
+	"github.com/celskeggs/mediator/webclient/sprite"
 	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
@@ -13,20 +14,8 @@ func (e ErrorStop) Error() string {
 	return "Cannot send: connection closed"
 }
 
-type ServerSession interface {
-	Close()
-	NewMessageHolder() interface{}
-	OnMessage(interface{})
-	// send nil to close connection
-	BeginSend(func(interface{}) error)
-}
-
-type ServerAPI interface {
-	Connect() ServerSession
-}
-
 var upgrader = websocket.Upgrader{
-	ReadBufferSize: 1024,
+	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 }
 
@@ -79,7 +68,7 @@ func (wss *WebSocketServer) handleSessionTransmit(session ServerSession, conn *w
 
 func (wss *WebSocketServer) handleSessionReceive(session ServerSession, conn *websocket.Conn) {
 	ticker := time.NewTicker(40 * time.Second)
-	sendChannel := make(chan interface{})
+	sendChannel := make(chan *sprite.SpriteView)
 	terminated := false
 	defer func() {
 		terminated = true
@@ -92,7 +81,7 @@ func (wss *WebSocketServer) handleSessionReceive(session ServerSession, conn *we
 			log.Printf("still receiving messages after close")
 		}
 	}()
-	session.BeginSend(func(message interface{}) error {
+	session.BeginSend(func(message *sprite.SpriteView) error {
 		if message == nil {
 			close(sendChannel)
 			return nil

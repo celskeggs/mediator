@@ -1,41 +1,41 @@
-package platform
+package debug
 
 import (
-	"strings"
 	"reflect"
+	"strings"
 )
 
-type DebugOutput struct {
+type Output struct {
 	Sections []string
 }
 
-func (o *DebugOutput) Println(text string) {
+func (o *Output) Println(text string) {
 	println(strings.Repeat("  ", len(o.Sections)) + " " + text)
 }
 
-func (o *DebugOutput) Header(section string) {
+func (o *Output) Header(section string) {
 	o.Println("<=== " + section + " ===>")
 	o.Sections = append(o.Sections, section)
 }
 
-func (o *DebugOutput) Footer() {
+func (o *Output) Footer() {
 	lastindex := len(o.Sections) - 1
 	last := o.Sections[lastindex]
 	o.Sections = o.Sections[:lastindex]
 	o.Println("++++ " + last + " ++++")
 }
 
-func (o *DebugOutput) End() {
+func (o *Output) End() {
 	if len(o.Sections) > 0 {
 		panic("nonzero indent at the end")
 	}
 }
 
-func DumpFields(rvalue reflect.Value, o *DebugOutput) {
+func DumpFields(rvalue reflect.Value, o *Output) {
 	for i := 0; i < rvalue.NumField(); i++ {
 		field := rvalue.Field(i)
 		name := rvalue.Type().Field(i).Name
-		if name == "Reference" {
+		if name == "Impl" {
 			continue
 		}
 		if i == 0 && field.Type().Kind() == reflect.Struct {
@@ -43,11 +43,15 @@ func DumpFields(rvalue reflect.Value, o *DebugOutput) {
 			continue
 		}
 		o.Println("field: " + name)
-		DumpReflect(field.Interface(), o)
+		if !field.CanInterface() {
+			o.Println("HIDDEN")
+		} else {
+			DumpReflect(field.Interface(), o)
+		}
 	}
 }
 
-func DumpReflect(i interface{}, o *DebugOutput) {
+func DumpReflect(i interface{}, o *Output) {
 	rvalue := reflect.ValueOf(i)
 	if rvalue.Kind() == reflect.Ptr {
 		rvalue = rvalue.Elem()

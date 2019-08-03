@@ -1,7 +1,8 @@
-package web
+package webclient
 
 import (
 	"bytes"
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -49,37 +50,52 @@ func AttachFile(mux *http.ServeMux, path string, filename string) error {
 	return nil
 }
 
-func AttachFolder(mux *http.ServeMux, basepath string, dirname string) error {
-	files, err := ioutil.ReadDir(dirname)
+func AttachResources(mux *http.ServeMux, path string, resources []string) error {
+	modTime := time.Now()
+	resourcesJson, err := json.Marshal(resources)
 	if err != nil {
 		return err
 	}
-	for _, file := range files {
-		if !file.IsDir() {
-			err := AttachFile(mux, path.Join(basepath, file.Name()), path.Join(dirname, file.Name()))
-			if err != nil {
-				return err
-			}
-		}
-	}
+	resourcesJs := []byte("resources = " + string(resourcesJson) + ";")
+	mux.HandleFunc(path, func(writer http.ResponseWriter, request *http.Request) {
+		http.ServeContent(writer, request, path, modTime, bytes.NewReader(resourcesJs))
+	})
 	return nil
+}
+
+func resourcesToList(nameToPath map[string]string) (out []string) {
+	for name := range nameToPath {
+		out = append(out, name)
+	}
+	return out
 }
 
 func CreateMux(api ServerAPI) (*http.ServeMux, error) {
 	mux := http.NewServeMux()
-	err := AttachFile(mux, "/style.css", "resources/style.css")
+	coreResources := api.CoreResourcePath()
+	err := AttachFile(mux, "/style.css", path.Join(coreResources, "style.css"))
 	if err != nil {
 		return nil, err
 	}
-	err = AttachFile(mux, "/client.js", "resources/client.js")
+	err = AttachFile(mux, "/client.js", path.Join(coreResources, "client.js"))
 	if err != nil {
 		return nil, err
 	}
-	err = AttachFolder(mux, "/img", "resources/img")
+	err = AttachFile(mux, "/", path.Join(coreResources, "client.html"))
 	if err != nil {
 		return nil, err
 	}
-	err = AttachFile(mux, "/", "resources/client.html")
+	resources, err := api.ListResources()
+	if err != nil {
+		return nil, err
+	}
+	for name, resource := range resources {
+		err = AttachFile(mux, "/resource/"+name, resource)
+		if err != nil {
+			return nil, err
+		}
+	}
+	err = AttachResources(mux, "/resources.js", resourcesToList(resources))
 	if err != nil {
 		return nil, err
 	}

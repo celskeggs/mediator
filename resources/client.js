@@ -9,7 +9,7 @@ function imageLoader(images, callback) {
             elements[filename] = img;
             done();
         }, false);
-        img.src = "img/" + filename;
+        img.src = "resource/" + filename;
     }
 
     var totalLoaded = 0;
@@ -33,12 +33,14 @@ function getWebSocketURL() {
 function startWebSocket(url, message, close) {
     var reportedClose = false;
     var socket = new WebSocket(url);
+
     function reportClose() {
         if (!reportedClose) {
             reportedClose = true;
             close()
         }
     }
+
     socket.addEventListener('open', function () {
         console.log("connection opened");
     });
@@ -60,7 +62,7 @@ function prepareGame(canvas) {
     var isTerminated = false;
     var gameActive = false;
     var width = 640, height = 480;
-    var gameSprites = {};
+    var gameSprites = [];
 
     function renderLoading(ctx) {
         ctx.fillStyle = 'rgb(240,240,240)';
@@ -86,10 +88,14 @@ function prepareGame(canvas) {
     function renderGame(ctx) {
         ctx.fillStyle = 'rgb(0,0,0)';
         ctx.fillRect(0, 0, width, height);
-        for (var spriteId in gameSprites) {
-            var sprite = gameSprites[spriteId];
+        for (var i = 0; i < gameSprites.length; i++) {
+            var sprite = gameSprites[i];
             if (sprite.icon && sprite.x !== undefined && sprite.y !== undefined) {
                 var image = images[sprite.icon];
+                if (!image) {
+                    console.log("no such icon:", sprite.icon);
+                    continue;
+                }
                 var sw = sprite.sw || image.width;
                 var sh = sprite.sh || image.height;
                 ctx.drawImage(image,
@@ -116,7 +122,7 @@ function prepareGame(canvas) {
             gameActive = true;
         }
         var message = JSON.parse(data);
-        gameSprites = message.sprites || {};
+        gameSprites = message.sprites || [];
         console.log("received message", message);
     }
 
@@ -124,7 +130,12 @@ function prepareGame(canvas) {
         isTerminated = true;
     }
 
-    imageLoader(["cheese.dmi", "player.dmi", "floor.dmi", "wall.dmi"], function (receivedImages) {
+    if (resources === undefined) {
+        console.log("expected resources.js to be included for resource list");
+        return;
+    }
+
+    imageLoader(resources, function (receivedImages) {
         images = receivedImages;
         var url = getWebSocketURL();
         console.log("connecting to", url);

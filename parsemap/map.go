@@ -1,9 +1,9 @@
 package parsemap
 
 import (
+	"errors"
 	"fmt"
 	"strings"
-	"errors"
 )
 
 type Location struct {
@@ -72,16 +72,16 @@ func convertRCto3D(rc [][]string) [][][]string {
 func readContent(body string) ([][][]string, error) {
 	lines := strings.Split(strings.TrimSpace(body), "\n")
 	if lines[0] != "(1,1,1) = {\"" {
-		return nil, fmt.Errorf("could not understand first map line")
+		return nil, fmt.Errorf("could not understand first worldmap line")
 	}
 	if lines[len(lines)-1] != "\"}" {
-		return nil, fmt.Errorf("could not understand last map line")
+		return nil, fmt.Errorf("could not understand last worldmap line")
 	}
 	rowColumn := make([][]string, len(lines)-2)
-	for rowi, row := range lines[1:len(lines)-1] {
+	for rowi, row := range lines[1 : len(lines)-1] {
 		rowColumn[rowi] = make([]string, len(row))
 		for coli := 0; coli < len(row); coli++ {
-			rowColumn[rowi][coli] = row[coli:coli+1]
+			rowColumn[rowi][coli] = row[coli : coli+1]
 		}
 	}
 	return convertRCto3D(rowColumn), nil
@@ -90,7 +90,7 @@ func readContent(body string) ([][][]string, error) {
 func readRawMap(text string) (*RawMap, error) {
 	parts := strings.Split(strings.TrimSpace(text), "\n\n")
 	if len(parts) != 2 {
-		return nil, fmt.Errorf("map format support incomplete: more than one double newline: %v", parts)
+		return nil, fmt.Errorf("worldmap format support incomplete: more than one double newline: %v", parts)
 	}
 	pathSets, err := readPathSets(parts[0])
 	if err != nil {

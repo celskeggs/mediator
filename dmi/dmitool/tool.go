@@ -1,10 +1,10 @@
 package main
 
 import (
-	"os"
-	"io/ioutil"
 	"encoding/json"
 	"github.com/celskeggs/mediator/dmi"
+	"io/ioutil"
+	"os"
 )
 
 func main() {

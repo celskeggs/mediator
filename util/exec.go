@@ -1,7 +1,7 @@
 package util
 
 type SingleThread struct {
-	txmit chan <-func()
+	txmit chan<- func()
 }
 
 func NewSingleThread() *SingleThread {

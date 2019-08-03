@@ -1,17 +1,17 @@
-package web
+package webclient
 
 import (
-	"testing"
+	"bytes"
 	"github.com/stretchr/testify/assert"
 	"net/http"
-	"bytes"
 	"strings"
+	"testing"
 )
 
 type fakeWriter struct {
-	Headers http.Header
+	Headers   http.Header
 	Collector bytes.Buffer
-	Code int
+	Code      int
 }
 
 func (w *fakeWriter) Header() http.Header {
