@@ -68,8 +68,10 @@ func (p playerAPI) Render() sprite.SpriteView {
 	layers := map[int][]sprite.GameSprite{}
 	for _, atom := range atoms {
 		x, y, _ := atom.XYZ()
-		layer, s := atom.AsAtom().Appearance.ToSprite(x*32, y*32)
-		layers[layer] = append(layers[layer], s)
+		found, layer, s := atom.AsAtom().Appearance.ToSprite(x*32, y*32)
+		if found {
+			layers[layer] = append(layers[layer], s)
+		}
 	}
 	var layerOrder []int
 	for layer := range layers {
