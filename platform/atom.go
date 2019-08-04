@@ -310,7 +310,7 @@ func NewAtomicTree() *datum.TypeTree {
 	tree := datum.NewTypeTree()
 
 	templateAtom := Atom{
-		Direction: common.North,
+		Direction: common.South,
 	}
 
 	templateAtomMovable := AtomMovable{
