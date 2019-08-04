@@ -13,6 +13,7 @@ type GameSprite struct {
 }
 
 type SpriteView struct {
+	WindowTitle    string       `json:"windowtitle"`
 	ViewPortWidth  uint         `json:"viewportwidth"`
 	ViewPortHeight uint         `json:"viewportheight"`
 	Sprites        []GameSprite `json:"sprites"`

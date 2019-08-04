@@ -92,6 +92,7 @@ func (p playerAPI) Render() sprite.SpriteView {
 	sort.Ints(layerOrder)
 
 	var view sprite.SpriteView
+	view.WindowTitle = p.API.World.Name
 	view.ViewPortWidth = viewportSize
 	view.ViewPortHeight = viewportSize
 	for _, layer := range layerOrder {

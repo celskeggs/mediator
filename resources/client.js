@@ -173,7 +173,10 @@ function prepareGame(canvas, inputsource) {
             gameActive = true;
         }
         gameSprites = message.sprites || [];
-        updateWidthHeight(message.viewportwidth, message.viewportheight)
+        updateWidthHeight(message.viewportwidth, message.viewportheight);
+        if (message.windowtitle) {
+            document.getElementsByTagName("title")[0].textContent = message.windowtitle;
+        }
     }
 
     function onConnectionClosed() {
