@@ -69,7 +69,8 @@ func (p playerAPI) Render() sprite.SpriteView {
 	layers := map[int][]sprite.GameSprite{}
 	for _, atom := range atoms {
 		x, y, _ := atom.XYZ()
-		found, layer, s := atom.AsAtom().Appearance.ToSprite(x*32, y*32)
+		util.FIXME("don't use hardcoded tile sizes here")
+		found, layer, s := atom.AsAtom().Appearance.ToSprite(x*32, y*32, atom.AsAtom().Direction)
 		if found {
 			layers[layer] = append(layers[layer], s)
 		}

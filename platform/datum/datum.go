@@ -44,7 +44,7 @@ type Datum struct {
 	realm    *Realm
 }
 
-func AssertConsistent(data... IDatum) {
+func AssertConsistent(data ...IDatum) {
 	for _, datum := range data {
 		if datum != nil && datum.AsDatum().Impl != datum {
 			panic("inconsistent datum")

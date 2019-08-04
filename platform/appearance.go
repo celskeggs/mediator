@@ -1,6 +1,7 @@
 package platform
 
 import (
+	"github.com/celskeggs/mediator/common"
 	"github.com/celskeggs/mediator/platform/icon"
 	"github.com/celskeggs/mediator/util"
 	"github.com/celskeggs/mediator/webclient/sprite"
@@ -19,13 +20,12 @@ type Appearance struct {
 	Layer     int
 }
 
-func (a Appearance) ToSprite(x, y uint) (bool, int, sprite.GameSprite) {
-	util.FIXME("implement directions")
+func (a Appearance) ToSprite(x, y uint, dir common.Direction) (bool, int, sprite.GameSprite) {
 	util.FIXME("implement correct sizing")
 	if a.Icon == nil {
 		return false, 0, sprite.GameSprite{}
 	}
-	iconName, sourceX, sourceY, sourceWidth, sourceHeight := a.Icon.Render(a.IconState)
+	iconName, sourceX, sourceY, sourceWidth, sourceHeight := a.Icon.Render(a.IconState, dir)
 	return true, a.Layer, sprite.GameSprite{
 		Icon:         iconName,
 		SourceX:      sourceX,

@@ -40,6 +40,7 @@ function startWebSocket(url, open, message, close) {
             close()
         }
     }
+
     function sendMessage(message) {
         socket.send(JSON.stringify(message));
     }
@@ -68,7 +69,8 @@ function prepareGame(canvas, inputsource) {
     var width = 640, height = 480;
     var gameSprites = [];
     var keyDirection = null;
-    var sendMessage = function(message) {};
+    var sendMessage = function (message) {
+    };
 
     function renderLoading(ctx) {
         ctx.fillStyle = 'rgb(240,240,240)';

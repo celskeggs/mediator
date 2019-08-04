@@ -85,9 +85,9 @@ func (icon *Icon) indexToPosition(index, width, height uint) (x, y uint) {
 	return (index % icon.stride) * width, (index / icon.stride) * height
 }
 
-func (icon *Icon) Render(state string) (iconname string, sourceX, sourceY, sourceWidth, sourceHeight uint) {
-	util.FIXME("implement directions and frames")
-	index := icon.lookupIndex(state, common.North, 0)
+func (icon *Icon) Render(state string, dir common.Direction) (iconname string, sourceX, sourceY, sourceWidth, sourceHeight uint) {
+	util.FIXME("implement animations")
+	index := icon.lookupIndex(state, dir, 0)
 	util.FIXME("implement icon sizes correctly")
 	sourceX, sourceY = icon.indexToPosition(index, 32, 32)
 	return icon.dmiPath, sourceX, sourceY, 32, 32
