@@ -136,7 +136,7 @@ func (d *AtomMovable) AsAtomMovable() *AtomMovable {
 
 func (d *AtomMovable) Move(newloc IAtom, direction common.Direction) bool {
 	datum.AssertConsistent(newloc)
-	util.FIXME("implement pixel movement/slides")
+	util.NiceToHave("implement pixel movement/slides")
 	oldloc := d.Location()
 	impl := d.Impl.(IAtomMovable)
 	d.Direction = direction
@@ -145,7 +145,7 @@ func (d *AtomMovable) Move(newloc IAtom, direction common.Direction) bool {
 			if !oldloc.Exit(impl, newloc) {
 				return false
 			}
-			util.FIXME("handle Cross and Uncross and Crossed and Uncrossed")
+			util.NiceToHave("handle Cross and Uncross and Crossed and Uncrossed")
 		}
 		if !newloc.Enter(impl, oldloc) {
 			util.FIXME("bump obstacles")
@@ -210,6 +210,7 @@ func (d *Turf) XYZ() (uint, uint, uint) {
 }
 
 func (d *Turf) SetXYZ(x uint, y uint, z uint) {
+	util.FIXME("should this actually be public?")
 	d.X, d.Y, d.Z = x, y, z
 }
 
@@ -219,18 +220,18 @@ func (d *Turf) AsTurf() *Turf {
 
 func (d *Turf) Exit(atom IAtomMovable, newloc IAtom) bool {
 	datum.AssertConsistent(atom, newloc)
-	util.FIXME("call Uncross here")
+	util.NiceToHave("call Uncross here")
 	return true
 }
 
 func (d *Turf) Enter(atom IAtomMovable, oldloc IAtom) bool {
 	datum.AssertConsistent(atom, oldloc)
-	util.FIXME("call Cross here")
+	util.NiceToHave("call Cross here")
 	if atom.AsAtom().Density {
 		if d.Density {
 			return false
 		}
-		util.FIXME("something about only atoms that take up the full tile?")
+		util.NiceToHave("something about only atoms that take up the full tile?")
 		for _, existingAtom := range d.Contents() {
 			if existingAtom.AsAtom().Density {
 				return false
@@ -242,12 +243,12 @@ func (d *Turf) Enter(atom IAtomMovable, oldloc IAtom) bool {
 
 func (d *Turf) Exited(atom IAtomMovable, newloc IAtom) {
 	datum.AssertConsistent(atom, newloc)
-	util.FIXME("call Uncrossed here")
+	util.NiceToHave("call Uncrossed here")
 }
 
 func (d *Turf) Entered(atom IAtomMovable, oldloc IAtom) {
 	datum.AssertConsistent(atom, oldloc)
-	util.FIXME("call Crossed here")
+	util.NiceToHave("call Crossed here")
 }
 
 // **** area

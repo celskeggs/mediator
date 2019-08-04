@@ -138,7 +138,7 @@ func (d *Client) New(usr IMob) IMob {
 	if mob == nil {
 		mob = d.constructNewMob()
 	}
-	util.FIXME("add support for Topics")
+	util.NiceToHave("add support for Topics")
 	util.FIXME("call Login() on mob")
 	return mob
 }
