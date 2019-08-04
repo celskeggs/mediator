@@ -293,7 +293,7 @@ func limitViewers(distance uint, center IAtom, perspective IAtom, base []ITurf) 
 			if info == nil {
 				continue
 			}
-			if info.Vis == 0 {
+			if info.Vis == 0 && info.Opaque {
 				makeANote := false
 
 				txu, tyu, _ := info.Turf.XYZ()
