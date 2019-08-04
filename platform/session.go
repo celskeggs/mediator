@@ -69,6 +69,7 @@ func (p playerAPI) Render() sprite.SpriteView {
 	center, atoms := p.Client.RenderViewAsAtoms()
 
 	util.FIXME("don't use hardcoded tile sizes here")
+	util.FIXME("add adjacent cell movement animations")
 
 	viewDist := p.Client.AsClient().ViewDistance
 	sizeInCells := (viewDist * 2) + 1
