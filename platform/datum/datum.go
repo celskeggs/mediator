@@ -2,6 +2,7 @@ package datum
 
 import (
 	"github.com/celskeggs/mediator/platform/debug"
+	"github.com/celskeggs/mediator/util"
 	"runtime"
 )
 
@@ -97,6 +98,7 @@ func (d *Datum) Realm() *Realm {
 }
 
 func setImpl(datum IDatum) {
+	util.FIXME("at some point, there should be an easy way to validate that the IDatums being passed around are to the Impl and not to details")
 	if datum.AsDatum().realm == nil {
 		panic("no realm found on datum")
 	}

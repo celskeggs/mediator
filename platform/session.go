@@ -2,6 +2,7 @@ package platform
 
 import (
 	"github.com/celskeggs/mediator/util"
+	"github.com/celskeggs/mediator/webclient"
 	"github.com/celskeggs/mediator/webclient/sprite"
 	"github.com/celskeggs/mediator/websession"
 	"sort"
@@ -55,7 +56,7 @@ func (p playerAPI) IsValid() bool {
 	return p.API.World.PlayerExists(p.Client)
 }
 
-func (p playerAPI) Command(cmd websession.Command) {
+func (p playerAPI) Command(cmd webclient.Command) {
 	if cmd.Verb != "" {
 		p.Client.InvokeVerb(cmd.Verb)
 		p.API.Update()
@@ -63,6 +64,7 @@ func (p playerAPI) Command(cmd websession.Command) {
 }
 
 func (p playerAPI) Render() sprite.SpriteView {
+	util.FIXME("fix the fact that the rendering is upside-down")
 	atoms := p.Client.RenderViewAsAtoms()
 
 	layers := map[int][]sprite.GameSprite{}

@@ -30,7 +30,7 @@ function getWebSocketURL() {
     return url.href;
 }
 
-function startWebSocket(url, message, close) {
+function startWebSocket(url, open, message, close) {
     var reportedClose = false;
     var socket = new WebSocket(url);
 
@@ -40,16 +40,20 @@ function startWebSocket(url, message, close) {
             close()
         }
     }
+    function sendMessage(message) {
+        socket.send(JSON.stringify(message));
+    }
 
     socket.addEventListener('open', function () {
         console.log("connection opened");
+        open(sendMessage);
     });
     socket.addEventListener('error', function () {
         console.log("connection error");
         reportClose();
     });
     socket.addEventListener('message', function (ev) {
-        message(ev.data);
+        message(JSON.parse(ev.data));
     });
     socket.addEventListener('close', function () {
         console.log("connection terminated");
@@ -57,12 +61,14 @@ function startWebSocket(url, message, close) {
     });
 }
 
-function prepareGame(canvas) {
+function prepareGame(canvas, inputsource) {
     var images = null;
     var isTerminated = false;
     var gameActive = false;
     var width = 640, height = 480;
     var gameSprites = [];
+    var keyDirection = null;
+    var sendMessage = function(message) {};
 
     function renderLoading(ctx) {
         ctx.fillStyle = 'rgb(240,240,240)';
@@ -105,6 +111,17 @@ function prepareGame(canvas) {
         }
     }
 
+    function sendVerb(verb) {
+        console.log("send verb", verb);
+        sendMessage({"verb": verb})
+    }
+
+    function handleKeys() {
+        if (keyDirection != null) {
+            sendVerb("." + keyDirection)
+        }
+    }
+
     function draw() {
         canvas.width = width;
         canvas.height = height;
@@ -113,17 +130,20 @@ function prepareGame(canvas) {
         if (!gameActive || isTerminated) {
             renderLoading(ctx);
         } else {
+            handleKeys();
             renderGame(ctx);
         }
     }
 
-    function onMessage(data) {
+    function onConnectionOpen(send) {
+        sendMessage = send;
+    }
+
+    function onMessage(message) {
         if (!gameActive) {
             gameActive = true;
         }
-        var message = JSON.parse(data);
         gameSprites = message.sprites || [];
-        console.log("received message", message);
     }
 
     function onConnectionClosed() {
@@ -135,11 +155,39 @@ function prepareGame(canvas) {
         return;
     }
 
+    function keyCodeToDirection(code) {
+        if (code === "ArrowUp") {
+            return "north";
+        } else if (code === "ArrowDown") {
+            return "south";
+        } else if (code === "ArrowLeft") {
+            return "west";
+        } else if (code === "ArrowRight") {
+            return "east";
+        } else {
+            return null;
+        }
+    }
+
+    inputsource.addEventListener("keydown", function (ev) {
+        var direction = keyCodeToDirection(ev.code);
+        if (direction !== null) {
+            keyDirection = direction;
+        }
+    });
+
+    inputsource.addEventListener("keyup", function (ev) {
+        var direction = keyCodeToDirection(ev.code);
+        if (direction === keyDirection) {
+            keyDirection = null;
+        }
+    });
+
     imageLoader(resources, function (receivedImages) {
         images = receivedImages;
         var url = getWebSocketURL();
         console.log("connecting to", url);
-        startWebSocket(url, onMessage, onConnectionClosed);
+        startWebSocket(url, onConnectionOpen, onMessage, onConnectionClosed);
     });
 
     draw();
@@ -149,6 +197,6 @@ function prepareGame(canvas) {
 window.addEventListener("load", function () {
     var canvas = document.getElementById("playspace");
     if (canvas.getContext) {
-        prepareGame(canvas);
+        prepareGame(canvas, document.body);
     }
 });

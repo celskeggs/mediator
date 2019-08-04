@@ -76,12 +76,7 @@ func (ws *worldSession) Close() {
 	})
 }
 
-func (e *worldSession) NewMessageHolder() interface{} {
-	return &Command{}
-}
-
-func (e *worldSession) OnMessage(message interface{}) {
-	cmd := *message.(*Command)
+func (e *worldSession) OnMessage(cmd webclient.Command) {
 	if e.Active {
 		e.WS.SingleThread.Run(func() {
 			if !e.Player.IsValid() {

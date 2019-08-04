@@ -1,8 +1,10 @@
 package platform
 
 import (
+	"github.com/celskeggs/mediator/common"
 	"github.com/celskeggs/mediator/platform/datum"
 	"github.com/celskeggs/mediator/util"
+	"log"
 )
 
 type IClient interface {
@@ -12,6 +14,11 @@ type IClient interface {
 	Del()
 	InvokeVerb(s string)
 	RenderViewAsAtoms() []IAtom
+	North() bool
+	East() bool
+	South() bool
+	West() bool
+	Move(loc IAtom, dir common.Direction) bool
 }
 
 var _ IClient = &Client{}
@@ -31,8 +38,55 @@ func (d *Client) SetMob(mob IMob) {
 	d.mob = mob.Reference()
 }
 
-func (d *Client) InvokeVerb(s string) {
-	panic("implement me")
+func (d *Client) InvokeVerb(verb string) {
+	switch verb {
+	case ".north":
+		d.Impl.(IClient).North()
+	case ".south":
+		d.Impl.(IClient).South()
+	case ".east":
+		d.Impl.(IClient).East()
+	case ".west":
+		d.Impl.(IClient).West()
+	default:
+		log.Println("got unknown verb:", verb)
+	}
+}
+
+func (d *Client) RelMove(direction common.Direction) bool {
+	var turf ITurf
+	mob := d.Mob()
+	if mob != nil {
+		x, y, z := mob.XYZ()
+		dx, dy := direction.XY()
+		turf = d.World.LocateXYZ(uint(int(x)+dx), uint(int(y)+dy), z)
+	}
+	return d.Impl.(IClient).Move(turf, direction)
+}
+
+func (d *Client) North() bool {
+	return d.RelMove(common.North)
+}
+
+func (d *Client) East() bool {
+	return d.RelMove(common.East)
+}
+
+func (d *Client) South() bool {
+	return d.RelMove(common.South)
+}
+
+func (d *Client) West() bool {
+	return d.RelMove(common.West)
+}
+
+func (d *Client) Move(loc IAtom, dir common.Direction) bool {
+	mob := d.Mob()
+	util.FIXME("cancel automated movement if necessary")
+	if mob != nil {
+		return mob.Move(loc, dir)
+	}
+	return false
 }
 
 func (d *Client) RenderViewAsAtoms() []IAtom {
@@ -56,7 +110,9 @@ func isTurf(atom IAtom) bool {
 func (d *Client) constructNewMob() IMob {
 	mob := d.World.Tree.New(d.World.Mob).(IMob)
 	util.FIXME("initialize name and gender")
+	util.FIXME("don't randomly select entry turf; follow the rules. especially don't start in a wall")
 	mob.SetLocation(d.World.FindOne(isTurf))
+	util.FIXME("use Enter to join world, not SetLocation")
 	return mob
 }
 

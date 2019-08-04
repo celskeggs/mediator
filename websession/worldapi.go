@@ -1,13 +1,16 @@
 package websession
 
-import "github.com/celskeggs/mediator/webclient/sprite"
+import (
+	"github.com/celskeggs/mediator/webclient"
+	"github.com/celskeggs/mediator/webclient/sprite"
+)
 
 // WorldAPI can be single-threaded; Session will not call any function until the last call returned.
 // This is true across both interfaces.
 type PlayerAPI interface {
 	Remove()
 	IsValid() bool
-	Command(cmd Command)
+	Command(cmd webclient.Command)
 	Render() sprite.SpriteView
 }
 

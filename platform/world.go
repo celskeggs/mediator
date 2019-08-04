@@ -3,6 +3,7 @@ package platform
 import (
 	"github.com/celskeggs/mediator/platform/datum"
 	"github.com/celskeggs/mediator/platform/debug"
+	"github.com/celskeggs/mediator/util"
 	"github.com/celskeggs/mediator/websession"
 )
 
@@ -84,6 +85,25 @@ func (w *World) ServerAPI() websession.WorldAPI {
 	return &worldAPI{
 		World:   w,
 		updates: make(chan struct{}, 1),
+	}
+}
+
+func (w *World) LocateXYZ(x, y, z uint) ITurf {
+	util.FIXME("this can definitely be more efficient")
+	turf := w.FindOne(func(atom IAtom) bool {
+		turf, isturf := atom.(ITurf)
+		if isturf {
+			tx, ty, tz := turf.XYZ()
+			if tx == x && ty == y && tz == z {
+				return true
+			}
+		}
+		return false
+	})
+	if turf == nil {
+		return nil
+	} else {
+		return turf.(ITurf)
 	}
 }
 

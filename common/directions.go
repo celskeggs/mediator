@@ -36,6 +36,29 @@ func (d Direction) NearestCardinal() Direction {
 	return d
 }
 
+func (d Direction) XY() (x, y int) {
+	switch d {
+	case South:
+		return 0, -1
+	case North:
+		return 0, 1
+	case East:
+		return 1, 0
+	case West:
+		return -1, 0
+	case Southeast:
+		return 1, -1
+	case Southwest:
+		return -1, -1
+	case Northeast:
+		return 1, 1
+	case Northwest:
+		return -1, 1
+	default:
+		panic("given invalid direction to convert to XY")
+	}
+}
+
 func (d Direction) EightDirectionIndex() uint {
 	// reflects the EightDirections array below
 	switch d {

@@ -1,6 +1,7 @@
 package platform
 
 import (
+	"github.com/celskeggs/mediator/common"
 	"github.com/celskeggs/mediator/platform/datum"
 	"github.com/celskeggs/mediator/util"
 )
@@ -9,20 +10,30 @@ import (
 
 type IAtom interface {
 	datum.IDatum
+	// not intended to be overridden
 	AsAtom() *Atom
 	XYZ() (uint, uint, uint)
 	Location() IAtom
 	SetLocation(atom IAtom)
 	Contents() []IAtom
+	// intended to be overridden
+	Exit(atom IAtomMovable, newloc IAtom) bool
+	Enter(atom IAtomMovable, oldloc IAtom) bool
+	Exited(atom IAtomMovable, newloc IAtom)
+	Entered(atom IAtomMovable, oldloc IAtom)
 }
 
-var _ IAtom = &Atom{}
+// this is here not just as a template but also for type validation that *Atom implements IAtom
+var templateAtom IAtom = &Atom{
+	Direction: common.North,
+}
 
 type Atom struct {
 	datum.Datum
 	Appearance Appearance
 	Density    bool
 	Opacity    bool
+	Direction  common.Direction
 	location   *datum.Ref
 	contents   map[*Atom]*datum.Ref
 }
@@ -80,14 +91,35 @@ func (d *Atom) XYZ() (uint, uint, uint) {
 	return location.XYZ()
 }
 
+func (d *Atom) Exit(atom IAtomMovable, newloc IAtom) bool {
+	return true
+}
+
+func (d *Atom) Enter(atom IAtomMovable, oldloc IAtom) bool {
+	return true
+}
+
+func (d *Atom) Exited(atom IAtomMovable, newloc IAtom) {
+	// nothing to do
+}
+
+func (d *Atom) Entered(atom IAtomMovable, oldloc IAtom) {
+	// nothing to do
+}
+
 // **** movable atom
 
 type IAtomMovable interface {
 	IAtom
+	// not intended to be overridden
 	AsAtomMovable() *AtomMovable
+	// intended to be overridden
+	Move(atom IAtom, direction common.Direction) bool
 }
 
-var _ IAtomMovable = &AtomMovable{}
+var templateAtomMovable IAtomMovable = &AtomMovable{
+	Atom: *templateAtom.(*Atom),
+}
 
 type AtomMovable struct {
 	Atom
@@ -101,14 +133,42 @@ func (d *AtomMovable) AsAtomMovable() *AtomMovable {
 	return d
 }
 
+func (d *AtomMovable) Move(newloc IAtom, direction common.Direction) bool {
+	util.FIXME("implement pixel movement/slides")
+	oldloc := d.Location()
+	impl := d.Impl.(IAtomMovable)
+	d.Direction = direction
+	if newloc != oldloc && newloc != nil {
+		if oldloc != nil {
+			if !oldloc.Exit(impl, newloc) {
+				return false
+			}
+			util.FIXME("handle Cross and Uncross and Crossed and Uncrossed")
+		}
+		if !newloc.Enter(impl, oldloc) {
+			util.FIXME("bump obstacles")
+			return false
+		}
+		d.SetLocation(newloc)
+		if oldloc != nil {
+			oldloc.Exited(impl, newloc)
+		}
+		newloc.Entered(impl, oldloc)
+	}
+	return true
+}
+
 // **** obj
 
 type IObj interface {
 	IAtomMovable
+	// not intended to be overridden
 	AsObj() *Obj
 }
 
-var _ IObj = &Obj{}
+var templateObj IObj = &Obj{
+	AtomMovable: *templateAtomMovable.(*AtomMovable),
+}
 
 type Obj struct {
 	AtomMovable
@@ -126,11 +186,14 @@ func (d *Obj) AsObj() *Obj {
 
 type ITurf interface {
 	IAtom
+	// not intended to be overridden
 	AsTurf() *Turf
 	SetXYZ(x uint, y uint, z uint)
 }
 
-var _ ITurf = &Turf{}
+var templateTurf ITurf = &Turf{
+	Atom: *templateAtom.(*Atom),
+}
 
 type Turf struct {
 	Atom
@@ -156,15 +219,47 @@ func (d *Turf) AsTurf() *Turf {
 	return d
 }
 
+func (d *Turf) Exit(atom IAtomMovable, newloc IAtom) bool {
+	util.FIXME("call Uncross here")
+	return true
+}
+
+func (d *Turf) Enter(atom IAtomMovable, oldloc IAtom) bool {
+	util.FIXME("call Cross here")
+	if atom.AsAtom().Density {
+		if d.Density {
+			return false
+		}
+		util.FIXME("something about only atoms that take up the full tile?")
+		for _, existingAtom := range d.Contents() {
+			if existingAtom.AsAtom().Density {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func (d *Turf) Exited(atom IAtomMovable, newloc IAtom) {
+	util.FIXME("call Uncrossed here")
+}
+
+func (d *Turf) Entered(atom IAtomMovable, oldloc IAtom) {
+	util.FIXME("call Crossed here")
+}
+
 // **** area
 
 type IArea interface {
 	IAtom
+	// not intended to be overridden
 	AsArea() *Area
 	Turfs() []ITurf
 }
 
-var _ IArea = &Area{}
+var templateArea IArea = &Area{
+	Atom: *templateAtom.(*Atom),
+}
 
 type Area struct {
 	Atom
@@ -190,11 +285,13 @@ func (d *Area) Turfs() (turfs []ITurf) {
 // **** mob
 
 type IMob interface {
-	IAtom
+	IAtomMovable
 	AsMob() *Mob
 }
 
-var _ IMob = &Mob{}
+var templateMob IMob = &Mob{
+	AtomMovable: *templateAtomMovable.(*AtomMovable),
+}
 
 type Mob struct {
 	AtomMovable
@@ -211,21 +308,19 @@ func (d *Mob) AsMob() *Mob {
 
 func NewAtomicTree() *datum.TypeTree {
 	tree := datum.NewTypeTree()
-	tree.RegisterStruct("/atom", &Atom{})
-	tree.RegisterStruct("/atom/movable", &AtomMovable{})
+	tree.RegisterStruct("/atom", templateAtom)
+	tree.RegisterStruct("/atom/movable", templateAtomMovable)
+	tree.RegisterStruct("/area", templateArea)
+	tree.RegisterStruct("/turf", templateTurf)
+	tree.RegisterStruct("/obj", templateObj)
+	tree.RegisterStruct("/mob", templateMob)
 
-	area := tree.RegisterStruct("/area", &Area{}).(*Area)
-	area.Appearance.Layer = AreaLayer
+	templateArea.(*Area).Appearance.Layer = AreaLayer
+	templateTurf.(*Turf).Appearance.Layer = TurfLayer
+	templateObj.(*Obj).Appearance.Layer = ObjLayer
+	templateMob.(*Mob).Appearance.Layer = MobLayer
 
-	turf := tree.RegisterStruct("/turf", &Turf{}).(*Turf)
-	turf.Appearance.Layer = TurfLayer
-
-	obj := tree.RegisterStruct("/obj", &Obj{}).(*Obj)
-	obj.Appearance.Layer = ObjLayer
-
-	mob := tree.RegisterStruct("/mob", &Mob{}).(*Mob)
-	mob.Appearance.Layer = MobLayer
-	mob.Density = true
+	templateMob.(*Mob).Density = true
 
 	tree.RegisterStruct("/client", &Client{})
 	return tree

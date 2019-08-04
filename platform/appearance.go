@@ -20,6 +20,7 @@ type Appearance struct {
 }
 
 func (a Appearance) ToSprite(x, y uint) (bool, int, sprite.GameSprite) {
+	util.FIXME("implement directions")
 	util.FIXME("implement correct sizing")
 	if a.Icon == nil {
 		return false, 0, sprite.GameSprite{}

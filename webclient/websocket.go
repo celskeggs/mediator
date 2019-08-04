@@ -47,22 +47,22 @@ func (wss *WebSocketServer) handleSessionTransmit(session ServerSession, conn *w
 			log.Printf("error during session close: %v", err)
 		}
 	}()
-	conn.SetReadLimit(16)
+	conn.SetReadLimit(1024)
 	err := setConnectionTimeout(conn, time.Minute)
 	if err != nil {
 		log.Printf("error during session setup: %v", err)
 		return
 	}
 	for {
-		messageHolder := session.NewMessageHolder()
-		err := conn.ReadJSON(messageHolder)
+		var command Command
+		err := conn.ReadJSON(&command)
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("error: %v", err)
 			}
 			break
 		}
-		session.OnMessage(messageHolder)
+		session.OnMessage(command)
 	}
 }
 

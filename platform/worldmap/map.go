@@ -86,13 +86,14 @@ func (lo *loaderObserver) StitchMap() {
 		for y := 0; y < len(lo.m[x]); y++ {
 			for z := 0; z < len(lo.m[x][y]); z++ {
 				cell := lo.m[x][y][z]
-				cell.Stitch(uint(x), uint(y), uint(z))
+				cell.Stitch(uint(x + 1), uint(y + 1), uint(z + 1))
 			}
 		}
 	}
 }
 
 func LoadMap(world *platform.World, text string) error {
+	util.FIXME("fix the fact that the map is upside-down")
 	l := loaderObserver{
 		world: world,
 	}
