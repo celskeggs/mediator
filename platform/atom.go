@@ -52,6 +52,8 @@ func (d *Atom) Location() IAtom {
 }
 
 func (d *Atom) SetLocation(location IAtom) {
+	datum.AssertConsistent(location)
+
 	if d.location != nil {
 		contents := d.location.Dereference().(IAtom).AsAtom().contents
 		if _, found := contents[d]; !found {
@@ -89,18 +91,22 @@ func (d *Atom) XYZ() (uint, uint, uint) {
 }
 
 func (d *Atom) Exit(atom IAtomMovable, newloc IAtom) bool {
+	datum.AssertConsistent(atom, newloc)
 	return true
 }
 
 func (d *Atom) Enter(atom IAtomMovable, oldloc IAtom) bool {
+	datum.AssertConsistent(atom, oldloc)
 	return true
 }
 
 func (d *Atom) Exited(atom IAtomMovable, newloc IAtom) {
+	datum.AssertConsistent(atom, newloc)
 	// nothing to do
 }
 
 func (d *Atom) Entered(atom IAtomMovable, oldloc IAtom) {
+	datum.AssertConsistent(atom, oldloc)
 	// nothing to do
 }
 
@@ -129,6 +135,7 @@ func (d *AtomMovable) AsAtomMovable() *AtomMovable {
 }
 
 func (d *AtomMovable) Move(newloc IAtom, direction common.Direction) bool {
+	datum.AssertConsistent(newloc)
 	util.FIXME("implement pixel movement/slides")
 	oldloc := d.Location()
 	impl := d.Impl.(IAtomMovable)
@@ -211,11 +218,13 @@ func (d *Turf) AsTurf() *Turf {
 }
 
 func (d *Turf) Exit(atom IAtomMovable, newloc IAtom) bool {
+	datum.AssertConsistent(atom, newloc)
 	util.FIXME("call Uncross here")
 	return true
 }
 
 func (d *Turf) Enter(atom IAtomMovable, oldloc IAtom) bool {
+	datum.AssertConsistent(atom, oldloc)
 	util.FIXME("call Cross here")
 	if atom.AsAtom().Density {
 		if d.Density {
@@ -232,10 +241,12 @@ func (d *Turf) Enter(atom IAtomMovable, oldloc IAtom) bool {
 }
 
 func (d *Turf) Exited(atom IAtomMovable, newloc IAtom) {
+	datum.AssertConsistent(atom, newloc)
 	util.FIXME("call Uncrossed here")
 }
 
 func (d *Turf) Entered(atom IAtomMovable, oldloc IAtom) {
+	datum.AssertConsistent(atom, oldloc)
 	util.FIXME("call Crossed here")
 }
 

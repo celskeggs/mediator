@@ -68,11 +68,13 @@ func (w *World) CreateNewPlayer(key string) IClient {
 }
 
 func (w *World) RemovePlayer(client IClient) {
+	datum.AssertConsistent(client)
 	delete(w.clients, client)
 	client.Del()
 }
 
 func (w *World) PlayerExists(client IClient) bool {
+	datum.AssertConsistent(client)
 	_, found := w.clients[client]
 	return found
 }

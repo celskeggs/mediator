@@ -47,6 +47,7 @@ func (t *TypeTree) Get(path TypePath) IDatum {
 // also populates Type field
 func (t *TypeTree) set(path TypePath, datum IDatum) {
 	path.Validate()
+	AssertConsistent(datum)
 	if datum.AsDatum().Type != "" && datum == t.Get(datum.AsDatum().Type) {
 		panic("attempt to re-insert previously inserted datum")
 	}

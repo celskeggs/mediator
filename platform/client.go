@@ -35,6 +35,8 @@ func (d *Client) Mob() IMob {
 }
 
 func (d *Client) SetMob(mob IMob) {
+	datum.AssertConsistent(mob)
+
 	d.mob = mob.Reference()
 }
 
@@ -81,6 +83,7 @@ func (d *Client) West() bool {
 }
 
 func (d *Client) Move(loc IAtom, dir common.Direction) bool {
+	datum.AssertConsistent(loc)
 	mob := d.Mob()
 	util.FIXME("cancel automated movement if necessary")
 	if mob != nil {
@@ -103,6 +106,7 @@ func (d *Client) AsClient() *Client {
 }
 
 func isTurf(atom IAtom) bool {
+	datum.AssertConsistent(atom)
 	_, isturf := atom.(ITurf)
 	return isturf
 }
@@ -127,6 +131,8 @@ func (d *Client) findExistingMob() IMob {
 }
 
 func (d *Client) New(usr IMob) IMob {
+	datum.AssertConsistent(usr)
+
 	mob := usr
 	util.FIXME("add support for 'prototype mobs'")
 	if mob == nil {

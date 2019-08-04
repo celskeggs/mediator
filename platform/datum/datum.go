@@ -2,7 +2,6 @@ package datum
 
 import (
 	"github.com/celskeggs/mediator/platform/debug"
-	"github.com/celskeggs/mediator/util"
 	"runtime"
 )
 
@@ -43,6 +42,14 @@ type Datum struct {
 	// refcount is the number of Refs to this Datum. the datum only counts as being in the realm when this is nonzero.
 	refCount uint
 	realm    *Realm
+}
+
+func AssertConsistent(data... IDatum) {
+	for _, datum := range data {
+		if datum != nil && datum.AsDatum().Impl != datum {
+			panic("inconsistent datum")
+		}
+	}
 }
 
 func (d *Datum) decrementRefs() {
@@ -98,7 +105,6 @@ func (d *Datum) Realm() *Realm {
 }
 
 func setImpl(datum IDatum) {
-	util.FIXME("at some point, there should be an easy way to validate that the IDatums being passed around are to the Impl and not to details")
 	if datum.AsDatum().realm == nil {
 		panic("no realm found on datum")
 	}

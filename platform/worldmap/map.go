@@ -17,6 +17,7 @@ type mapCell struct {
 }
 
 func (cell *mapCell) Add(atom platform.IAtom) error {
+	datum.AssertConsistent(atom)
 	if area, isarea := atom.(platform.IArea); isarea {
 		if cell.Area != nil {
 			return errors.New("more than one area in cell")
