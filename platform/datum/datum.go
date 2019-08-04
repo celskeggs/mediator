@@ -66,6 +66,9 @@ func (d *Datum) decrementRefs() {
 }
 
 func (d *Datum) Reference() *Ref {
+	if d == nil {
+		return nil
+	}
 	if d.refCount == 0 {
 		d.realm.add(d)
 	}

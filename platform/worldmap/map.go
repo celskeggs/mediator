@@ -102,6 +102,10 @@ func LoadMap(world *platform.World, text string) error {
 		return err
 	}
 	l.StitchMap()
+	util.NiceToHave("handle changing this both at compile time and at runtime")
+	world.MaxX = uint(len(l.m))
+	world.MaxY = uint(len(l.m[0]))
+	world.MaxZ = uint(len(l.m[0][0]))
 	return nil
 }
 

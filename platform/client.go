@@ -30,9 +30,10 @@ var _ IClient = &Client{}
 type Client struct {
 	datum.Datum
 	Key          string
-	mob          *datum.Ref
 	World        *World
+	mob          *datum.Ref
 	eye          *datum.Ref
+	virtualEye   *datum.Ref
 	ViewDistance uint
 }
 
@@ -44,7 +45,7 @@ func (d *Client) SetMob(mob IMob) {
 	datum.AssertConsistent(mob)
 
 	d.mob = mob.Reference()
-	d.eye = d.mob
+	d.SetEye(mob)
 }
 
 func (d *Client) Eye() IAtom {
@@ -59,6 +60,21 @@ func (d *Client) SetEye(eye IAtom) {
 	datum.AssertConsistent(eye)
 
 	d.eye = eye.Reference()
+
+	if d.World.setVirtualEye {
+		_, _, eyeZ := eye.XYZ()
+		d.virtualEye = d.World.LocateXYZ((d.World.MaxX + 1) / 2, (d.World.MaxY + 1) / 2, eyeZ).Reference()
+	} else {
+		d.virtualEye = d.eye
+	}
+}
+
+func (d *Client) VirtualEye() IAtom {
+	if d.virtualEye != nil {
+		return d.virtualEye.Dereference().(IAtom)
+	} else {
+		return nil
+	}
 }
 
 func (d *Client) InvokeVerb(verb string) {
@@ -115,7 +131,8 @@ func (d *Client) Move(loc IAtom, dir common.Direction) bool {
 
 func (d *Client) RenderViewAsAtoms() (center IAtom, atoms []IAtom) {
 	util.FIXME("actually do this correctly")
-	return d.Eye(), d.World.View(d.ViewDistance, d.Eye())
+	veye := d.VirtualEye()
+	return veye, d.World.ViewX(d.ViewDistance, veye, d.Eye())
 }
 
 func (d Client) RawClone() datum.IDatum {

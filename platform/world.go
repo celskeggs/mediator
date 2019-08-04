@@ -13,13 +13,20 @@ type World struct {
 	Client       datum.TypePath
 	ViewDistance uint
 
+	defaultLazyEye uint
+
+	MaxX, MaxY, MaxZ uint
+
 	Tree *datum.TypeTree
 
 	clients map[IClient]*datum.Ref
 
 	// true if this instance has an API associated with it
 	// we never provide more than one API so that we avoid double-threading
-	claimed bool
+	claimed       bool
+
+	// true if the virtual eye should be set to the middle of the may
+	setVirtualEye bool
 }
 
 func (w *World) FindAll(predicate func(IAtom) bool) []IAtom {
@@ -113,6 +120,15 @@ func (w *World) LocateXYZ(x, y, z uint) ITurf {
 		return nil
 	} else {
 		return turf.(ITurf)
+	}
+}
+
+func (w *World) UpdateDefaultViewDistance() {
+	// if the map is <= 21x21, adjust view to fit the whole thing
+	if w.MaxX > 0 && w.MaxY > 0 && w.MaxX <= 21 && w.MaxY <= 21 {
+		w.ViewDistance = MaxUint(w.MaxX, w.MaxY) / 2
+		// note: the documentation SAYS that we should turn on lazy_eye, but it actually doesn't get turned on.
+		w.setVirtualEye = true
 	}
 }
 

@@ -49,13 +49,17 @@ func (w *World) View(distance uint, centerD datum.IDatum) []IAtom {
 	} else if centerD != nil {
 		center = centerD.(IAtom)
 	}
-	if center == nil {
+	return w.ViewX(distance, center, center)
+}
+
+func (w *World) ViewX(distance uint, center IAtom, perspective IAtom) []IAtom {
+	if center == nil || perspective == nil {
 		return nil
 	}
 
 	util.FIXME("include areas")
 
-	location := center.Location()
+	location := perspective.Location()
 	turfloc, isturf := location.(ITurf)
 	if isturf {
 		_, _, tz := turfloc.XYZ()
@@ -63,7 +67,7 @@ func (w *World) View(distance uint, centerD datum.IDatum) []IAtom {
 			turf, isturf := atom.(ITurf)
 			if isturf {
 				_, _, t2z := turf.XYZ()
-				return t2z == tz && ManhattanDistance(turf, turfloc) <= distance
+				return t2z == tz && ManhattanDistance(turf, center) <= distance
 			}
 			return false
 		})
@@ -71,20 +75,20 @@ func (w *World) View(distance uint, centerD datum.IDatum) []IAtom {
 		for i, turf := range atoms {
 			turfs[i] = turf.(ITurf)
 		}
-		nturfs := limitViewers(distance, turfloc, turfs)
+		nturfs := limitViewers(distance, center, perspective, turfs)
 		atomsAgain := make([]IAtom, len(nturfs)+1)
 		for i, turf := range nturfs {
 			atomsAgain[i] = turf
 		}
-		atomsAgain[len(nturfs)] = center
+		atomsAgain[len(nturfs)] = perspective
 		return expandWithContents(atomsAgain)
 	} else if location != nil {
 		return expandWithContents([]IAtom{
-			location, center,
+			location, perspective,
 		})
 	} else {
 		return expandWithContents([]IAtom{
-			center,
+			perspective,
 		})
 	}
 }
@@ -104,17 +108,17 @@ type viewInfo struct {
 type viewInfoRegion struct {
 	Info             [][]*viewInfo
 	CornerX, CornerY int
-	CenterX, CenterY uint
+	PerspectiveX, PerspectiveY uint
 	Distance         uint
 }
 
-func newViewInfoRegion(distance uint, centerX, centerY uint) viewInfoRegion {
+func newViewInfoRegion(distance uint, centerX, centerY, perspectiveX, perspectiveY uint) viewInfoRegion {
 	vir := viewInfoRegion{
 		Info:     make([][]*viewInfo, distance*2+1),
 		CornerX:  int(centerX) - int(distance),
 		CornerY:  int(centerY) - int(distance),
-		CenterX:  centerX,
-		CenterY:  centerY,
+		PerspectiveX: perspectiveX,
+		PerspectiveY: perspectiveY,
 		Distance: distance,
 	}
 	for i := uint(0); i < distance*2+1; i++ {
@@ -154,7 +158,7 @@ func (vir *viewInfoRegion) PopulateTurfs(input []ITurf) (maxDepthMax, sumDepthMa
 		if vir.Info[ox][oy] != nil {
 			panic("duplicate turfs for position")
 		}
-		dx, dy := AbsDiff(vir.CenterX, tx), AbsDiff(vir.CenterY, ty)
+		dx, dy := AbsDiff(vir.PerspectiveX, tx), AbsDiff(vir.PerspectiveY, ty)
 		vi := &viewInfo{
 			Opaque:     turf.AsAtom().Opacity,
 			Luminosity: 0,
@@ -180,9 +184,10 @@ func (vir *viewInfoRegion) PopulateTurfs(input []ITurf) (maxDepthMax, sumDepthMa
 }
 
 // this is an approximate reimplementation of the BYOND algorithm, based on http://www.byond.com/forum/post/2130277#comment20659267
-func limitViewers(distance uint, center ITurf, base []ITurf) []ITurf {
+func limitViewers(distance uint, center IAtom, perspective IAtom, base []ITurf) []ITurf {
 	centerX, centerY, _ := center.XYZ()
-	vir := newViewInfoRegion(distance, centerX, centerY)
+	perspectiveX, perspectiveY, _ := perspective.XYZ()
+	vir := newViewInfoRegion(distance, centerX, centerY, perspectiveX, perspectiveY)
 	maxDepthMax, sumDepthMax := vir.PopulateTurfs(base)
 
 	util.FIXME("make this algorithm actually work correctly; there's something wrong about it somewhere")
@@ -241,7 +246,7 @@ func limitViewers(distance uint, center ITurf, base []ITurf) []ITurf {
 		}
 	}
 
-	vir.InfoAt(int(vir.CenterX), int(vir.CenterY)).Vis = 1
+	vir.InfoAt(int(vir.PerspectiveX), int(vir.PerspectiveY)).Vis = 1
 
 	updatedLighting := true
 	for updatedLighting {
