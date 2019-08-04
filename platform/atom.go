@@ -23,10 +23,7 @@ type IAtom interface {
 	Entered(atom IAtomMovable, oldloc IAtom)
 }
 
-// this is here not just as a template but also for type validation that *Atom implements IAtom
-var templateAtom IAtom = &Atom{
-	Direction: common.North,
-}
+var _ IAtom = &Atom{}
 
 type Atom struct {
 	datum.Datum
@@ -117,9 +114,7 @@ type IAtomMovable interface {
 	Move(atom IAtom, direction common.Direction) bool
 }
 
-var templateAtomMovable IAtomMovable = &AtomMovable{
-	Atom: *templateAtom.(*Atom),
-}
+var _ IAtomMovable = &AtomMovable{}
 
 type AtomMovable struct {
 	Atom
@@ -166,9 +161,7 @@ type IObj interface {
 	AsObj() *Obj
 }
 
-var templateObj IObj = &Obj{
-	AtomMovable: *templateAtomMovable.(*AtomMovable),
-}
+var _ IObj = &Obj{}
 
 type Obj struct {
 	AtomMovable
@@ -191,9 +184,7 @@ type ITurf interface {
 	SetXYZ(x uint, y uint, z uint)
 }
 
-var templateTurf ITurf = &Turf{
-	Atom: *templateAtom.(*Atom),
-}
+var _ ITurf = &Turf{}
 
 type Turf struct {
 	Atom
@@ -257,9 +248,7 @@ type IArea interface {
 	Turfs() []ITurf
 }
 
-var templateArea IArea = &Area{
-	Atom: *templateAtom.(*Atom),
-}
+var _ IArea = &Area{}
 
 type Area struct {
 	Atom
@@ -289,9 +278,7 @@ type IMob interface {
 	AsMob() *Mob
 }
 
-var templateMob IMob = &Mob{
-	AtomMovable: *templateAtomMovable.(*AtomMovable),
-}
+var _ IMob = &Mob{}
 
 type Mob struct {
 	AtomMovable
@@ -308,19 +295,42 @@ func (d *Mob) AsMob() *Mob {
 
 func NewAtomicTree() *datum.TypeTree {
 	tree := datum.NewTypeTree()
-	tree.RegisterStruct("/atom", templateAtom)
-	tree.RegisterStruct("/atom/movable", templateAtomMovable)
-	tree.RegisterStruct("/area", templateArea)
-	tree.RegisterStruct("/turf", templateTurf)
-	tree.RegisterStruct("/obj", templateObj)
-	tree.RegisterStruct("/mob", templateMob)
 
-	templateArea.(*Area).Appearance.Layer = AreaLayer
-	templateTurf.(*Turf).Appearance.Layer = TurfLayer
-	templateObj.(*Obj).Appearance.Layer = ObjLayer
-	templateMob.(*Mob).Appearance.Layer = MobLayer
+	templateAtom := Atom{
+		Direction: common.North,
+	}
 
-	templateMob.(*Mob).Density = true
+	templateAtomMovable := AtomMovable{
+		Atom: templateAtom,
+	}
+
+	templateArea := Area{
+		Atom: templateAtom,
+	}
+	templateArea.Appearance.Layer = AreaLayer
+
+	templateTurf := Turf{
+		Atom: templateAtom,
+	}
+	templateTurf.Appearance.Layer = TurfLayer
+
+	templateObj := Obj{
+		AtomMovable: templateAtomMovable,
+	}
+	templateObj.Appearance.Layer = ObjLayer
+
+	templateMob := Mob{
+		AtomMovable: templateAtomMovable,
+	}
+	templateMob.Appearance.Layer = MobLayer
+	templateMob.Density = true
+
+	tree.RegisterStruct("/atom", &templateAtom)
+	tree.RegisterStruct("/atom/movable", &templateAtomMovable)
+	tree.RegisterStruct("/area", &templateArea)
+	tree.RegisterStruct("/turf", &templateTurf)
+	tree.RegisterStruct("/obj", &templateObj)
+	tree.RegisterStruct("/mob", &templateMob)
 
 	tree.RegisterStruct("/client", &Client{})
 	return tree
