@@ -63,14 +63,24 @@ func (p playerAPI) Command(cmd webclient.Command) {
 	}
 }
 
+const SpriteSize = 32
+
 func (p playerAPI) Render() sprite.SpriteView {
-	atoms := p.Client.RenderViewAsAtoms()
+	center, atoms := p.Client.RenderViewAsAtoms()
+
+	util.FIXME("don't use hardcoded tile sizes here")
+
+	viewDist := p.Client.AsClient().ViewDistance
+	sizeInCells := (viewDist * 2) + 1
+	viewportSize := sizeInCells * SpriteSize
+
+	cX, cY, _ := center.XYZ()
+	shiftX, shiftY := (cX-viewDist)*SpriteSize, (cY-viewDist)*SpriteSize
 
 	layers := map[int][]sprite.GameSprite{}
 	for _, atom := range atoms {
 		x, y, _ := atom.XYZ()
-		util.FIXME("don't use hardcoded tile sizes here")
-		found, layer, s := atom.AsAtom().Appearance.ToSprite(x*32, y*32, atom.AsAtom().Direction)
+		found, layer, s := atom.AsAtom().Appearance.ToSprite(x*SpriteSize-shiftX, y*SpriteSize-shiftY, atom.AsAtom().Direction)
 		if found {
 			layers[layer] = append(layers[layer], s)
 		}
@@ -82,6 +92,8 @@ func (p playerAPI) Render() sprite.SpriteView {
 	sort.Ints(layerOrder)
 
 	var view sprite.SpriteView
+	view.ViewPortWidth = viewportSize
+	view.ViewPortHeight = viewportSize
 	for _, layer := range layerOrder {
 		view.Sprites = append(view.Sprites, layers[layer]...)
 	}

@@ -67,6 +67,8 @@ function prepareGame(canvas, inputsource) {
     var isTerminated = false;
     var gameActive = false;
     var width = 640, height = 480;
+    var aspectRatio = width / height;
+    var aspectShiftX = 0, aspectShiftY = 0;
     var gameSprites = [];
     var keyDirection = null;
     var sendMessage = function (message) {
@@ -108,8 +110,8 @@ function prepareGame(canvas, inputsource) {
                 var sh = sprite.sh || image.height;
                 var drawW = sprite.w || sw;
                 var drawH = sprite.h || sh;
-                var drawX = sprite.x;
-                var drawY = height - sprite.y - drawH;
+                var drawX = aspectShiftX + sprite.x;
+                var drawY = aspectShiftY + height - sprite.y - drawH;
                 ctx.drawImage(image,
                     sprite.sx || 0, sprite.sy || 0, sw, sh,
                     drawX, drawY, drawW, drawH);
@@ -145,11 +147,33 @@ function prepareGame(canvas, inputsource) {
         sendMessage = send;
     }
 
+    function updateWidthHeight(newwidth, newheight) {
+        if (!newwidth || !newheight) {
+            return;
+        }
+        if (newheight * aspectRatio > newwidth) {
+            width = Math.round(newheight * aspectRatio);
+            height = newheight;
+            aspectShiftX = Math.floor((width - newwidth) / 2);
+            aspectShiftY = 0;
+        } else if (newwidth / aspectRatio > newheight) {
+            width = newwidth;
+            height = Math.round(newwidth / aspectRatio);
+            aspectShiftX = 0;
+            aspectShiftY = Math.floor((height - newheight) / 2);
+        } else {
+            width = newwidth;
+            height = newheight;
+            aspectShiftX = aspectShiftY = 0;
+        }
+    }
+
     function onMessage(message) {
         if (!gameActive) {
             gameActive = true;
         }
         gameSprites = message.sprites || [];
+        updateWidthHeight(message.viewportwidth, message.viewportheight)
     }
 
     function onConnectionClosed() {

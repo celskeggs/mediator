@@ -17,7 +17,7 @@ type IClient interface {
 	New(usr IMob) IMob
 	Del()
 	InvokeVerb(s string)
-	RenderViewAsAtoms() []IAtom
+	RenderViewAsAtoms() (center IAtom, visible []IAtom)
 	North() bool
 	East() bool
 	South() bool
@@ -113,9 +113,9 @@ func (d *Client) Move(loc IAtom, dir common.Direction) bool {
 	return false
 }
 
-func (d *Client) RenderViewAsAtoms() []IAtom {
+func (d *Client) RenderViewAsAtoms() (center IAtom, atoms []IAtom) {
 	util.FIXME("actually do this correctly")
-	return d.World.View(d.ViewDistance, d.Impl)
+	return d.Eye(), d.World.View(d.ViewDistance, d.Eye())
 }
 
 func (d Client) RawClone() datum.IDatum {

@@ -13,10 +13,15 @@ type GameSprite struct {
 }
 
 type SpriteView struct {
-	Sprites []GameSprite `json:"sprites"`
+	ViewPortWidth  uint         `json:"viewportwidth"`
+	ViewPortHeight uint         `json:"viewportheight"`
+	Sprites        []GameSprite `json:"sprites"`
 }
 
 func (a SpriteView) Equal(b SpriteView) bool {
+	if a.ViewPortWidth != b.ViewPortWidth || a.ViewPortHeight != b.ViewPortHeight {
+		return false
+	}
 	if len(a.Sprites) != len(b.Sprites) {
 		return false
 	}
