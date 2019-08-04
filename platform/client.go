@@ -63,7 +63,7 @@ func (d *Client) SetEye(eye IAtom) {
 
 	if d.World.setVirtualEye {
 		_, _, eyeZ := eye.XYZ()
-		d.virtualEye = d.World.LocateXYZ((d.World.MaxX + 1) / 2, (d.World.MaxY + 1) / 2, eyeZ).Reference()
+		d.virtualEye = d.World.LocateXYZ((d.World.MaxX+1)/2, (d.World.MaxY+1)/2, eyeZ).Reference()
 	} else {
 		d.virtualEye = d.eye
 	}

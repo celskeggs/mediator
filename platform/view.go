@@ -106,20 +106,20 @@ type viewInfo struct {
 }
 
 type viewInfoRegion struct {
-	Info             [][]*viewInfo
-	CornerX, CornerY int
+	Info                       [][]*viewInfo
+	CornerX, CornerY           int
 	PerspectiveX, PerspectiveY uint
-	Distance         uint
+	Distance                   uint
 }
 
 func newViewInfoRegion(distance uint, centerX, centerY, perspectiveX, perspectiveY uint) viewInfoRegion {
 	vir := viewInfoRegion{
-		Info:     make([][]*viewInfo, distance*2+1),
-		CornerX:  int(centerX) - int(distance),
-		CornerY:  int(centerY) - int(distance),
+		Info:         make([][]*viewInfo, distance*2+1),
+		CornerX:      int(centerX) - int(distance),
+		CornerY:      int(centerY) - int(distance),
 		PerspectiveX: perspectiveX,
 		PerspectiveY: perspectiveY,
-		Distance: distance,
+		Distance:     distance,
 	}
 	for i := uint(0); i < distance*2+1; i++ {
 		vir.Info[i] = make([]*viewInfo, distance*2+1)

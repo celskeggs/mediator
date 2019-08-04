@@ -23,7 +23,7 @@ type World struct {
 
 	// true if this instance has an API associated with it
 	// we never provide more than one API so that we avoid double-threading
-	claimed       bool
+	claimed bool
 
 	// true if the virtual eye should be set to the middle of the may
 	setVirtualEye bool
