@@ -9,6 +9,7 @@ func FIXME(msg string) {
 		println("*** FIXME:", msg)
 	}
 }
+
 // based on https://stackoverflow.com/a/3090386/3369324
 
 func NiceToHave(msg string) {

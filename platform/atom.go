@@ -75,6 +75,7 @@ func (d *Atom) SetLocation(location IAtom) {
 	}
 }
 
+// you *can* mutate the result of this function
 func (d *Atom) Contents() (contents []IAtom) {
 	for atom := range d.contents {
 		contents = append(contents, atom.Impl.(IAtom))

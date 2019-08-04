@@ -9,7 +9,11 @@ import (
 
 type IClient interface {
 	datum.IDatum
+	// not intended to be overridden
 	AsClient() *Client
+	Eye() IAtom
+	SetEye(atom IAtom)
+	// intended to be overridden
 	New(usr IMob) IMob
 	Del()
 	InvokeVerb(s string)
@@ -25,9 +29,11 @@ var _ IClient = &Client{}
 
 type Client struct {
 	datum.Datum
-	Key   string
-	mob   *datum.Ref
-	World *World
+	Key          string
+	mob          *datum.Ref
+	World        *World
+	eye          *datum.Ref
+	ViewDistance uint
 }
 
 func (d *Client) Mob() IMob {
@@ -38,6 +44,21 @@ func (d *Client) SetMob(mob IMob) {
 	datum.AssertConsistent(mob)
 
 	d.mob = mob.Reference()
+	d.eye = d.mob
+}
+
+func (d *Client) Eye() IAtom {
+	if d.eye != nil {
+		return d.eye.Dereference().(IAtom)
+	} else {
+		return nil
+	}
+}
+
+func (d *Client) SetEye(eye IAtom) {
+	datum.AssertConsistent(eye)
+
+	d.eye = eye.Reference()
 }
 
 func (d *Client) InvokeVerb(verb string) {
@@ -94,7 +115,7 @@ func (d *Client) Move(loc IAtom, dir common.Direction) bool {
 
 func (d *Client) RenderViewAsAtoms() []IAtom {
 	util.FIXME("actually do this correctly")
-	return d.World.FindAll(nil)
+	return d.World.View(d.ViewDistance, d.Impl)
 }
 
 func (d Client) RawClone() datum.IDatum {

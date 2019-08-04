@@ -11,6 +11,9 @@ type Ref struct {
 }
 
 func (d *Ref) Dereference() IDatum {
+	if d == nil {
+		return nil
+	}
 	impl := d.datum.Impl
 	if impl == nil {
 		panic("nil Impl")

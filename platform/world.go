@@ -8,10 +8,13 @@ import (
 )
 
 type World struct {
-	Name    string
-	Mob     datum.TypePath
-	Client  datum.TypePath
-	Tree    *datum.TypeTree
+	Name         string
+	Mob          datum.TypePath
+	Client       datum.TypePath
+	ViewDistance uint
+
+	Tree *datum.TypeTree
+
 	clients map[IClient]*datum.Ref
 
 	// true if this instance has an API associated with it
@@ -62,6 +65,10 @@ func (w *World) CreateNewPlayer(key string) IClient {
 	c := client.AsClient()
 	c.World = w
 	c.Key = key
+	if c.ViewDistance == 0 {
+		util.NiceToHave("handle the /client/view = 0 situation correctly")
+		c.ViewDistance = w.ViewDistance
+	}
 	c.SetMob(client.New(c.findExistingMob()))
 
 	return client
@@ -109,13 +116,80 @@ func (w *World) LocateXYZ(x, y, z uint) ITurf {
 	}
 }
 
-func NewWorld(tree *datum.TypeTree, name string, defaultMob datum.TypePath, defaultClient datum.TypePath) *World {
+func (w *World) View1(center datum.IDatum) []IAtom {
+	return w.View(w.ViewDistance, center)
+}
+
+func MaxUint(a uint, b uint) uint {
+	if a > b {
+		return a
+	} else {
+		return b
+	}
+}
+
+func AbsDiff(a uint, b uint) uint {
+	if a > b {
+		return a - b
+	} else {
+		return b - a
+	}
+}
+
+func ManhattanDistance(a, b IAtom) uint {
+	ax, ay, _ := a.XYZ()
+	bx, by, _ := b.XYZ()
+	return MaxUint(AbsDiff(ax, bx), AbsDiff(ay, by))
+}
+
+// note: this does not handle the "centerD = nil" case the same as DreamMaker
+func (w *World) View(distance uint, centerD datum.IDatum) []IAtom {
+	client, isclient := centerD.(IClient)
+	var center IAtom
+	if isclient {
+		center = client.Eye()
+	} else if centerD != nil {
+		center = centerD.(IAtom)
+	}
+	if center == nil {
+		return nil
+	}
+
+	contents := center.Contents()
+	contents = append(contents, center)
+	location := center.Location()
+	if location != nil {
+		contents = append(contents, location)
+		contents = append(contents, location.Contents()...)
+	}
+	util.FIXME("include areas")
+	turfloc, isturf := location.(ITurf)
+	if isturf {
+		_, _, tz := turfloc.XYZ()
+		turfs := w.FindAll(func(atom IAtom) bool {
+			turf, isturf := atom.(ITurf)
+			if isturf {
+				_, _, t2z := turf.XYZ()
+				return t2z == tz && turf != turfloc && ManhattanDistance(turf, turfloc) <= distance
+			}
+			return false
+		})
+		contents = append(contents, turfs...)
+		for _, turf := range turfs {
+			contents = append(contents, turf.Contents()...)
+		}
+	}
+	return contents
+}
+
+func NewWorld(tree *datum.TypeTree) *World {
 	return &World{
-		Name:    name,
-		Mob:     defaultMob,
-		Client:  defaultClient,
-		Tree:    tree,
-		clients: map[IClient]*datum.Ref{},
-		claimed: false,
+		Name:         "Untitled",
+		Mob:          "/mob",
+		Client:       "/client",
+		ViewDistance: 5,
+		Tree:         tree,
+		clients:      map[IClient]*datum.Ref{},
+		claimed:      false,
 	}
 }
