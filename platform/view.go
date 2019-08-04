@@ -185,6 +185,7 @@ func limitViewers(distance uint, center ITurf, base []ITurf) []ITurf {
 	vir := newViewInfoRegion(distance, centerX, centerY)
 	maxDepthMax, sumDepthMax := vir.PopulateTurfs(base)
 
+	util.FIXME("make this algorithm actually work correctly; there's something wrong about it somewhere")
 	util.NiceToHave("handle blindness")
 	util.NiceToHave("there's something here related to having everything be visible in some circumstances?")
 
