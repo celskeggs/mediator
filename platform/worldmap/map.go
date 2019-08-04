@@ -93,7 +93,6 @@ func (lo *loaderObserver) StitchMap() {
 }
 
 func LoadMap(world *platform.World, text string) error {
-	util.FIXME("fix the fact that the map is upside-down")
 	l := loaderObserver{
 		world: world,
 	}

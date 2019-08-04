@@ -64,7 +64,6 @@ func (p playerAPI) Command(cmd webclient.Command) {
 }
 
 func (p playerAPI) Render() sprite.SpriteView {
-	util.FIXME("fix the fact that the rendering is upside-down")
 	atoms := p.Client.RenderViewAsAtoms()
 
 	layers := map[int][]sprite.GameSprite{}

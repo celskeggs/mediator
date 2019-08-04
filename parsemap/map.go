@@ -63,7 +63,7 @@ func convertRCto3D(rc [][]string) [][][]string {
 	}
 	for rowi, row := range rc {
 		for coli, col := range row {
-			xyz[coli][rowi] = []string{col}
+			xyz[coli][len(rc)-rowi-1] = []string{col}
 		}
 	}
 	return xyz

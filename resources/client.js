@@ -104,9 +104,13 @@ function prepareGame(canvas, inputsource) {
                 }
                 var sw = sprite.sw || image.width;
                 var sh = sprite.sh || image.height;
+                var drawW = sprite.w || sw;
+                var drawH = sprite.h || sh;
+                var drawX = sprite.x;
+                var drawY = height - sprite.y - drawH;
                 ctx.drawImage(image,
                     sprite.sx || 0, sprite.sy || 0, sw, sh,
-                    sprite.x, sprite.y, sprite.w || sw, sprite.h || sh);
+                    drawX, drawY, drawW, drawH);
             }
         }
     }
