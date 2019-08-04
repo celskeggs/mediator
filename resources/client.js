@@ -66,7 +66,7 @@ function prepareGame(canvas, inputsource) {
     var images = null;
     var isTerminated = false;
     var gameActive = false;
-    var width = 640, height = 480;
+    var width = 672, height = 672;
     var aspectRatio = width / height;
     var aspectShiftX = 0, aspectShiftY = 0;
     var gameSprites = [];
