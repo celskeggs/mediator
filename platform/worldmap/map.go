@@ -82,7 +82,7 @@ func (lo *loaderObserver) AddAtom(l parsemap.Location, path string) error {
 
 // sets up all of the object locations
 func (lo *loaderObserver) StitchMap() {
-	util.FIXME("make large areas, not per-cell areas")
+	util.FIXME("make singleton areas, not per-cell areas or even per-area areas")
 	for x := 0; x < len(lo.m); x++ {
 		for y := 0; y < len(lo.m[x]); y++ {
 			for z := 0; z < len(lo.m[x][y]); z++ {

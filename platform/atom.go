@@ -16,6 +16,7 @@ type IAtom interface {
 	Location() IAtom
 	SetLocation(atom IAtom)
 	Contents() []IAtom
+	World() *World
 	// intended to be overridden
 	Exit(atom IAtomMovable, newloc IAtom) bool
 	Enter(atom IAtomMovable, oldloc IAtom) bool
@@ -42,6 +43,10 @@ func (d Atom) RawClone() datum.IDatum {
 
 func (d *Atom) AsAtom() *Atom {
 	return d
+}
+
+func (d *Atom) World() *World {
+	return d.Realm().WorldRef().(*World)
 }
 
 func (d *Atom) Location() IAtom {
@@ -138,6 +143,7 @@ func (d *AtomMovable) AsAtomMovable() *AtomMovable {
 }
 
 func (d *AtomMovable) Move(newloc IAtom, direction common.Direction) bool {
+	util.FIXME("figure out when and how to trigger area entrance/exit")
 	datum.AssertConsistent(newloc)
 	util.NiceToHave("implement pixel movement/slides")
 	oldloc := d.Location()

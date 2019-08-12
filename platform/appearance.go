@@ -18,6 +18,7 @@ type Appearance struct {
 	Icon      *icon.Icon
 	IconState string
 	Layer     int
+	Desc      string
 }
 
 func (a Appearance) ToSprite(x, y uint, dir common.Direction) (bool, int, sprite.GameSprite) {

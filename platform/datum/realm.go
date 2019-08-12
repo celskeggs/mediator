@@ -3,7 +3,8 @@ package datum
 var TRACE = false
 
 type Realm struct {
-	datums map[*Datum]struct{}
+	datums   map[*Datum]struct{}
+	worldRef interface{}
 }
 
 func (r *Realm) add(d *Datum) {
@@ -43,4 +44,21 @@ func (r *Realm) FindOne(predicate func(IDatum) bool) IDatum {
 		}
 	}
 	return nil
+}
+
+func (realm *Realm) SetWorldRef(worldRef interface{}) {
+	if worldRef == nil {
+		panic("worldref cannot be nil")
+	}
+	if realm.worldRef != nil {
+		panic("worldref already set")
+	}
+	realm.worldRef = worldRef
+}
+
+func (realm *Realm) WorldRef() interface{} {
+	if realm.worldRef == nil {
+		panic("no worldref registered")
+	}
+	return realm.worldRef
 }

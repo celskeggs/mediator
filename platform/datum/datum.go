@@ -3,6 +3,7 @@ package datum
 import (
 	"github.com/celskeggs/mediator/platform/debug"
 	"runtime"
+	"github.com/celskeggs/mediator/util"
 )
 
 // long-lived pointers to Datums need to be Refs
@@ -34,6 +35,7 @@ type IDatum interface {
 	Reference() *Ref
 	Realm() *Realm
 	Impl() IDatum
+	NextOverride() (this IDatum, after IDatum)
 }
 
 var _ IDatum = &Datum{}
@@ -54,6 +56,10 @@ func AssertConsistent(data ...IDatum) {
 			panic("inconsistent datum")
 		}
 	}
+}
+
+func (d *Datum) NextOverride() (IDatum, IDatum) {
+	return nil, nil
 }
 
 func (d *Datum) decrementRefs() {
@@ -99,6 +105,7 @@ func (d *Datum) Clone() IDatum {
 		panic("realm is nil when cloning")
 	}
 	cloned := d.impl.RawClone()
+	util.FIXME("maybe have a check here to ensure that RawClone actually copied everything down to the datum")
 	setImpl(cloned)
 	cloned.AsDatum().refCount = 0
 	return cloned

@@ -133,7 +133,7 @@ func (w *World) UpdateDefaultViewDistance() {
 }
 
 func NewWorld(tree *datum.TypeTree) *World {
-	return &World{
+	world := &World{
 		Name:         "Untitled",
 		Mob:          "/mob",
 		Client:       "/client",
@@ -142,4 +142,6 @@ func NewWorld(tree *datum.TypeTree) *World {
 		clients:      map[IClient]*datum.Ref{},
 		claimed:      false,
 	}
+	tree.Realm().SetWorldRef(world)
+	return world
 }
