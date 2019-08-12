@@ -92,7 +92,7 @@ func (e *worldSession) OnMessage(cmd webclient.Command) {
 				total := time.Now().Sub(start)
 				totalTimeSpent += total
 				countTimeSpent += 1
-				fmt.Printf("adding %v\tto get %v\n", total, totalTimeSpent/time.Duration(countTimeSpent))
+				fmt.Printf("frame: %v\t, avg=%v\n", total, totalTimeSpent/time.Duration(countTimeSpent))
 			}
 		})
 	}
