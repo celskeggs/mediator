@@ -78,10 +78,10 @@ func readContent(body string) ([][][]string, error) {
 		return nil, fmt.Errorf("could not understand last worldmap line")
 	}
 	rowColumn := make([][]string, len(lines)-2)
-	for rowi, row := range lines[1 : len(lines)-1] {
+	for rowi, row := range lines[1: len(lines)-1] {
 		rowColumn[rowi] = make([]string, len(row))
 		for coli := 0; coli < len(row); coli++ {
-			rowColumn[rowi][coli] = row[coli : coli+1]
+			rowColumn[rowi][coli] = row[coli: coli+1]
 		}
 	}
 	return convertRCto3D(rowColumn), nil

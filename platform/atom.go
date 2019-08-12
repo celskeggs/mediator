@@ -316,7 +316,7 @@ func NewAtomicTree() *datum.TypeTree {
 	tree := datum.NewTypeTree()
 
 	templateAtom := Atom{
-		IDatum: tree.New("/datum"),
+		IDatum:    tree.New("/datum"),
 		Direction: common.South,
 	}
 	tree.RegisterStruct("/atom", &templateAtom)
