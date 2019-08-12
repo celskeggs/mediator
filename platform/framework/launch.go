@@ -10,6 +10,7 @@ import (
 )
 
 type Game interface {
+	Definer() platform.TreeDefiner
 	ElaborateTree(*datum.TypeTree, *icon.IconCache)
 	BeforeMap(world *platform.World)
 }
@@ -32,7 +33,7 @@ func BuildWorld(game Game, defaults ResourceDefaults, parseFlags bool) *platform
 	} else {
 		resources = defaults.IconsDir
 	}
-	tree := platform.NewAtomicTree()
+	tree := platform.NewAtomicTree(game.Definer())
 	icons := icon.NewIconCache(resources)
 	game.ElaborateTree(tree, icons)
 

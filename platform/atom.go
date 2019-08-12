@@ -312,48 +312,98 @@ func (d *Mob) AsMob() *Mob {
 	return d
 }
 
-func NewAtomicTree() *datum.TypeTree {
-	tree := datum.NewTypeTree()
+type TreeDefiner interface {
+	AtomTemplate(parent datum.IDatum) IAtom
+	AtomMovableTemplate(parent IAtom) IAtomMovable
+	AreaTemplate(parent IAtom) IArea
+	TurfTemplate(parent IAtom) ITurf
+	ObjTemplate(parent IAtomMovable) IObj
+	MobTemplate(parent IAtomMovable) IMob
+	ClientTemplate(parent datum.IDatum) IClient
+}
 
-	templateAtom := Atom{
-		IDatum:    tree.New("/datum"),
+type BaseTreeDefiner struct{}
+
+var _ TreeDefiner = BaseTreeDefiner{}
+
+func (td BaseTreeDefiner) AtomTemplate(parent datum.IDatum) IAtom {
+	return &Atom{
+		IDatum:    parent,
 		Direction: common.South,
 	}
-	tree.RegisterStruct("/atom", &templateAtom)
+}
 
-	templateAtomMovable := AtomMovable{
-		IAtom: tree.New("/atom").(IAtom),
+func (td BaseTreeDefiner) AtomMovableTemplate(parent IAtom) IAtomMovable {
+	return &AtomMovable{
+		IAtom: parent,
 	}
-	tree.RegisterStruct("/atom/movable", &templateAtomMovable)
+}
 
-	templateArea := Area{
-		IAtom: tree.New("/atom").(IAtom),
+func (td BaseTreeDefiner) AreaTemplate(parent IAtom) IArea {
+	parent.AsAtom().Appearance.Layer = AreaLayer
+	return &Area{
+		IAtom: parent,
 	}
-	templateArea.AsAtom().Appearance.Layer = AreaLayer
-	tree.RegisterStruct("/area", &templateArea)
+}
 
-	templateTurf := Turf{
-		IAtom: tree.New("/atom").(IAtom),
+func (td BaseTreeDefiner) TurfTemplate(parent IAtom) ITurf {
+	parent.AsAtom().Appearance.Layer = TurfLayer
+	return &Turf{
+		IAtom: parent,
 	}
-	templateTurf.AsAtom().Appearance.Layer = TurfLayer
-	tree.RegisterStruct("/turf", &templateTurf)
+}
 
-	templateObj := Obj{
-		IAtomMovable: tree.New("/atom/movable").(IAtomMovable),
+func (td BaseTreeDefiner) ObjTemplate(parent IAtomMovable) IObj {
+	parent.AsAtom().Appearance.Layer = ObjLayer
+	return &Obj{
+		IAtomMovable: parent,
 	}
-	templateObj.AsAtom().Appearance.Layer = ObjLayer
-	tree.RegisterStruct("/obj", &templateObj)
+}
 
-	templateMob := Mob{
-		IAtomMovable: tree.New("/atom/movable").(IAtomMovable),
+func (td BaseTreeDefiner) MobTemplate(parent IAtomMovable) IMob {
+	parent.AsAtom().Appearance.Layer = MobLayer
+	parent.AsAtom().Density = true
+	return &Mob{
+		IAtomMovable: parent,
 	}
-	templateMob.AsAtom().Appearance.Layer = MobLayer
-	templateMob.AsAtom().Density = true
-	tree.RegisterStruct("/mob", &templateMob)
+}
 
-	tree.RegisterStruct("/client", &Client{
-		IDatum: tree.New("/datum"),
-	})
+func (td BaseTreeDefiner) ClientTemplate(parent datum.IDatum) IClient {
+	return &Client{
+		IDatum: parent,
+	}
+}
+
+func NewAtomicTree(td TreeDefiner) *datum.TypeTree {
+	tree := datum.NewTypeTree()
+
+	tree.RegisterStruct("/atom",
+		td.AtomTemplate(
+			tree.New("/datum")))
+
+	tree.RegisterStruct("/atom/movable",
+		td.AtomMovableTemplate(
+			tree.New("/atom").(IAtom)))
+
+	tree.RegisterStruct("/area",
+		td.AreaTemplate(
+			tree.New("/atom").(IAtom)))
+
+	tree.RegisterStruct("/turf",
+		td.TurfTemplate(
+			tree.New("/atom").(IAtom)))
+
+	tree.RegisterStruct("/obj",
+		td.ObjTemplate(
+			tree.New("/atom/movable").(IAtomMovable)))
+
+	tree.RegisterStruct("/mob",
+		td.MobTemplate(
+			tree.New("/atom/movable").(IAtomMovable)))
+
+	tree.RegisterStruct("/client",
+		td.ClientTemplate(
+			tree.New("/datum")))
 
 	return tree
 }
