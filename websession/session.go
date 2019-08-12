@@ -6,6 +6,8 @@ import (
 	"github.com/celskeggs/mediator/webclient/sprite"
 	"io/ioutil"
 	"path"
+	"time"
+	"fmt"
 )
 
 type worldServer struct {
@@ -76,13 +78,21 @@ func (ws *worldSession) Close() {
 	})
 }
 
+var totalTimeSpent time.Duration = 0
+var countTimeSpent = 0
+
 func (e *worldSession) OnMessage(cmd webclient.Command) {
 	if e.Active {
 		e.WS.SingleThread.Run(func() {
 			if !e.Player.IsValid() {
 				e.removeSubscription()
 			} else {
+				start := time.Now()
 				e.Player.Command(cmd)
+				total := time.Now().Sub(start)
+				totalTimeSpent += total
+				countTimeSpent += 1
+				fmt.Printf("adding %v\tto get %v\n", total, totalTimeSpent/time.Duration(countTimeSpent))
 			}
 		})
 	}
