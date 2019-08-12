@@ -22,11 +22,16 @@ type ResourceDefaults struct {
 
 var mapPath = flag.String("map", "map.dmm", "the path to the game map")
 
-func Launch(game Game, defaults ResourceDefaults) {
+func BuildWorld(game Game, defaults ResourceDefaults, parseFlags bool) *platform.World {
 	websession.SetDefaultFlags(defaults.CoreResourcesDir, defaults.IconsDir)
 	*mapPath = defaults.MapPath
 
-	_, resources := websession.ParseFlags()
+	var resources string
+	if parseFlags {
+		_, resources = websession.ParseFlags()
+	} else {
+		resources = defaults.IconsDir
+	}
 	tree := platform.NewAtomicTree()
 	icons := icon.NewIconCache(resources)
 	game.ElaborateTree(tree, icons)
@@ -40,6 +45,12 @@ func Launch(game Game, defaults ResourceDefaults) {
 		panic("cannot load world: " + err.Error())
 	}
 	world.UpdateDefaultViewDistance()
+
+	return world
+}
+
+func Launch(game Game, defaults ResourceDefaults) {
+	world := BuildWorld(game, defaults, true)
 
 	websession.LaunchServerFromFlags(world.ServerAPI())
 }
