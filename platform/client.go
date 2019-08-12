@@ -28,7 +28,7 @@ type IClient interface {
 var _ IClient = &Client{}
 
 type Client struct {
-	datum.Datum
+	datum.IDatum
 	Key          string
 	World        *World
 	mob          *datum.Ref
@@ -80,13 +80,13 @@ func (d *Client) VirtualEye() IAtom {
 func (d *Client) InvokeVerb(verb string) {
 	switch verb {
 	case ".north":
-		d.Impl.(IClient).North()
+		d.Impl().(IClient).North()
 	case ".south":
-		d.Impl.(IClient).South()
+		d.Impl().(IClient).South()
 	case ".east":
-		d.Impl.(IClient).East()
+		d.Impl().(IClient).East()
 	case ".west":
-		d.Impl.(IClient).West()
+		d.Impl().(IClient).West()
 	default:
 		log.Println("got unknown verb:", verb)
 	}
@@ -100,7 +100,7 @@ func (d *Client) RelMove(direction common.Direction) bool {
 		dx, dy := direction.XY()
 		turf = d.World.LocateXYZ(uint(int(x)+dx), uint(int(y)+dy), z)
 	}
-	return d.Impl.(IClient).Move(turf, direction)
+	return d.Impl().(IClient).Move(turf, direction)
 }
 
 func (d *Client) North() bool {
@@ -136,6 +136,7 @@ func (d *Client) RenderViewAsAtoms() (center IAtom, atoms []IAtom) {
 }
 
 func (d Client) RawClone() datum.IDatum {
+	d.IDatum = d.IDatum.RawClone()
 	return &d
 }
 

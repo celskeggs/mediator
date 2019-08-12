@@ -14,7 +14,7 @@ func (d *Ref) Dereference() IDatum {
 	if d == nil {
 		return nil
 	}
-	impl := d.datum.Impl
+	impl := d.datum.impl
 	if impl == nil {
 		panic("nil Impl")
 	}
@@ -33,13 +33,14 @@ type IDatum interface {
 	Dump(*debug.Output)
 	Reference() *Ref
 	Realm() *Realm
+	Impl() IDatum
 }
 
 var _ IDatum = &Datum{}
 
 // invariant: Impl should point back at the top level of the Datum's container struct
 type Datum struct {
-	Impl IDatum
+	impl IDatum
 	Type TypePath
 
 	// refcount is the number of Refs to this Datum. the datum only counts as being in the realm when this is nonzero.
@@ -49,7 +50,7 @@ type Datum struct {
 
 func AssertConsistent(data ...IDatum) {
 	for _, datum := range data {
-		if datum != nil && datum.AsDatum().Impl != datum {
+		if datum != nil && datum.AsDatum().impl != datum {
 			panic("inconsistent datum")
 		}
 	}
@@ -82,6 +83,7 @@ func (d *Datum) Reference() *Ref {
 }
 
 func (d Datum) RawClone() IDatum {
+	// no superclass
 	return &d
 }
 
@@ -96,7 +98,7 @@ func (d *Datum) Clone() IDatum {
 	if d.realm == nil {
 		panic("realm is nil when cloning")
 	}
-	cloned := d.Impl.RawClone()
+	cloned := d.impl.RawClone()
 	setImpl(cloned)
 	cloned.AsDatum().refCount = 0
 	return cloned
@@ -104,6 +106,10 @@ func (d *Datum) Clone() IDatum {
 
 func (d *Datum) Dump(o *debug.Output) {
 	debug.DumpReflect(d.Reference, o)
+}
+
+func (d *Datum) Impl() IDatum {
+	return d.impl
 }
 
 func (d *Datum) Realm() *Realm {
@@ -114,5 +120,5 @@ func setImpl(datum IDatum) {
 	if datum.AsDatum().realm == nil {
 		panic("no realm found on datum")
 	}
-	datum.AsDatum().Impl = datum
+	datum.AsDatum().impl = datum
 }

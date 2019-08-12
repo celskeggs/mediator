@@ -28,8 +28,8 @@ func (r *Realm) remove(d *Datum) {
 
 func (r *Realm) FindAll(predicate func(IDatum) bool) (out []IDatum) {
 	for datum := range r.datums {
-		if predicate(datum.Impl) {
-			out = append(out, datum.Impl)
+		if predicate(datum.impl) {
+			out = append(out, datum.impl)
 		}
 	}
 	return out
@@ -38,8 +38,8 @@ func (r *Realm) FindAll(predicate func(IDatum) bool) (out []IDatum) {
 // returns nil if not found
 func (r *Realm) FindOne(predicate func(IDatum) bool) IDatum {
 	for datum := range r.datums {
-		if predicate(datum.Impl) {
-			return datum.Impl
+		if predicate(datum.impl) {
+			return datum.impl
 		}
 	}
 	return nil

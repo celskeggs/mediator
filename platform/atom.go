@@ -26,7 +26,7 @@ type IAtom interface {
 var _ IAtom = &Atom{}
 
 type Atom struct {
-	datum.Datum
+	datum.IDatum
 	Appearance Appearance
 	Density    bool
 	Opacity    bool
@@ -36,6 +36,7 @@ type Atom struct {
 }
 
 func (d Atom) RawClone() datum.IDatum {
+	d.IDatum = d.IDatum.RawClone()
 	return &d
 }
 
@@ -78,7 +79,7 @@ func (d *Atom) SetLocation(location IAtom) {
 // you *can* mutate the result of this function
 func (d *Atom) Contents() (contents []IAtom) {
 	for atom := range d.contents {
-		contents = append(contents, atom.Impl.(IAtom))
+		contents = append(contents, atom.Impl().(IAtom))
 	}
 	return contents
 }
@@ -124,10 +125,11 @@ type IAtomMovable interface {
 var _ IAtomMovable = &AtomMovable{}
 
 type AtomMovable struct {
-	Atom
+	IAtom
 }
 
 func (d AtomMovable) RawClone() datum.IDatum {
+	d.IAtom = d.IAtom.RawClone().(IAtom)
 	return &d
 }
 
@@ -139,8 +141,8 @@ func (d *AtomMovable) Move(newloc IAtom, direction common.Direction) bool {
 	datum.AssertConsistent(newloc)
 	util.NiceToHave("implement pixel movement/slides")
 	oldloc := d.Location()
-	impl := d.Impl.(IAtomMovable)
-	d.Direction = direction
+	impl := d.Impl().(IAtomMovable)
+	d.AsAtom().Direction = direction
 	if newloc != oldloc && newloc != nil {
 		if oldloc != nil {
 			if !oldloc.Exit(impl, newloc) {
@@ -172,10 +174,11 @@ type IObj interface {
 var _ IObj = &Obj{}
 
 type Obj struct {
-	AtomMovable
+	IAtomMovable
 }
 
 func (d Obj) RawClone() datum.IDatum {
+	d.IAtomMovable = d.IAtomMovable.RawClone().(IAtomMovable)
 	return &d
 }
 
@@ -195,13 +198,14 @@ type ITurf interface {
 var _ ITurf = &Turf{}
 
 type Turf struct {
-	Atom
+	IAtom
 	X uint
 	Y uint
 	Z uint
 }
 
 func (d Turf) RawClone() datum.IDatum {
+	d.IAtom = d.IAtom.RawClone().(IAtom)
 	return &d
 }
 
@@ -229,7 +233,7 @@ func (d *Turf) Enter(atom IAtomMovable, oldloc IAtom) bool {
 	datum.AssertConsistent(atom, oldloc)
 	util.NiceToHave("call Cross here")
 	if atom.AsAtom().Density {
-		if d.Density {
+		if d.AsAtom().Density {
 			return false
 		}
 		util.NiceToHave("something about only atoms that take up the full tile?")
@@ -264,10 +268,11 @@ type IArea interface {
 var _ IArea = &Area{}
 
 type Area struct {
-	Atom
+	IAtom
 }
 
 func (d Area) RawClone() datum.IDatum {
+	d.IAtom = d.IAtom.RawClone().(IAtom)
 	return &d
 }
 
@@ -276,8 +281,8 @@ func (d *Area) AsArea() *Area {
 }
 
 func (d *Area) Turfs() (turfs []ITurf) {
-	for atom := range d.contents {
-		if turf, isTurf := atom.Impl.(ITurf); isTurf {
+	for atom := range d.AsAtom().contents {
+		if turf, isTurf := atom.Impl().(ITurf); isTurf {
 			turfs = append(turfs, turf)
 		}
 	}
@@ -294,11 +299,12 @@ type IMob interface {
 var _ IMob = &Mob{}
 
 type Mob struct {
-	AtomMovable
+	IAtomMovable
 	Key string
 }
 
 func (d Mob) RawClone() datum.IDatum {
+	d.IAtomMovable = d.IAtomMovable.RawClone().(IAtomMovable)
 	return &d
 }
 
@@ -310,41 +316,44 @@ func NewAtomicTree() *datum.TypeTree {
 	tree := datum.NewTypeTree()
 
 	templateAtom := Atom{
+		IDatum: tree.New("/datum"),
 		Direction: common.South,
 	}
+	tree.RegisterStruct("/atom", &templateAtom)
 
 	templateAtomMovable := AtomMovable{
-		Atom: templateAtom,
+		IAtom: tree.New("/atom").(IAtom),
 	}
+	tree.RegisterStruct("/atom/movable", &templateAtomMovable)
 
 	templateArea := Area{
-		Atom: templateAtom,
+		IAtom: tree.New("/atom").(IAtom),
 	}
-	templateArea.Appearance.Layer = AreaLayer
+	templateArea.AsAtom().Appearance.Layer = AreaLayer
+	tree.RegisterStruct("/area", &templateArea)
 
 	templateTurf := Turf{
-		Atom: templateAtom,
+		IAtom: tree.New("/atom").(IAtom),
 	}
-	templateTurf.Appearance.Layer = TurfLayer
+	templateTurf.AsAtom().Appearance.Layer = TurfLayer
+	tree.RegisterStruct("/turf", &templateTurf)
 
 	templateObj := Obj{
-		AtomMovable: templateAtomMovable,
+		IAtomMovable: tree.New("/atom/movable").(IAtomMovable),
 	}
-	templateObj.Appearance.Layer = ObjLayer
+	templateObj.AsAtom().Appearance.Layer = ObjLayer
+	tree.RegisterStruct("/obj", &templateObj)
 
 	templateMob := Mob{
-		AtomMovable: templateAtomMovable,
+		IAtomMovable: tree.New("/atom/movable").(IAtomMovable),
 	}
-	templateMob.Appearance.Layer = MobLayer
-	templateMob.Density = true
-
-	tree.RegisterStruct("/atom", &templateAtom)
-	tree.RegisterStruct("/atom/movable", &templateAtomMovable)
-	tree.RegisterStruct("/area", &templateArea)
-	tree.RegisterStruct("/turf", &templateTurf)
-	tree.RegisterStruct("/obj", &templateObj)
+	templateMob.AsAtom().Appearance.Layer = MobLayer
+	templateMob.AsAtom().Density = true
 	tree.RegisterStruct("/mob", &templateMob)
 
-	tree.RegisterStruct("/client", &Client{})
+	tree.RegisterStruct("/client", &Client{
+		IDatum: tree.New("/datum"),
+	})
+
 	return tree
 }
