@@ -13,6 +13,7 @@ type IAtom interface {
 	// not intended to be overridden
 	AsAtom() *Atom
 	XYZ() (uint, uint, uint)
+	ContainingArea() IArea
 	Location() IAtom
 	SetLocation(atom IAtom)
 	Contents() []IAtom
@@ -54,6 +55,15 @@ func (d *Atom) Location() IAtom {
 		return nil
 	} else {
 		return d.location.Dereference().(IAtom)
+	}
+}
+
+func (d *Atom) ContainingArea() IArea {
+	loc := d.Location()
+	if loc == nil {
+		return nil
+	} else {
+		return loc.ContainingArea()
 	}
 }
 
@@ -143,28 +153,47 @@ func (d *AtomMovable) AsAtomMovable() *AtomMovable {
 }
 
 func (d *AtomMovable) Move(newloc IAtom, direction common.Direction) bool {
-	util.FIXME("figure out when and how to trigger area entrance/exit")
 	datum.AssertConsistent(newloc)
+
 	util.NiceToHave("implement pixel movement/slides")
+
 	oldloc := d.Location()
+	oldarea := d.ContainingArea()
 	impl := d.Impl().(IAtomMovable)
 	d.AsAtom().Direction = direction
 	if newloc != oldloc && newloc != nil {
+		newarea := newloc.ContainingArea()
 		if oldloc != nil {
 			if !oldloc.Exit(impl, newloc) {
 				return false
 			}
 			util.NiceToHave("handle Cross and Uncross and Crossed and Uncrossed")
 		}
+		if newarea != oldarea && oldarea != nil {
+			if !oldarea.Exit(impl, newarea) {
+				return false
+			}
+		}
 		if !newloc.Enter(impl, oldloc) {
 			util.FIXME("bump obstacles")
 			return false
+		}
+		if newarea != oldarea && newarea != nil {
+			if !newarea.Enter(impl, oldarea) {
+				return false
+			}
 		}
 		d.SetLocation(newloc)
 		if oldloc != nil {
 			oldloc.Exited(impl, newloc)
 		}
+		if newarea != oldarea && oldarea != nil {
+			oldarea.Exited(impl, newarea)
+		}
 		newloc.Entered(impl, oldloc)
+		if newarea != oldarea && newarea != nil {
+			newarea.Entered(impl, oldarea)
+		}
 	}
 	return true
 }
@@ -284,6 +313,10 @@ func (d Area) RawClone() datum.IDatum {
 
 func (d *Area) AsArea() *Area {
 	return d
+}
+
+func (d *Area) ContainingArea() IArea {
+	return d.Impl().(IArea)
 }
 
 func (d *Area) Turfs() (turfs []ITurf) {
