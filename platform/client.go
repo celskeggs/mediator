@@ -23,6 +23,7 @@ type IClient interface {
 	South() bool
 	West() bool
 	Move(loc IAtom, dir common.Direction) bool
+	OutputString(output string)
 }
 
 var _ IClient = &Client{}
@@ -46,6 +47,7 @@ func (d *Client) SetMob(mob IMob) {
 
 	d.mob = mob.Reference()
 	d.SetEye(mob)
+	mob.AsMob().setClient(d.Impl().(IClient))
 }
 
 func (d *Client) Eye() IAtom {
@@ -90,6 +92,10 @@ func (d *Client) InvokeVerb(verb string) {
 	default:
 		log.Println("got unknown verb:", verb)
 	}
+}
+
+func (d *Client) OutputString(output string) {
+	panic("unimplemented")
 }
 
 func (d *Client) RelMove(direction common.Direction) bool {
@@ -165,7 +171,7 @@ func (d *Client) findExistingMob() IMob {
 	}
 	return d.World.FindOne(func(atom IAtom) bool {
 		mob, ismob := atom.(IMob)
-		return ismob && mob.AsMob().Key == d.Key
+		return ismob && mob.AsMob().Key() == d.Key
 	}).(IMob)
 }
 

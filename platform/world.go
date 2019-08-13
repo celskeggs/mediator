@@ -132,6 +132,10 @@ func (w *World) UpdateDefaultViewDistance() {
 	}
 }
 
+func (w *World) Sound(file string, repeat bool, wait bool, channel uint, volume uint) ISound {
+	panic("unimplemented")
+}
+
 func NewWorld(tree *datum.TypeTree) *World {
 	world := &World{
 		Name:         "Untitled",

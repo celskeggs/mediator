@@ -333,13 +333,18 @@ func (d *Area) Turfs() (turfs []ITurf) {
 type IMob interface {
 	IAtomMovable
 	AsMob() *Mob
+	OutputString(output string)
+	OutputSound(output ISound)
+	Client() IClient
+	Key() string
 }
 
 var _ IMob = &Mob{}
 
 type Mob struct {
 	IAtomMovable
-	Key string
+	key    string
+	client IClient
 }
 
 func (d Mob) RawClone() datum.IDatum {
@@ -347,9 +352,49 @@ func (d Mob) RawClone() datum.IDatum {
 	return &d
 }
 
+func (d *Mob) Key() string {
+	return d.key
+}
+
+func (d *Mob) Client() IClient {
+	if d.client == nil {
+		return nil
+	} else if d.World().PlayerExists(d.client) {
+		return d.client
+	} else {
+		d.client = nil
+		return nil
+	}
+}
+
+func (d *Mob) setClient(client IClient) {
+	datum.AssertConsistent(client)
+	util.FIXME("make this publicly accessible")
+	if d.Client() != nil {
+		panic("client already set!")
+	}
+	if client != nil {
+		d.key = client.AsClient().Key
+	}
+	d.client = client
+}
+
 func (d *Mob) AsMob() *Mob {
 	return d
 }
+
+func (d *Mob) OutputString(output string) {
+	client := d.Client()
+	if client != nil {
+		client.OutputString(output)
+	}
+}
+
+func (d *Mob) OutputSound(output ISound) {
+	panic("unimplemented")
+}
+
+// **** tree definition
 
 type TreeDefiner interface {
 	AtomTemplate(parent datum.IDatum) IAtom
@@ -442,6 +487,10 @@ func NewAtomicTree(td TreeDefiner) *datum.TypeTree {
 			tree.DeriveNew("/atom/movable").(IAtomMovable)))
 
 	tree.RegisterStruct("/client",
+		td.ClientTemplate(
+			tree.DeriveNew("/datum")))
+
+	tree.RegisterStruct("/sound",
 		td.ClientTemplate(
 			tree.DeriveNew("/datum")))
 
