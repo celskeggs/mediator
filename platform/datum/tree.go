@@ -27,6 +27,10 @@ func (t *TypeTree) New(path TypePath) IDatum {
 	return t.Get(path).Clone()
 }
 
+func (t *TypeTree) DeriveNew(path TypePath) IDatum {
+	return CloneForce(t.Get(path))
+}
+
 func (t *TypeTree) Exists(path TypePath) bool {
 	if !path.IsValid() {
 		return false
@@ -66,8 +70,12 @@ func (t *TypeTree) RegisterStruct(path TypePath, datum IDatum) (prototype IDatum
 	return datum
 }
 
+func (t *TypeTree) SetSingleton(path TypePath) {
+	t.Get(path).AsDatum().singleton = true
+}
+
 func (t *TypeTree) Derive(parent TypePath, child TypePath) (prototype IDatum) {
-	childDatum := t.New(parent)
+	childDatum := t.DeriveNew(parent)
 	t.set(child, childDatum)
 	return childDatum
 }

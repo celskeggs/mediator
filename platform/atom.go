@@ -385,31 +385,32 @@ func NewAtomicTree(td TreeDefiner) *datum.TypeTree {
 
 	tree.RegisterStruct("/atom",
 		td.AtomTemplate(
-			tree.New("/datum")))
+			tree.DeriveNew("/datum")))
 
 	tree.RegisterStruct("/atom/movable",
 		td.AtomMovableTemplate(
-			tree.New("/atom").(IAtom)))
+			tree.DeriveNew("/atom").(IAtom)))
 
 	tree.RegisterStruct("/area",
 		td.AreaTemplate(
-			tree.New("/atom").(IAtom)))
+			tree.DeriveNew("/atom").(IAtom)))
+	tree.SetSingleton("/area")
 
 	tree.RegisterStruct("/turf",
 		td.TurfTemplate(
-			tree.New("/atom").(IAtom)))
+			tree.DeriveNew("/atom").(IAtom)))
 
 	tree.RegisterStruct("/obj",
 		td.ObjTemplate(
-			tree.New("/atom/movable").(IAtomMovable)))
+			tree.DeriveNew("/atom/movable").(IAtomMovable)))
 
 	tree.RegisterStruct("/mob",
 		td.MobTemplate(
-			tree.New("/atom/movable").(IAtomMovable)))
+			tree.DeriveNew("/atom/movable").(IAtomMovable)))
 
 	tree.RegisterStruct("/client",
 		td.ClientTemplate(
-			tree.New("/datum")))
+			tree.DeriveNew("/datum")))
 
 	return tree
 }

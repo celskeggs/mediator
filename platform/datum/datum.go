@@ -48,6 +48,9 @@ type Datum struct {
 	// refcount is the number of Refs to this Datum. the datum only counts as being in the realm when this is nonzero.
 	refCount uint
 	realm    *Realm
+
+	// used for areas; causes there to only exist a single instance of each type
+	singleton bool
 }
 
 func AssertConsistent(data ...IDatum) {
@@ -104,11 +107,27 @@ func (d *Datum) Clone() IDatum {
 	if d.realm == nil {
 		panic("realm is nil when cloning")
 	}
+	if d.singleton {
+		return d.impl
+	}
 	cloned := d.impl.RawClone()
 	util.FIXME("maybe have a check here to ensure that RawClone actually copied everything down to the datum")
 	setImpl(cloned)
 	cloned.AsDatum().refCount = 0
 	return cloned
+}
+
+func CloneForce(d IDatum) (out IDatum) {
+	dp := d.AsDatum()
+	if dp.singleton {
+		dp.singleton = false
+		out = dp.Clone()
+		out.AsDatum().singleton = true
+		dp.singleton = true
+	} else {
+		out = d.Clone()
+	}
+	return out
 }
 
 func (d *Datum) Dump(o *debug.Output) {
