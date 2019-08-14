@@ -24,6 +24,7 @@ type IClient interface {
 	West() bool
 	Move(loc IAtom, dir common.Direction) bool
 	OutputString(output string)
+	PullClientRequests() (textDisplay []string)
 }
 
 var _ IClient = &Client{}
@@ -36,6 +37,7 @@ type Client struct {
 	eye          *datum.Ref
 	virtualEye   *datum.Ref
 	ViewDistance uint
+	textBuffer   []string
 }
 
 func (d *Client) Mob() IMob {
@@ -94,10 +96,6 @@ func (d *Client) InvokeVerb(verb string) {
 	}
 }
 
-func (d *Client) OutputString(output string) {
-	panic("unimplemented")
-}
-
 func (d *Client) RelMove(direction common.Direction) bool {
 	var turf ITurf
 	mob := d.Mob()
@@ -133,6 +131,17 @@ func (d *Client) Move(loc IAtom, dir common.Direction) bool {
 		return mob.Move(loc, dir)
 	}
 	return false
+}
+
+func (d *Client) OutputString(output string) {
+	d.textBuffer = append(d.textBuffer, output)
+}
+
+func (d *Client) PullClientRequests() (textDisplay []string) {
+	util.FIXME("actually call PullClientRequests somewhere")
+	textDisplay = d.textBuffer
+	d.textBuffer = nil
+	return textDisplay
 }
 
 func (d *Client) RenderViewAsAtoms() (center IAtom, atoms []IAtom) {

@@ -62,7 +62,7 @@ function startWebSocket(url, open, message, close) {
     });
 }
 
-function prepareGame(canvas, inputsource) {
+function prepareGame(canvas, inputsource, textoutput) {
     var images = null;
     var isTerminated = false;
     var gameActive = false;
@@ -172,10 +172,19 @@ function prepareGame(canvas, inputsource) {
         if (!gameActive) {
             gameActive = true;
         }
-        gameSprites = message.sprites || [];
-        updateWidthHeight(message.viewportwidth, message.viewportheight);
-        if (message.windowtitle) {
-            document.getElementsByTagName("title")[0].textContent = message.windowtitle;
+        if (message.newstate) {
+            gameSprites = message.newstate.sprites || [];
+            updateWidthHeight(message.newstate.viewportwidth, message.newstate.viewportheight);
+            if (message.newstate.windowtitle) {
+                document.getElementsByTagName("title")[0].textContent = message.newstate.windowtitle;
+            }
+        }
+        if (message.textlines) {
+            for (var i = 0; i < message.textlines.length; i++) {
+                var nextLine = document.createElement("p");
+                nextLine.textContent = message.textlines[i];
+                textoutput.appendChild(nextLine);
+            }
         }
     }
 
@@ -229,7 +238,8 @@ function prepareGame(canvas, inputsource) {
 
 window.addEventListener("load", function () {
     var canvas = document.getElementById("playspace");
+    var textOutput = document.getElementById("textspace");
     if (canvas.getContext) {
-        prepareGame(canvas, document.body);
+        prepareGame(canvas, document.body, textOutput);
     }
 });

@@ -68,7 +68,7 @@ func (wss *WebSocketServer) handleSessionTransmit(session ServerSession, conn *w
 
 func (wss *WebSocketServer) handleSessionReceive(session ServerSession, conn *websocket.Conn) {
 	ticker := time.NewTicker(40 * time.Second)
-	sendChannel := make(chan *sprite.SpriteView)
+	sendChannel := make(chan *sprite.ViewUpdate)
 	terminated := false
 	defer func() {
 		terminated = true
@@ -81,7 +81,7 @@ func (wss *WebSocketServer) handleSessionReceive(session ServerSession, conn *we
 			log.Printf("still receiving messages after close")
 		}
 	}()
-	session.BeginSend(func(message *sprite.SpriteView) error {
+	session.BeginSend(func(message *sprite.ViewUpdate) error {
 		if message == nil {
 			close(sendChannel)
 			return nil

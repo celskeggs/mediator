@@ -101,3 +101,7 @@ func (p playerAPI) Render() sprite.SpriteView {
 	}
 	return view
 }
+
+func (p playerAPI) PullText() (lines []string) {
+	return p.Client.PullClientRequests()
+}

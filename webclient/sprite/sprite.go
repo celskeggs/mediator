@@ -19,6 +19,11 @@ type SpriteView struct {
 	Sprites        []GameSprite `json:"sprites"`
 }
 
+type ViewUpdate struct {
+	NewState  *SpriteView `json:"newstate"`
+	TextLines []string    `json:"textlines"`
+}
+
 func (a SpriteView) Equal(b SpriteView) bool {
 	if a.ViewPortWidth != b.ViewPortWidth || a.ViewPortHeight != b.ViewPortHeight {
 		return false

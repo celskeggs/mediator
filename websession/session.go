@@ -98,12 +98,13 @@ func (e *worldSession) OnMessage(cmd webclient.Command) {
 	}
 }
 
-func (e *worldSession) BeginSend(send func(*sprite.SpriteView) error) {
+func (e *worldSession) BeginSend(send func(update *sprite.ViewUpdate) error) {
 	go func() {
 		defer func() {
 			_ = send(nil)
 		}()
 		var sv sprite.SpriteView
+		var lines []string
 		first := true
 		for range e.Subscription {
 			diff := false
@@ -113,9 +114,16 @@ func (e *worldSession) BeginSend(send func(*sprite.SpriteView) error) {
 					diff = true
 					sv = sv2
 				}
+				lines = e.Player.PullText()
 			})
+			vup := sprite.ViewUpdate{
+				TextLines: lines,
+			}
 			if diff || first {
-				if send(&sv) != nil {
+				vup.NewState = &sv
+			}
+			if vup.TextLines != nil || vup.NewState != nil {
+				if send(&vup) != nil {
 					break
 				}
 			}
