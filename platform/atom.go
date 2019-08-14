@@ -391,7 +391,8 @@ func (d *Mob) OutputString(output string) {
 }
 
 func (d *Mob) OutputSound(output ISound) {
-	panic("unimplemented")
+	util.FIXME("actually output sound, somehow")
+	d.OutputString("[playing sound " + output.AsSound().File + "]")
 }
 
 // **** tree definition
@@ -404,6 +405,7 @@ type TreeDefiner interface {
 	ObjTemplate(parent IAtomMovable) IObj
 	MobTemplate(parent IAtomMovable) IMob
 	ClientTemplate(parent datum.IDatum) IClient
+	SoundTemplate(parent datum.IDatum) ISound
 }
 
 type BaseTreeDefiner struct{}
@@ -458,6 +460,13 @@ func (td BaseTreeDefiner) ClientTemplate(parent datum.IDatum) IClient {
 	}
 }
 
+func (td BaseTreeDefiner) SoundTemplate(parent datum.IDatum) ISound {
+	return &Sound{
+		IDatum: parent,
+		Volume: 100,
+	}
+}
+
 func NewAtomicTree(td TreeDefiner) *datum.TypeTree {
 	tree := datum.NewTypeTree()
 
@@ -491,7 +500,7 @@ func NewAtomicTree(td TreeDefiner) *datum.TypeTree {
 			tree.DeriveNew("/datum")))
 
 	tree.RegisterStruct("/sound",
-		td.ClientTemplate(
+		td.SoundTemplate(
 			tree.DeriveNew("/datum")))
 
 	return tree

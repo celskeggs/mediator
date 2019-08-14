@@ -9,6 +9,11 @@ type ISound interface {
 
 type Sound struct {
 	datum.IDatum
+	File    string
+	Repeat  bool
+	Wait    bool
+	Channel uint
+	Volume  uint
 }
 
 var _ ISound = &Sound{}
