@@ -3,7 +3,7 @@ package datum
 import (
 	"github.com/celskeggs/mediator/platform/debug"
 	"runtime"
-	"github.com/celskeggs/mediator/util"
+	"reflect"
 )
 
 // long-lived pointers to Datums need to be Refs
@@ -101,7 +101,7 @@ func (d *Datum) AsDatum() *Datum {
 }
 
 func (d *Datum) Clone() IDatum {
-	if d.Impl == nil {
+	if d.impl == nil {
 		panic("reference is nil when cloning")
 	}
 	if d.realm == nil {
@@ -111,8 +111,13 @@ func (d *Datum) Clone() IDatum {
 		return d.impl
 	}
 	cloned := d.impl.RawClone()
-	util.FIXME("maybe have a check here to ensure that RawClone actually copied everything down to the datum")
 	setImpl(cloned)
+	if d.impl == cloned.Impl() {
+		panic("RawClone() failed to do a full deep clone")
+	}
+	if reflect.TypeOf(d.impl) != reflect.TypeOf(cloned.Impl()) {
+		panic("RawClone() did not return the same type that went in")
+	}
 	cloned.AsDatum().refCount = 0
 	return cloned
 }
