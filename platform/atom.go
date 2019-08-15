@@ -229,7 +229,6 @@ type ITurf interface {
 	IAtom
 	// not intended to be overridden
 	AsTurf() *Turf
-	SetXYZ(x uint, y uint, z uint)
 }
 
 var _ ITurf = &Turf{}
@@ -252,7 +251,7 @@ func (d *Turf) XYZ() (uint, uint, uint) {
 }
 
 func (d *Turf) SetXYZ(x uint, y uint, z uint) {
-	util.FIXME("should this actually be public?")
+	util.NiceToHave("see if this can be made private, and if so, if it should be")
 	d.X, d.Y, d.Z = x, y, z
 }
 

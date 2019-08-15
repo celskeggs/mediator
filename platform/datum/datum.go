@@ -116,7 +116,7 @@ func (d *Datum) Clone() IDatum {
 		panic("RawClone() failed to do a full deep clone")
 	}
 	if reflect.TypeOf(d.impl) != reflect.TypeOf(cloned.Impl()) {
-		panic("RawClone() did not return the same type that went in")
+		panic("RawClone() did not return the same type that went in, for " + string(d.Type))
 	}
 	cloned.AsDatum().refCount = 0
 	return cloned

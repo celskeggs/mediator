@@ -37,7 +37,7 @@ func (cell *mapCell) Add(atom platform.IAtom) error {
 func (cell *mapCell) Stitch(x, y, z uint) {
 	util.FIXME("populate areas and turfs if not provided")
 	if cell.Turf != nil {
-		cell.Turf.SetXYZ(x, y, z)
+		cell.Turf.AsTurf().SetXYZ(x, y, z)
 	}
 	if cell.Area != nil && cell.Turf != nil {
 		cell.Turf.SetLocation(cell.Area)

@@ -144,7 +144,6 @@ func (d *Client) OutputString(output string) {
 }
 
 func (d *Client) PullClientRequests() (textDisplay []string) {
-	util.FIXME("actually call PullClientRequests somewhere")
 	textDisplay = d.textBuffer
 	d.textBuffer = nil
 	return textDisplay
@@ -174,7 +173,6 @@ func isTurf(atom IAtom) bool {
 func (d *Client) constructNewMob() IMob {
 	mob := d.World.Tree.New(d.World.Mob).(IMob)
 	util.FIXME("initialize name and gender")
-	util.FIXME("use Enter to join world, not SetLocation")
 	return mob
 }
 
@@ -198,7 +196,6 @@ func (d *Client) New(usr IMob) IMob {
 	}
 	util.NiceToHave("add support for Topics")
 	mob.Login()
-	util.FIXME("call Login() on mob")
 	return mob
 }
 
