@@ -67,7 +67,13 @@ func (d *Client) SetEye(eye IAtom) {
 
 	if d.World.setVirtualEye {
 		_, _, eyeZ := eye.XYZ()
-		d.virtualEye = d.World.LocateXYZ((d.World.MaxX+1)/2, (d.World.MaxY+1)/2, eyeZ).Reference()
+		turf := d.World.LocateXYZ((d.World.MaxX+1)/2, (d.World.MaxY+1)/2, eyeZ)
+		if turf == nil {
+			util.NiceToHave("figure out if this is the right behavior in this case and maybe adjust it")
+			d.virtualEye = nil
+		} else {
+			d.virtualEye = turf.Reference()
+		}
 	} else {
 		d.virtualEye = d.eye
 	}
@@ -168,8 +174,6 @@ func isTurf(atom IAtom) bool {
 func (d *Client) constructNewMob() IMob {
 	mob := d.World.Tree.New(d.World.Mob).(IMob)
 	util.FIXME("initialize name and gender")
-	util.FIXME("don't randomly select entry turf; follow the rules. especially don't start in a wall")
-	mob.SetLocation(d.World.FindOne(isTurf))
 	util.FIXME("use Enter to join world, not SetLocation")
 	return mob
 }
@@ -193,6 +197,7 @@ func (d *Client) New(usr IMob) IMob {
 		mob = d.constructNewMob()
 	}
 	util.NiceToHave("add support for Topics")
+	mob.Login()
 	util.FIXME("call Login() on mob")
 	return mob
 }

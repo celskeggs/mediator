@@ -160,7 +160,9 @@ func (d *AtomMovable) Move(newloc IAtom, direction common.Direction) bool {
 	oldloc := d.Location()
 	oldarea := d.ContainingArea()
 	impl := d.Impl().(IAtomMovable)
-	d.AsAtom().Direction = direction
+	if direction != 0 {
+		d.AsAtom().Direction = direction
+	}
 	if newloc != oldloc && newloc != nil {
 		newarea := newloc.ContainingArea()
 		if oldloc != nil {
@@ -337,6 +339,7 @@ type IMob interface {
 	OutputSound(output ISound)
 	Client() IClient
 	Key() string
+	Login()
 }
 
 var _ IMob = &Mob{}
@@ -393,6 +396,26 @@ func (d *Mob) OutputString(output string) {
 func (d *Mob) OutputSound(output ISound) {
 	util.FIXME("actually output sound, somehow")
 	d.OutputString("[playing sound " + output.AsSound().File + "]")
+}
+
+func (d *Mob) Login() {
+	// algorithm:
+	// start at (1,1,1), scan across horizontally, then vertically, then in Z direction
+	// pick first location that is *not* dense. move into it. if failed, continue. if none, leave location as null.
+	mx, my, mz := d.World().MaxX, d.World().MaxY, d.World().MaxZ
+	for z := uint(1); z <= mz; z++ {
+		for y := uint(1); y <= my; y++ {
+			for x := uint(1); x <= mx; x++ {
+				turf := d.World().LocateXYZ(x, y, z)
+				if turf != nil && !turf.AsAtom().Density {
+					if d.Impl().(IAtomMovable).Move(turf, 0) {
+						return
+					}
+				}
+			}
+		}
+	}
+	util.FIXME("change stat object to mob")
 }
 
 // **** tree definition
