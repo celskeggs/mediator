@@ -25,6 +25,9 @@ func (r *Realm) setBusy(busy bool) {
 	r.busy = busy
 	if !busy && r.deferredRemovals != nil {
 		for _, dr := range r.deferredRemovals {
+			if _, found := r.datums[dr]; !found {
+				panic("deferred datum removal: datum not found in realm")
+			}
 			delete(r.datums, dr)
 		}
 		r.deferredRemovals = nil
@@ -32,6 +35,8 @@ func (r *Realm) setBusy(busy bool) {
 }
 
 func (r *Realm) add(d *Datum) {
+	r.busylock.Lock()
+	defer r.busylock.Unlock()
 	if _, found := r.datums[d]; found {
 		panic("datum already found in realm")
 	}
@@ -45,12 +50,12 @@ func (r *Realm) add(d *Datum) {
 func (r *Realm) remove(d *Datum) {
 	r.busylock.Lock()
 	defer r.busylock.Unlock()
-	if _, found := r.datums[d]; !found {
-		panic("datum not found in realm")
-	}
 	if r.busy {
 		r.deferredRemovals = append(r.deferredRemovals)
 	} else {
+		if _, found := r.datums[d]; !found {
+			panic("datum not found in realm")
+		}
 		delete(r.datums, d)
 	}
 	if TRACE {
