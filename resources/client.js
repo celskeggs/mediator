@@ -181,9 +181,13 @@ function prepareGame(canvas, inputsource, textoutput) {
         }
         if (message.textlines) {
             for (var i = 0; i < message.textlines.length; i++) {
+                var shouldScroll = textoutput.scrollHeight - textoutput.scrollTop === textoutput.clientHeight;
                 var nextLine = document.createElement("p");
                 nextLine.textContent = message.textlines[i];
-                textoutput.appendChild(nextLine);
+                textoutput.append(nextLine);
+                if (shouldScroll) {
+                    textoutput.scrollTop = textoutput.scrollHeight - textoutput.clientHeight;
+                }
             }
         }
     }
@@ -215,6 +219,7 @@ function prepareGame(canvas, inputsource, textoutput) {
         var direction = keyCodeToDirection(ev.code);
         if (direction !== null) {
             keyDirection = direction;
+            ev.preventDefault();
         }
     });
 
@@ -222,6 +227,7 @@ function prepareGame(canvas, inputsource, textoutput) {
         var direction = keyCodeToDirection(ev.code);
         if (direction === keyDirection) {
             keyDirection = null;
+            ev.preventDefault();
         }
     });
 
