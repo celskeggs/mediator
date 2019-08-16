@@ -8,6 +8,7 @@ import (
 	"path"
 	"time"
 	"fmt"
+	"strings"
 )
 
 type worldServer struct {
@@ -22,18 +23,22 @@ func (ws worldServer) CoreResourcePath() string {
 	return ws.CoreResourcesDir
 }
 
-func (ws worldServer) ListResources() (map[string]string, error) {
+func (ws worldServer) ListResources() (map[string]string, []string, error) {
 	contents, err := ioutil.ReadDir(ws.ExtraResourcesDir)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	nameToPath := map[string]string{}
+	var icons []string
 	for _, info := range contents {
 		if !info.IsDir() {
+			if strings.HasSuffix(info.Name(), ".dmi") {
+				icons = append(icons, info.Name())
+			}
 			nameToPath[info.Name()] = path.Join(ws.ExtraResourcesDir, info.Name())
 		}
 	}
-	return nameToPath, nil
+	return nameToPath, icons, nil
 }
 
 func (ws worldServer) Connect() webclient.ServerSession {

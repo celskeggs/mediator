@@ -12,5 +12,5 @@ type ServerSession interface {
 type ServerAPI interface {
 	Connect() ServerSession
 	CoreResourcePath() string
-	ListResources() (nameToPath map[string]string, err error)
+	ListResources() (nameToPath map[string]string, download []string, err error)
 }

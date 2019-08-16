@@ -63,13 +63,6 @@ func AttachResources(mux *http.ServeMux, path string, resources []string) error 
 	return nil
 }
 
-func resourcesToList(nameToPath map[string]string) (out []string) {
-	for name := range nameToPath {
-		out = append(out, name)
-	}
-	return out
-}
-
 func CreateMux(api ServerAPI) (*http.ServeMux, error) {
 	mux := http.NewServeMux()
 	coreResources := api.CoreResourcePath()
@@ -85,7 +78,7 @@ func CreateMux(api ServerAPI) (*http.ServeMux, error) {
 	if err != nil {
 		return nil, err
 	}
-	resources, err := api.ListResources()
+	resources, download, err := api.ListResources()
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +88,7 @@ func CreateMux(api ServerAPI) (*http.ServeMux, error) {
 			return nil, err
 		}
 	}
-	err = AttachResources(mux, "/resources.js", resourcesToList(resources))
+	err = AttachResources(mux, "/resources.js", download)
 	if err != nil {
 		return nil, err
 	}

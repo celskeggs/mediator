@@ -62,6 +62,133 @@ function startWebSocket(url, open, message, close) {
     });
 }
 
+function startSoundPlayer() {
+    var channels = {};
+    var maxChannel = 1024;
+    var Player = {};
+
+    function validateSound(sound) {
+        return sound.channel !== undefined && sound.channel !== null && sound.channel <= maxChannel;
+    }
+
+    function getChannel(channel) {
+        if (channel < 1 || channel > 1024) {
+            return null;
+        }
+        if (channels[channel] === undefined) {
+            channels[channel] = {
+                "element": null,
+                "current": null,
+                "queue": []
+            };
+        }
+        return channels[channel];
+    }
+
+    function findAvailableChannel() {
+        for (var i = 1; i <= maxChannel; i++) {
+            if (getChannel(i).current === null) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    function cancelSounds(channelId) {
+        var channel = getChannel(channelId);
+        if (channel.element !== null) {
+            channel.element.pause();
+        }
+        channel.current = null;
+        channel.queue.splice(0);
+    }
+
+    function startPlaying(channelId) {
+        var channel = getChannel(channelId);
+        console.log("playing", channel.current.file, "at volume", channel.current.volume);
+        channel.element.src = "resource/" + channel.current.file;
+        channel.element.volume = channel.current.volume / 100.0;
+        channel.element.play();
+    }
+
+    function onEnd(channelId) {
+        var channel = getChannel(channelId);
+        if (channel.current === null) {
+            console.log("ended when nothing was supposed to be playing");
+            return;
+        }
+        if (channel.current.repeat) {
+            console.log("continuing loop");
+            channel.element.play();
+            return;
+        }
+        if (channel.queue.length > 0) {
+            channel.current = channel.queue.shift();
+            startPlaying(channelId);
+        }
+    }
+
+    function queueSound(channelId, sound) {
+        var channel = getChannel(channelId);
+        if (channel.element === null) {
+            channel.element = new Audio();
+            channel.element.addEventListener("ended", function (ev) {
+                onEnd(channelId);
+            });
+        }
+        if (channel.current === null) {
+            channel.current = sound;
+            startPlaying(channelId);
+        } else {
+            channel.queue.push(sound);
+        }
+    }
+
+    Player.playSound = function (sound) {
+        if (!validateSound(sound)) {
+            console.log("invalid sound", sound);
+            return;
+        }
+        if (sound.file === null) {
+            if (sound.channel === 0) {
+                // TODO: affect all channels with these settings
+            } else {
+                console.log("ignoring sound without file", sound);
+            }
+            return;
+        }
+        var channel = sound.channel;
+        if (channel <= 0) {
+            // choose any available channel
+            channel = findAvailableChannel();
+            if (channel <= 0) {
+                console.log("could not find channel for sound; ignoring");
+                return;
+            }
+        }
+        if (sound.file) {
+            if (!sound.wait) {
+                cancelSounds(channel);
+            }
+            queueSound(channel, sound);
+        } else {
+            // TODO: is this the right behavior?
+            cancelSounds(channel);
+        }
+    };
+
+    Player.cancelAllSounds = function () {
+        for (var i = 1; i <= maxChannel; i++) {
+            var channel = channels[i];
+            if (channel !== undefined) {
+                cancelSounds(i);
+            }
+        }
+    };
+
+    return Player;
+}
+
 function prepareGame(canvas, inputsource, textoutput) {
     var images = null;
     var isTerminated = false;
@@ -73,6 +200,7 @@ function prepareGame(canvas, inputsource, textoutput) {
     var keyDirection = null;
     var sendMessage = function (message) {
     };
+    var Player = startSoundPlayer();
 
     function renderLoading(ctx) {
         ctx.fillStyle = 'rgb(240,240,240)';
@@ -197,14 +325,13 @@ function prepareGame(canvas, inputsource, textoutput) {
         if (message.sounds) {
             for (var j = 0; j < message.sounds.length; j++) {
                 var sound = message.sounds[j];
-                if (sound.file) {
-                    displayText("[play sound " + sound.file + "]");
-                }
+                Player.playSound(sound);
             }
         }
     }
 
     function onConnectionClosed() {
+        Player.cancelAllSounds();
         isTerminated = true;
     }
 
