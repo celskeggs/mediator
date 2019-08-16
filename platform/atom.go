@@ -136,6 +136,7 @@ type IAtomMovable interface {
 	AsAtomMovable() *AtomMovable
 	// intended to be overridden
 	Move(atom IAtom, direction common.Direction) bool
+	Bump(atom IAtom)
 }
 
 var _ IAtomMovable = &AtomMovable{}
@@ -199,6 +200,12 @@ func (d *AtomMovable) Move(newloc IAtom, direction common.Direction) bool {
 		}
 	}
 	return true
+}
+
+func (d *AtomMovable) Bump(obstacle IAtom) {
+	datum.AssertConsistent(obstacle)
+	// nothing to do in the general case
+	util.NiceToHave("group support for mob bumping")
 }
 
 // **** obj
@@ -271,11 +278,13 @@ func (d *Turf) Enter(atom IAtomMovable, oldloc IAtom) bool {
 	util.NiceToHave("call Cross here")
 	if atom.AsAtom().Density {
 		if d.AsAtom().Density {
+			atom.Bump(d.Impl().(IAtom))
 			return false
 		}
 		util.NiceToHave("something about only atoms that take up the full tile?")
 		for _, existingAtom := range d.Contents() {
 			if existingAtom.AsAtom().Density {
+				atom.Bump(existingAtom)
 				return false
 			}
 		}
