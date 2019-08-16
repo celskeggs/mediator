@@ -18,6 +18,7 @@ type Appearance struct {
 	Icon      *icon.Icon
 	IconState string
 	Layer     int
+	Name      string
 	Desc      string
 }
 

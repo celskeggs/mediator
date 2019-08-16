@@ -450,10 +450,14 @@ func (td BaseTreeDefiner) AtomTemplate(parent datum.IDatum) IAtom {
 	return &Atom{
 		IDatum:    parent,
 		Direction: common.South,
+		Appearance: Appearance{
+			Name: "atom",
+		},
 	}
 }
 
 func (td BaseTreeDefiner) AtomMovableTemplate(parent IAtom) IAtomMovable {
+	parent.AsAtom().Appearance.Name = "movable"
 	return &AtomMovable{
 		IAtom: parent,
 	}
@@ -461,6 +465,7 @@ func (td BaseTreeDefiner) AtomMovableTemplate(parent IAtom) IAtomMovable {
 
 func (td BaseTreeDefiner) AreaTemplate(parent IAtom) IArea {
 	parent.AsAtom().Appearance.Layer = AreaLayer
+	parent.AsAtom().Appearance.Name = "area"
 	return &Area{
 		IAtom: parent,
 	}
@@ -468,6 +473,7 @@ func (td BaseTreeDefiner) AreaTemplate(parent IAtom) IArea {
 
 func (td BaseTreeDefiner) TurfTemplate(parent IAtom) ITurf {
 	parent.AsAtom().Appearance.Layer = TurfLayer
+	parent.AsAtom().Appearance.Name = "turf"
 	return &Turf{
 		IAtom: parent,
 	}
@@ -475,6 +481,7 @@ func (td BaseTreeDefiner) TurfTemplate(parent IAtom) ITurf {
 
 func (td BaseTreeDefiner) ObjTemplate(parent IAtomMovable) IObj {
 	parent.AsAtom().Appearance.Layer = ObjLayer
+	parent.AsAtom().Appearance.Name = "obj"
 	return &Obj{
 		IAtomMovable: parent,
 	}
@@ -482,6 +489,7 @@ func (td BaseTreeDefiner) ObjTemplate(parent IAtomMovable) IObj {
 
 func (td BaseTreeDefiner) MobTemplate(parent IAtomMovable) IMob {
 	parent.AsAtom().Appearance.Layer = MobLayer
+	parent.AsAtom().Appearance.Name = "mob"
 	parent.AsAtom().Density = true
 	return &Mob{
 		IAtomMovable: parent,
