@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"time"
+	"github.com/pkg/errors"
 )
 
 func StaticHandlerFromFile(filename string) (http.Handler, error) {
@@ -80,12 +81,12 @@ func CreateMux(api ServerAPI) (*http.ServeMux, error) {
 	}
 	resources, download, err := api.ListResources()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "collecting resources")
 	}
 	for name, resource := range resources {
 		err = AttachFile(mux, "/resource/"+name, resource)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "attaching resources")
 		}
 	}
 	err = AttachResources(mux, "/resources.js", download)
@@ -100,7 +101,7 @@ func CreateMux(api ServerAPI) (*http.ServeMux, error) {
 func LaunchHTTP(api ServerAPI) error {
 	mux, err := CreateMux(api)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "preparing server")
 	}
 	println("launching server...")
 	return http.ListenAndServe(":8080", mux)

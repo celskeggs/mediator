@@ -29,7 +29,7 @@ func BuildWorld(game Game, defaults ResourceDefaults, parseFlags bool) *platform
 
 	var resources string
 	if parseFlags {
-		_, resources = websession.ParseFlags()
+		_, resources, _ = websession.ParseFlags()
 	} else {
 		resources = defaults.IconsDir
 	}

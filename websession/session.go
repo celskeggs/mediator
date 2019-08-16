@@ -9,6 +9,7 @@ import (
 	"time"
 	"fmt"
 	"strings"
+	"github.com/celskeggs/mediator/midi"
 )
 
 type worldServer struct {
@@ -17,6 +18,7 @@ type worldServer struct {
 	Subscribers       map[chan struct{}]struct{}
 	CoreResourcesDir  string
 	ExtraResourcesDir string
+	ResourcesCacheDir string
 }
 
 func (ws worldServer) CoreResourcePath() string {
@@ -32,12 +34,24 @@ func (ws worldServer) ListResources() (map[string]string, []string, error) {
 	var icons []string
 	for _, info := range contents {
 		if !info.IsDir() {
-			if strings.HasSuffix(info.Name(), ".dmi") {
-				icons = append(icons, info.Name())
+			sourceName := info.Name()
+			if strings.HasSuffix(sourceName, ".dmi") {
+				icons = append(icons, sourceName)
 			}
-			nameToPath[info.Name()] = path.Join(ws.ExtraResourcesDir, info.Name())
+
+			sourcePath := path.Join(ws.ExtraResourcesDir, sourceName)
+			nameToPath[sourceName] = sourcePath
+
+			if strings.HasSuffix(info.Name(), ".mid") {
+				convertedPath, err := midi.ConvertMIDICached(sourcePath, ws.ResourcesCacheDir)
+				if err != nil {
+					return nil, nil, err
+				}
+				nameToPath[sourceName[:len(sourceName)-len(".mid")] + ".ogg"] = convertedPath
+			}
 		}
 	}
+
 	return nameToPath, icons, nil
 }
 
@@ -150,7 +164,7 @@ func consumeAnyOutstanding(c <-chan struct{}) {
 	}
 }
 
-func LaunchServer(world WorldAPI, CoreResourcesDir, ExtraResourcesDir string) error {
+func LaunchServer(world WorldAPI, CoreResourcesDir, ExtraResourcesDir, ResourcesCacheDir string) error {
 	// TODO: teardown for SingleThread and our subscriber?
 	ws := worldServer{
 		World:             world,
@@ -158,6 +172,7 @@ func LaunchServer(world WorldAPI, CoreResourcesDir, ExtraResourcesDir string) er
 		Subscribers:       make(map[chan struct{}]struct{}),
 		CoreResourcesDir:  CoreResourcesDir,
 		ExtraResourcesDir: ExtraResourcesDir,
+		ResourcesCacheDir: ResourcesCacheDir,
 	}
 	updates := world.SubscribeToUpdates()
 	if updates == nil {
