@@ -24,7 +24,8 @@ type IClient interface {
 	West() bool
 	Move(loc IAtom, dir common.Direction) bool
 	OutputString(output string)
-	PullClientRequests() (textDisplay []string)
+	OutputSound(output ISound)
+	PullClientRequests() (textDisplay []string, sounds []ISound)
 }
 
 var _ IClient = &Client{}
@@ -38,6 +39,7 @@ type Client struct {
 	virtualEye   *datum.Ref
 	ViewDistance uint
 	textBuffer   []string
+	soundBuffer  []ISound
 }
 
 func (d *Client) Mob() IMob {
@@ -143,10 +145,15 @@ func (d *Client) OutputString(output string) {
 	d.textBuffer = append(d.textBuffer, output)
 }
 
-func (d *Client) PullClientRequests() (textDisplay []string) {
-	textDisplay = d.textBuffer
+func (d *Client) OutputSound(output ISound) {
+	d.soundBuffer = append(d.soundBuffer, output)
+}
+
+func (d *Client) PullClientRequests() (textDisplay []string, sounds []ISound) {
+	textDisplay, sounds = d.textBuffer, d.soundBuffer
 	d.textBuffer = nil
-	return textDisplay
+	d.soundBuffer = nil
+	return textDisplay, sounds
 }
 
 func (d *Client) RenderViewAsAtoms() (center IAtom, atoms []IAtom) {

@@ -4,6 +4,7 @@ import (
 	"github.com/celskeggs/mediator/common"
 	"github.com/celskeggs/mediator/platform/datum"
 	"github.com/celskeggs/mediator/util"
+	"github.com/celskeggs/mediator/webclient/sprite"
 )
 
 // **** atom
@@ -393,8 +394,10 @@ func (d *Mob) OutputString(output string) {
 }
 
 func (d *Mob) OutputSound(output ISound) {
-	util.FIXME("actually output sound, somehow")
-	d.OutputString("[playing sound " + output.AsSound().File + "]")
+	client := d.Client()
+	if client != nil {
+		client.OutputSound(output)
+	}
 }
 
 func (d *Mob) Login() {
@@ -485,7 +488,9 @@ func (td BaseTreeDefiner) ClientTemplate(parent datum.IDatum) IClient {
 func (td BaseTreeDefiner) SoundTemplate(parent datum.IDatum) ISound {
 	return &Sound{
 		IDatum: parent,
-		Volume: 100,
+		Sound: sprite.Sound{
+			Volume: 100,
+		},
 	}
 }
 

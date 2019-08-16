@@ -105,6 +105,7 @@ func (e *worldSession) BeginSend(send func(update *sprite.ViewUpdate) error) {
 		}()
 		var sv sprite.SpriteView
 		var lines []string
+		var sounds []sprite.Sound
 		first := true
 		for range e.Subscription {
 			diff := false
@@ -114,10 +115,11 @@ func (e *worldSession) BeginSend(send func(update *sprite.ViewUpdate) error) {
 					diff = true
 					sv = sv2
 				}
-				lines = e.Player.PullText()
+				lines, sounds = e.Player.PullRequests()
 			})
 			vup := sprite.ViewUpdate{
 				TextLines: lines,
+				Sounds:    sounds,
 			}
 			if diff || first {
 				vup.NewState = &sv

@@ -105,6 +105,10 @@ func (p playerAPI) Render() sprite.SpriteView {
 	return view
 }
 
-func (p playerAPI) PullText() (lines []string) {
-	return p.Client.PullClientRequests()
+func (p playerAPI) PullRequests() (lines []string, sounds []sprite.Sound) {
+	lines, soundObjs := p.Client.PullClientRequests()
+	for _, soundObj := range soundObjs {
+		sounds = append(sounds, soundObj.AsSound().Sound)
+	}
+	return lines, sounds
 }

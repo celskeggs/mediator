@@ -1,6 +1,9 @@
 package platform
 
-import "github.com/celskeggs/mediator/platform/datum"
+import (
+	"github.com/celskeggs/mediator/platform/datum"
+	"github.com/celskeggs/mediator/webclient/sprite"
+)
 
 type ISound interface {
 	datum.IDatum
@@ -9,11 +12,7 @@ type ISound interface {
 
 type Sound struct {
 	datum.IDatum
-	File    string
-	Repeat  bool
-	Wait    bool
-	Channel uint
-	Volume  uint
+	sprite.Sound
 }
 
 var _ ISound = &Sound{}

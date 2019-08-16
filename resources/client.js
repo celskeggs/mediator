@@ -168,6 +168,16 @@ function prepareGame(canvas, inputsource, textoutput) {
         }
     }
 
+    function displayText(line) {
+        var shouldScroll = textoutput.scrollHeight - textoutput.scrollTop === textoutput.clientHeight;
+        var nextLine = document.createElement("p");
+        nextLine.textContent = line;
+        textoutput.append(nextLine);
+        if (shouldScroll) {
+            textoutput.scrollTop = textoutput.scrollHeight - textoutput.clientHeight;
+        }
+    }
+
     function onMessage(message) {
         if (!gameActive) {
             gameActive = true;
@@ -181,12 +191,14 @@ function prepareGame(canvas, inputsource, textoutput) {
         }
         if (message.textlines) {
             for (var i = 0; i < message.textlines.length; i++) {
-                var shouldScroll = textoutput.scrollHeight - textoutput.scrollTop === textoutput.clientHeight;
-                var nextLine = document.createElement("p");
-                nextLine.textContent = message.textlines[i];
-                textoutput.append(nextLine);
-                if (shouldScroll) {
-                    textoutput.scrollTop = textoutput.scrollHeight - textoutput.clientHeight;
+                displayText(message.textlines[i]);
+            }
+        }
+        if (message.sounds) {
+            for (var j = 0; j < message.sounds.length; j++) {
+                var sound = message.sounds[j];
+                if (sound.file) {
+                    displayText("[play sound " + sound.file + "]");
                 }
             }
         }
