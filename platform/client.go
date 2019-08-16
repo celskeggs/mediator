@@ -36,7 +36,6 @@ type Client struct {
 	World        *World
 	mob          *datum.Ref
 	eye          *datum.Ref
-	virtualEye   *datum.Ref
 	ViewDistance uint
 	textBuffer   []string
 	soundBuffer  []ISound
@@ -66,27 +65,17 @@ func (d *Client) SetEye(eye IAtom) {
 	datum.AssertConsistent(eye)
 
 	d.eye = eye.Reference()
-
-	if d.World.setVirtualEye {
-		_, _, eyeZ := eye.XYZ()
-		turf := d.World.LocateXYZ((d.World.MaxX+1)/2, (d.World.MaxY+1)/2, eyeZ)
-		if turf == nil {
-			util.NiceToHave("figure out if this is the right behavior in this case and maybe adjust it")
-			d.virtualEye = nil
-		} else {
-			d.virtualEye = turf.Reference()
-		}
-	} else {
-		d.virtualEye = d.eye
-	}
 }
 
 func (d *Client) VirtualEye() IAtom {
-	if d.virtualEye != nil {
-		return d.virtualEye.Dereference().(IAtom)
-	} else {
-		return nil
+	if d.World.setVirtualEye {
+		_, _, eyeZ := d.Eye().XYZ()
+		turf := d.World.LocateXYZ((d.World.MaxX+1)/2, (d.World.MaxY+1)/2, eyeZ)
+		if turf != nil {
+			return turf
+		}
 	}
+	return d.Eye()
 }
 
 func (d *Client) InvokeVerb(verb string) {
@@ -202,6 +191,7 @@ func (d *Client) New(usr IMob) IMob {
 		mob = d.constructNewMob()
 	}
 	util.NiceToHave("add support for Topics")
+	d.SetMob(mob)
 	mob.Login()
 	return mob
 }

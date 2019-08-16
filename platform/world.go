@@ -76,7 +76,7 @@ func (w *World) CreateNewPlayer(key string) IClient {
 		util.NiceToHave("handle the /client/view = 0 situation correctly")
 		c.ViewDistance = w.ViewDistance
 	}
-	c.SetMob(client.New(c.findExistingMob()))
+	client.New(c.findExistingMob())
 
 	return client
 }
