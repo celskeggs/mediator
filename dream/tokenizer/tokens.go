@@ -59,8 +59,8 @@ const (
 type Token struct {
 	TokenType
 	mode tokenMode
-	Int int64
-	Str string
+	Int  int64
+	Str  string
 }
 
 func (t TokenType) token() Token {
@@ -159,4 +159,12 @@ func (t Token) String() string {
 	default:
 		panic("unknown mode")
 	}
+}
+
+func (t Token) IsNone() bool {
+	return t.TokenType == TokNone
+}
+
+func NoToken() Token {
+	return TokNone.token()
 }

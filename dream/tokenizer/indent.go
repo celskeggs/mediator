@@ -5,10 +5,11 @@ import "github.com/pkg/errors"
 type indentState struct {
 	IsTabs bool
 	Stops  []int
-	Output chan <-Token
+	Output chan<- Token
 }
 
 func (i *indentState) Clear() error {
+	i.Output <- TokNewline.token()
 	for n := 0; n < len(i.Stops); n++ {
 		i.Output <- TokUnindent.token()
 	}
@@ -25,6 +26,7 @@ func (i *indentState) setCount(indent int) error {
 		i.Stops = append(i.Stops, indent)
 		i.Output <- TokIndent.token()
 	} else {
+		i.Output <- TokNewline.token()
 		for len(i.Stops) > 0 && indent < i.Stops[len(i.Stops)-1] {
 			i.Stops = i.Stops[:len(i.Stops)-1]
 			if len(i.Stops) == 0 {
@@ -78,7 +80,7 @@ func ProcessIndentation(input <-chan Token, output chan<- Token) error {
 			// drain the rest of the input
 		}
 	}()
-	lastSpacingToken := TokNone.token()
+	lastSpacingToken := NoToken()
 	indentState := indentState{
 		Output: output,
 	}
@@ -88,14 +90,13 @@ func ProcessIndentation(input <-chan Token, output chan<- Token) error {
 		} else if token.TokenType == TokIndent || token.TokenType == TokUnindent {
 			panic("should never receive Indent/Unindent in ProcessIndentation")
 		} else {
-			if lastSpacingToken.TokenType != TokNone {
-				output <- TokNewline.token()
+			if !lastSpacingToken.IsNone() {
 				err := indentState.UpdateForToken(lastSpacingToken)
 				if err != nil {
 					return err
 				}
 			}
-			lastSpacingToken = TokNone.token()
+			lastSpacingToken = NoToken()
 			output <- token
 		}
 	}

@@ -8,7 +8,7 @@ import (
 	"fmt"
 )
 
-func FileToRuneChannel(filename string, output chan <-rune) error {
+func FileToRuneChannel(filename string, output chan<- rune) error {
 	defer close(output)
 	f, err := os.Open(filename)
 	if err != nil {
