@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"unicode"
 	"strings"
+	"github.com/pkg/errors"
 )
 
 type genWriter struct {
@@ -103,7 +104,8 @@ func (w *genWriter) String(str string) string {
 }
 
 type codeContext struct {
-	Self string
+	Self   string
+	Params []string
 }
 
 func (w *genWriter) StringTypes(goTypes []Type) string {
@@ -114,10 +116,24 @@ func (w *genWriter) StringTypes(goTypes []Type) string {
 	return strings.Join(parts, ", ")
 }
 
+func (w *genWriter) ArgumentRefs(goTypes []Type) (args string, names []string) {
+	var parts []string
+	for i, goType := range goTypes {
+		name := fmt.Sprintf("p%d", i)
+		parts = append(parts, name + " " + goType.String())
+		names = append(names, name)
+	}
+	return strings.Join(parts, ", "), names
+}
+
 func (w *genWriter) WriteElement(elem Element) {
 	switch elem.Type {
 	case ElemTypeInclude:
 		w.WriteLn("%s", elem.GoType.String())
+	case ElemTypeField:
+		w.WriteLn("%s %s", elem.Name, elem.GoType.String())
+	case ElemTypeFunc:
+		w.WriteLn("%s(%s) (%s)", elem.Name, w.StringTypes(elem.Params), w.StringTypes(elem.Results))
 	default:
 		panic(fmt.Sprintf("unrecognized element type: %d", elem.Type))
 	}
@@ -125,6 +141,16 @@ func (w *genWriter) WriteElement(elem Element) {
 
 func (w *genWriter) WriteExpression(expr Expression, ctx codeContext) {
 	switch expr.Type {
+	case ExprTypeLiteralBool:
+		if expr.Integer != 0 {
+			w.Write("true")
+		} else {
+			w.Write("false")
+		}
+	case ExprTypeLiteralInteger:
+		w.Write("%d", expr.Integer)
+	case ExprTypeLiteralString:
+		w.Write("%s", w.String(expr.String))
 	case ExprTypeLiteralStruct:
 		goType := expr.GoType
 		if goType.IsPtr() {
@@ -142,11 +168,11 @@ func (w *genWriter) WriteExpression(expr Expression, ctx codeContext) {
 	case ExprTypeField:
 		w.WriteExpression(expr.Exprs[0], ctx)
 		w.Write(".%s", w.Identifier(expr.FieldName))
-	case ExprTypeInvoke:
+	case ExprTypeCall:
 		w.WriteExpression(expr.Exprs[0], ctx)
-		w.Write(".%s(", w.Identifier(expr.FieldName))
+		w.Write("(")
 		for i, expr := range expr.Exprs[1:] {
-			if i > 1 {
+			if i > 0 {
 				w.Write(", ")
 			}
 			w.WriteExpression(expr, ctx)
@@ -156,9 +182,22 @@ func (w *genWriter) WriteExpression(expr Expression, ctx codeContext) {
 		w.WriteExpression(expr.Exprs[0], ctx)
 		w.Write(".(%s)", expr.GoType.String())
 	case ExprTypeSelf:
+		if ctx.Self == "" {
+			w.AddError(errors.New("attempt to use Self in non-instance function"))
+		}
 		w.Write("%s", w.Identifier(ctx.Self))
 	case ExprTypeSelfRef:
+		if ctx.Self == "" {
+			w.AddError(errors.New("attempt to use Self in non-instance function"))
+		}
 		w.Write("&%s", w.Identifier(ctx.Self))
+	case ExprTypeParam:
+		if expr.Integer < 0 || expr.Integer >= int64(len(ctx.Params)) {
+			w.AddError(fmt.Errorf("attempt to use nonexistent Param(%d)", expr.Integer))
+		}
+		w.Write("%s", w.Identifier(ctx.Params[expr.Integer]))
+	case ExprTypeImportedFunc:
+		w.Write("%s.%s", w.Identifier(expr.Package), w.Identifier(expr.FieldName))
 	default:
 		panic(fmt.Sprintf("unrecognized expression type: %d", expr.Type))
 	}
@@ -173,6 +212,9 @@ func (w *genWriter) WriteStatement(statement Statement, ctx codeContext) {
 		w.Newline()
 	case StatementTypeReturn:
 		w.Write("return ")
+		w.WriteExpression(statement.Rvalue, ctx)
+		w.Newline()
+	case StatementTypeEvaluate:
 		w.WriteExpression(statement.Rvalue, ctx)
 		w.Newline()
 	default:
@@ -204,12 +246,14 @@ func (w *genWriter) WriteDef(def Definition) {
 		w.Newline()
 	case DefTypeFunctionOn:
 		selfName := w.Identifier(strings.ToLower(def.GoType.Name()[0:1]))
+		paramStr, paramNames := w.ArgumentRefs(def.Params)
 		w.WriteLn("func (%s %s) %s(%s) (%s) {",
-			selfName, def.GoType.String(), def.Name, w.StringTypes(def.Params), w.StringTypes(def.Results))
+			selfName, def.GoType.String(), def.Name, paramStr, w.StringTypes(def.Results))
 		w.Indent()
 		for _, statement := range def.Code {
 			w.WriteStatement(statement, codeContext{
-				Self: selfName,
+				Self:   selfName,
+				Params: paramNames,
 			})
 		}
 		w.Unindent()
@@ -245,6 +289,9 @@ func (w *genWriter) WriteGenerator(g *Generator) {
 }
 
 func (g *Generator) WriteTo(output io.Writer) error {
+	if len(g.Errors) > 0 {
+		return multierror.Append(nil, g.Errors...)
+	}
 	gw := &genWriter{
 		Output: output,
 		Errors: nil,

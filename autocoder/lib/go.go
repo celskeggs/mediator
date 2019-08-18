@@ -26,6 +26,12 @@ func (g *Generator) AddError(err error) {
 	}
 }
 
+func (g *Generator) TypeString() Type {
+	return Type{
+		Type: TypeTypeString,
+	}
+}
+
 func (g *Generator) Import(path string) *Import {
 	if _, ok := g.Imports[path]; !ok {
 		parts := strings.Split(path, "/")
@@ -86,11 +92,53 @@ func (g *Generator) FuncOn(structType Type, name string, params []Type, results 
 	g.Defs = append(g.Defs, def)
 }
 
-func (g *Generator) Include(includeType Type) Element {
+func (g *Generator) ElemInclude(includeType Type) Element {
 	return Element{
 		Type:   ElemTypeInclude,
 		Name:   includeType.Name(),
 		GoType: includeType,
+	}
+}
+
+func (g *Generator) ElemField(name string, goType Type) Element {
+	return Element{
+		Type:   ElemTypeField,
+		Name:   name,
+		GoType: goType,
+	}
+}
+
+func (g *Generator) ElemFunc(name string, params []Type, results []Type) Element {
+	return Element{
+		Type:    ElemTypeFunc,
+		Name:    name,
+		Params:  params,
+		Results: results,
+	}
+}
+
+func (g *Generator) LiteralBool(literal bool) Expression {
+	var value int64
+	if literal {
+		value = 1
+	}
+	return Expression{
+		Type:    ExprTypeLiteralBool,
+		Integer: value,
+	}
+}
+
+func (g *Generator) LiteralInt(literal int64) Expression {
+	return Expression{
+		Type:    ExprTypeLiteralInteger,
+		Integer: literal,
+	}
+}
+
+func (g *Generator) LiteralString(literal string) Expression {
+	return Expression{
+		Type:   ExprTypeLiteralString,
+		String: literal,
 	}
 }
 
@@ -111,6 +159,13 @@ func (g *Generator) Self() Expression {
 func (g *Generator) SelfRef() Expression {
 	return Expression{
 		Type: ExprTypeSelfRef,
+	}
+}
+
+func (g *Generator) Param(i int) Expression {
+	return Expression{
+		Type:    ExprTypeParam,
+		Integer: int64(i),
 	}
 }
 
@@ -139,6 +194,7 @@ const (
 	TypeTypeStruct
 	TypeTypeInterface
 	TypeTypePtr
+	TypeTypeString
 )
 
 type Type struct {
@@ -163,6 +219,8 @@ func (t Type) Name() string {
 		return t.RawName
 	case TypeTypePtr:
 		return t.Inner.Name()
+	case TypeTypeString:
+		return "string"
 	default:
 		panic(fmt.Sprintf("unrecognized type type %d", t.Type))
 	}
@@ -180,6 +238,8 @@ func (t Type) String() string {
 		}
 	case TypeTypePtr:
 		return "*" + t.Inner.Name()
+	case TypeTypeString:
+		return "string"
 	default:
 		panic(fmt.Sprintf("unrecognized type type %d", t.Type))
 	}
@@ -217,6 +277,18 @@ func (i *Import) GetInterface(typeName string) Type {
 	}
 }
 
+func (i *Import) GetFunc(name string) Expression {
+	return Expression{
+		Type:      ExprTypeImportedFunc,
+		Package:   i.Package,
+		FieldName: name,
+	}
+}
+
+func (i *Import) Invoke(name string, params ...Expression) Expression {
+	return i.GetFunc(name).Call(params...)
+}
+
 type DefType int
 
 const (
@@ -252,16 +324,24 @@ type ElemType int
 const (
 	ElemTypeNone    ElemType = iota
 	ElemTypeInclude
+	ElemTypeField
+	ElemTypeFunc
 )
 
 type Element struct {
-	Type   ElemType
-	Name   string
-	GoType Type
+	Type    ElemType
+	Name    string
+	GoType  Type
+	Params  []Type
+	Results []Type
 }
 
 func (e Element) ValidateIn(def Definition) error {
 	switch e.Type {
+	case ElemTypeField:
+		fallthrough
+	case ElemTypeFunc:
+		fallthrough
 	case ElemTypeInclude:
 		if def.HasField(e.Name) {
 			return fmt.Errorf("duplicate field: '%s'", e.Name)
@@ -275,27 +355,33 @@ func (e Element) ValidateIn(def Definition) error {
 type StatementType int
 
 const (
-	StatementTypeNone   StatementType = iota
+	StatementTypeNone     StatementType = iota
 	StatementTypeAssign
 	StatementTypeReturn
+	StatementTypeEvaluate
 )
 
 type Statement struct {
-	Type     StatementType
-	Lvalue   Expression
-	Rvalue   Expression
+	Type   StatementType
+	Lvalue Expression
+	Rvalue Expression
 }
 
 type ExprType int
 
 const (
-	ExprTypeNone          ExprType = iota
+	ExprTypeNone           ExprType = iota
+	ExprTypeLiteralBool
+	ExprTypeLiteralInteger
+	ExprTypeLiteralString
 	ExprTypeLiteralStruct
 	ExprTypeSelf
 	ExprTypeSelfRef
+	ExprTypeParam
 	ExprTypeField
-	ExprTypeInvoke
+	ExprTypeCall
 	ExprTypeCast
+	ExprTypeImportedFunc
 )
 
 type Expression struct {
@@ -303,6 +389,9 @@ type Expression struct {
 	GoType    Type
 	Exprs     []Expression
 	FieldName string
+	Package   string
+	String    string
+	Integer   int64
 	KVs       []KeyValue
 }
 
@@ -315,11 +404,14 @@ func (e Expression) Field(field string) Expression {
 }
 
 func (e Expression) Invoke(name string, args ...Expression) Expression {
+	return e.Field(name).Call(args...)
+}
+
+func (e Expression) Call(args ...Expression) Expression {
 	exprs := append([]Expression{e}, args...)
 	return Expression{
-		Type:      ExprTypeInvoke,
-		FieldName: name,
-		Exprs:     exprs,
+		Type:  ExprTypeCall,
+		Exprs: exprs,
 	}
 }
 
@@ -337,6 +429,18 @@ func (e Expression) IsLvalue() bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func (e Expression) Statement() Statement {
+	switch e.Type {
+	case ExprTypeCall:
+		return Statement{
+			Type:   StatementTypeEvaluate,
+			Rvalue: e,
+		}
+	default:
+		panic(fmt.Sprintf("prohibited type to convert to a statement: %d", e.Type))
 	}
 }
 
