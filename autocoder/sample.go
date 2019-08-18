@@ -3,45 +3,63 @@ package main
 import (
 	"github.com/celskeggs/mediator/autocoder/lib"
 	"os"
+	"github.com/celskeggs/mediator/autocoder/iface"
+	"github.com/celskeggs/mediator/autocoder/gotype"
 )
 
-func main() {
-	gen := lib.StartGeneration("main")
-	datum := gen.Import("github.com/celskeggs/mediator/platform/datum")
-	format := gen.Import("github.com/celskeggs/mediator/platform/format")
-	platform := gen.Import("github.com/celskeggs/mediator/platform")
-	gen.Struct("YourFirstWorld",
-		gen.ElemInclude(platform.GetStruct("BaseTreeDefiner")))
+func sampleMain(g iface.Gen, out iface.OutSource) {
+	datum := g.Import("github.com/celskeggs/mediator/platform/datum")
+	format := g.Import("github.com/celskeggs/mediator/platform/format")
+	platform := g.Import("github.com/celskeggs/mediator/platform")
+
+	out.Struct("YourFirstWorld", func(g iface.Gen, out iface.OutStruct) {
+		out.Include(platform.Type("BaseTreeDefiner"))
+	})
 
 	// MobPlayer
-	IMobPlayer := gen.Interface("IMobPlayer",
-		gen.ElemInclude(platform.GetInterface("IMob")))
-	MobPlayer := gen.Struct("MobPlayer",
-		gen.ElemInclude(platform.GetStruct("Mob")))
-	gen.Global("_", IMobPlayer,
-		gen.LiteralStructPtr(MobPlayer))
-	gen.FuncOn(MobPlayer, "RawClone", nil, []lib.Type{datum.GetInterface("IDatum")},
-		gen.Assign(gen.Self().Field("IMob"), gen.Self().Field("IMob").Invoke("RawClone").Cast(platform.GetStruct("IMob"))),
-		gen.Return(gen.SelfRef()))
-	gen.FuncOn(MobPlayer.Ptr(), "Bump", []lib.Type{platform.GetInterface("IAtom")}, nil,
-		gen.Self().Invoke("OutputString", format.Invoke("Format", gen.LiteralString("You bump into []."), gen.Param(0))).Statement(),
-		gen.Self().Invoke("OutputSound", gen.Self().Invoke("World").Invoke(
-			"Sound", gen.LiteralString("ouch.wav"), gen.LiteralBool(false), gen.LiteralBool(false), gen.LiteralInt(0), gen.LiteralInt(100))).Statement())
+	IMobPlayer := out.Interface("IMobPlayer",
+		func(g iface.Gen, out iface.OutInterface) {
+			out.Include(platform.Type("IMob"))
+		})
+	MobPlayer := out.Struct("MobPlayer",
+		func(g iface.Gen, out iface.OutStruct) {
+			out.Include(platform.Type("IMob"))
+		})
+	out.Global("_", IMobPlayer, g.LiteralStruct(MobPlayer, nil).Ref())
+	out.FuncOn(MobPlayer, "RawClone", nil, []gotype.Type{datum.Type("IDatum")},
+		func(g iface.Gen, out iface.OutFunc, this iface.Expr, params []iface.Expr) {
+			out.AssignField(this, "IMob", this.Field("IMob").Invoke("RawClone").Cast(platform.Type("IMob")))
+			out.Return(this.Ref())
+		})
+	out.FuncOn(MobPlayer.Ptr(), "Bump", []gotype.Type{platform.Type("IAtom")}, nil,
+		func(g iface.Gen, out iface.OutFunc, this iface.Expr, params []iface.Expr) {
+			obstacle := params[0]
+			out.Invoke(this, "OutputString", format.Invoke("Format", g.String("You bump into []."), obstacle))
+			out.Invoke(this, "OutputSound", this.Invoke("World").Invoke(
+				"Sound", g.String("ouch.wav"), g.Bool(false), g.Bool(false), g.Int(0), g.Int(100)))
+		})
 
 	// CustomArea
-	CustomArea := gen.Struct("CustomArea",
-		gen.ElemInclude(platform.GetInterface("IArea")),
-		gen.ElemField("Music", gen.TypeString()))
-	ICustomArea := gen.Interface("ICustomArea",
-		gen.ElemInclude(platform.GetInterface("IArea")),
-		gen.ElemFunc("AsCustomArea", nil, []lib.Type{CustomArea.Ptr()}))
-	gen.Global("_", ICustomArea,
-		gen.LiteralStructPtr(CustomArea))
-	gen.FuncOn(CustomArea, "RawClone", nil, []lib.Type{datum.GetInterface("IDatum")},
-		gen.Assign(gen.Self().Field("IArea"), gen.Self().Field("IArea").Invoke("RawClone").Cast(platform.GetStruct("IArea"))),
-		gen.Return(gen.SelfRef()))
+	CustomArea := out.Struct("CustomArea",
+		func(g iface.Gen, out iface.OutStruct) {
+			out.Include(platform.Type("IArea"))
+			out.Field("Music", gotype.TypeString())
+		})
+	ICustomArea := out.Interface("ICustomArea",
+		func(g iface.Gen, out iface.OutInterface) {
+			out.Include(platform.Type("IArea"))
+			out.Func("AsCustomArea", nil, []gotype.Type{CustomArea.Ptr()})
+		})
+	out.Global("_", ICustomArea, g.LiteralStruct(CustomArea, nil).Ref())
+	out.FuncOn(CustomArea, "RawClone", nil, []gotype.Type{datum.Type("IDatum")},
+		func(g iface.Gen, out iface.OutFunc, this iface.Expr, params []iface.Expr) {
+			out.AssignField(this, "IArea", this.Field("IArea").Invoke("RawClone").Cast(platform.Type("IArea")))
+			out.Return(this.Ref())
+		})
+}
 
-	err := gen.WriteTo(os.Stdout)
+func main() {
+	err := lib.Generate("main", sampleMain, os.Stdout)
 	if err != nil {
 		panic("error: " + err.Error())
 	}
