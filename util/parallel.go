@@ -18,7 +18,7 @@ func RunInParallel(targets ...func() error) error {
 	var errors error
 	var firstPanic interface{}
 	for range targets {
-		err := <- errorCh
+		err := <-errorCh
 		if err != nil {
 			if errors == nil {
 				errors = err
@@ -26,7 +26,7 @@ func RunInParallel(targets ...func() error) error {
 				errors = multierror.Append(errors, err)
 			}
 		}
-		panicInfo := <- panicCh
+		panicInfo := <-panicCh
 		if panicInfo != nil {
 			if firstPanic == nil {
 				// print this here just in case something prevents us from finishing this function

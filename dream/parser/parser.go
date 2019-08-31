@@ -75,13 +75,11 @@ func parseBlock(i *input, basePath path.TypePath) ([]DreamMakerDefinition, error
 	if i.Accept(tokenizer.TokNewline) {
 		return nil, nil
 	}
-	println("parse block", basePath.String())
 	relPath, err := parsePath(i)
 	if err != nil {
 		return nil, err
 	}
 	fullPath := basePath.Join(relPath)
-	println("got path", fullPath.String())
 	if i.Accept(tokenizer.TokSetEqual) {
 		expr, err := parseExpression(i)
 		if err != nil {

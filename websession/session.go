@@ -47,7 +47,7 @@ func (ws worldServer) ListResources() (map[string]string, []string, error) {
 				if err != nil {
 					return nil, nil, err
 				}
-				nameToPath[sourceName[:len(sourceName)-len(".mid")] + ".ogg"] = convertedPath
+				nameToPath[sourceName[:len(sourceName)-len(".mid")]+".ogg"] = convertedPath
 			}
 		}
 	}

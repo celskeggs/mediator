@@ -35,14 +35,14 @@ func formatAtom(atom platform.IAtom) string {
 func Format(str string, atoms ...platform.IAtom) string {
 	util.FIXME("make this more generic than only accepting atoms")
 	parts := strings.Split(str, "[]")
-	if len(parts) != len(atoms) + 1 {
-		panic(fmt.Sprintf("invalid format string: %d text expressions but %d parameters", len(parts) - 1, len(atoms)))
+	if len(parts) != len(atoms)+1 {
+		panic(fmt.Sprintf("invalid format string: %d text expressions but %d parameters", len(parts)-1, len(atoms)))
 	}
-	moreParts := make([]string, len(parts) + len(atoms))
+	moreParts := make([]string, len(parts)+len(atoms))
 	moreParts[0] = parts[0]
 	for i := 0; i < len(atoms); i++ {
-		moreParts[2 * i + 1] = formatAtom(atoms[i])
-		moreParts[2 * i + 2] = parts[i + 1]
+		moreParts[2*i+1] = formatAtom(atoms[i])
+		moreParts[2*i+2] = parts[i+1]
 	}
 	return strings.Join(moreParts, "")
 }

@@ -23,7 +23,7 @@ type TypeDefiner interface {
 	Exists(typePath string) bool
 	ParentOf(typePath string) string
 	Ref(typePath string, skipOverrides bool) string
-	ResolveField(typePath string, shortName string) (definingStruct string, longName string)
+	ResolveField(typePath string, shortName string) (definingStruct string, longName string, goType string)
 }
 
 type TypeInfo struct {
@@ -44,6 +44,7 @@ type FieldInfo struct {
 	ShortName string
 	LongName  string
 	DefPath   string
+	GoType    string
 }
 
 var platformDefs = []TypeInfo{
@@ -58,12 +59,12 @@ var platformDefs = []TypeInfo{
 	{"/client", "platform", "/datum"},
 }
 
-var platformFields = []FieldInfo {
-	{"name", "Appearance.Name", "/atom"},
-	{"icon", "Appearance.Icon", "/atom"},
-	{"desc", "Appearance.Desc", "/atom"},
-	{"density", "Density", "/atom"},
-	{"opacity", "Opacity", "/atom"},
+var platformFields = []FieldInfo{
+	{"name", "Appearance.Name", "/atom", "string"},
+	{"icon", "Appearance.Icon", "/atom", "icon.Icon"},
+	{"desc", "Appearance.Desc", "/atom", "string"},
+	{"density", "Density", "/atom", "bool"},
+	{"opacity", "Opacity", "/atom", "bool"},
 }
 
 type platformDefiner struct {
@@ -96,10 +97,10 @@ func (p platformDefiner) StructName(typePath string) string {
 	return p.GetTypeInfo(typePath).StructName()
 }
 
-func (p platformDefiner) ResolveField(typePath string, shortName string) (definingStruct string, longName string) {
+func (p platformDefiner) ResolveField(typePath string, shortName string) (definingStruct string, longName string, goType string) {
 	for _, field := range platformFields {
 		if field.DefPath == typePath && shortName == field.ShortName {
-			return p.StructName(field.DefPath), field.LongName
+			return p.StructName(field.DefPath), field.LongName, field.GoType
 		}
 	}
 	parentPath := p.ParentOf(typePath)

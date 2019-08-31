@@ -21,7 +21,7 @@ func ConvertMIDICached(sourcePath string, cacheDir string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	destPath := path.Join(cacheDir, baseName + ".ogg")
+	destPath := path.Join(cacheDir, baseName+".ogg")
 	fi, err := os.Stat(destPath)
 	if !os.IsNotExist(err) && err != nil {
 		return "", err
