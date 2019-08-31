@@ -4,19 +4,20 @@ import (
 	"github.com/celskeggs/mediator/autocoder/replica"
 	"os/exec"
 	"os"
+	"github.com/celskeggs/mediator/autocoder/gen"
 )
 
 func main() {
 	var outName = "main_gen.go"
 
-	err := replica.GenerateTo(&replica.DefinedTree{
-		Types: []replica.DefinedType{
+	err := gen.GenerateTo(&gen.DefinedTree{
+		Types: []gen.DefinedType{
 			{
 				TypePath: "/mob/player",
-				Funcs: []replica.DefinedFunc{
+				Funcs: []gen.DefinedFunc{
 					{
 						Name: "Bump",
-						Params: []replica.DefinedParam{
+						Params: []gen.DefinedParam{
 							{Name: "obstacle", Type: "platform.IAtom"},
 						},
 						Body: `
@@ -25,7 +26,7 @@ this.OutputSound(this.World().Sound("ouch.wav", false, false, 0, 100))
 `,
 					},
 				},
-				Inits: []replica.DefinedInit{
+				Inits: []gen.DefinedInit{
 					{
 						ShortName: "name",
 						Value: "\"player\"",
@@ -38,7 +39,7 @@ this.OutputSound(this.World().Sound("ouch.wav", false, false, 0, 100))
 			},
 			{
 				TypePath: "/mob/rat",
-				Inits: []replica.DefinedInit{
+				Inits: []gen.DefinedInit{
 					{
 						ShortName: "name",
 						Value: "\"rat\"",
@@ -51,7 +52,7 @@ this.OutputSound(this.World().Sound("ouch.wav", false, false, 0, 100))
 			},
 			{
 				TypePath: "/turf/floor",
-				Inits: []replica.DefinedInit{
+				Inits: []gen.DefinedInit{
 					{
 						ShortName: "name",
 						Value: "\"floor\"",
@@ -64,7 +65,7 @@ this.OutputSound(this.World().Sound("ouch.wav", false, false, 0, 100))
 			},
 			{
 				TypePath: "/turf/wall",
-				Inits: []replica.DefinedInit{
+				Inits: []gen.DefinedInit{
 					{
 						ShortName: "name",
 						Value: "\"wall\"",
@@ -85,7 +86,7 @@ this.OutputSound(this.World().Sound("ouch.wav", false, false, 0, 100))
 			},
 			{
 				TypePath: "/obj/cheese",
-				Inits: []replica.DefinedInit{
+				Inits: []gen.DefinedInit{
 					{
 						ShortName: "name",
 						Value: "\"cheese\"",
@@ -98,7 +99,7 @@ this.OutputSound(this.World().Sound("ouch.wav", false, false, 0, 100))
 			},
 			{
 				TypePath: "/obj/scroll",
-				Inits: []replica.DefinedInit{
+				Inits: []gen.DefinedInit{
 					{
 						ShortName: "name",
 						Value: "\"scroll\"",
@@ -111,7 +112,7 @@ this.OutputSound(this.World().Sound("ouch.wav", false, false, 0, 100))
 			},
 			{
 				TypePath: "/area/outside",
-				Inits: []replica.DefinedInit{
+				Inits: []gen.DefinedInit{
 					{
 						ShortName: "name",
 						Value: "\"outside\"",
@@ -128,7 +129,7 @@ this.OutputSound(this.World().Sound("ouch.wav", false, false, 0, 100))
 			},
 			{
 				TypePath: "/area/cave",
-				Inits: []replica.DefinedInit{
+				Inits: []gen.DefinedInit{
 					{
 						ShortName: "name",
 						Value: "\"cave\"",
@@ -146,17 +147,17 @@ this.OutputSound(this.World().Sound("ouch.wav", false, false, 0, 100))
 			{
 				BasePath: "/area",
 				TypePath: "/area",
-				Fields: []replica.DefinedField{
+				Fields: []gen.DefinedField{
 					{
 						Name: "music",
 						Type: "string",
 						Default: "\"\"",
 					},
 				},
-				Funcs: []replica.DefinedFunc{
+				Funcs: []gen.DefinedFunc{
 					{
 						Name: "Entered",
-						Params: []replica.DefinedParam{
+						Params: []gen.DefinedParam{
 							{Name: "atom", Type: "platform.IAtomMovable"},
 							{Name: "oldloc", Type: "platform.IAtom"},
 						},

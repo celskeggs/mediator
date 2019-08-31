@@ -1,4 +1,4 @@
-package replica
+package gen
 
 import (
 	"text/template"
