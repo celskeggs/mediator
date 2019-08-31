@@ -91,19 +91,10 @@ func AssignPath(dt *gen.DefinedTree, path path.TypePath, variable string, expr p
 	}
 }
 
-type ConvertConfig struct {
-	DefaultCoreResourcesDir string
-	DefaultIconsDir         string
-	DefaultMap              string
-}
-
-func Convert(dmf *parser.DreamMakerFile, cc ConvertConfig) (*gen.DefinedTree, error) {
+func Convert(dmf *parser.DreamMakerFile) (*gen.DefinedTree, error) {
 	dt := &gen.DefinedTree{
 		WorldMob:                "/mob",
 		WorldName:               "World",
-		WorldMap:                cc.DefaultMap,
-		DefaultCoreResourcesDir: cc.DefaultCoreResourcesDir,
-		DefaultIconsDir:         cc.DefaultIconsDir,
 	}
 	for _, def := range dmf.Definitions {
 		if def.Type == parser.DefTypeDefine {
@@ -136,12 +127,12 @@ func Convert(dmf *parser.DreamMakerFile, cc ConvertConfig) (*gen.DefinedTree, er
 	return dt, nil
 }
 
-func ConvertFiles(inputFile string, outputFile string, cc ConvertConfig) error {
+func ConvertFiles(inputFile string, outputFile string) error {
 	dmf, err := parser.ParseFile(inputFile)
 	if err != nil {
 		return err
 	}
-	tree, err := Convert(dmf, cc)
+	tree, err := Convert(dmf)
 	if err != nil {
 		return err
 	}
