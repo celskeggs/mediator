@@ -51,6 +51,10 @@ func (g *generator) Bool(b bool) iface.Expr {
 	return formatExpression("%v", b)
 }
 
+func (g *generator) Nil() iface.Expr {
+	return formatExpression("nil")
+}
+
 func (e expression) Ref() iface.Expr {
 	return formatExpression("&%v", e)
 }
@@ -70,6 +74,10 @@ func (e expression) Invoke(name string, args ...iface.Expr) iface.Expr {
 
 func (e expression) Cast(goType gotype.Type) iface.Expr {
 	return formatExpression("%v.(%v)", e, goType)
+}
+
+func (e expression) Equals(other iface.Expr) iface.Expr {
+	return formatExpression("(%v) == (%v)", e, other)
 }
 
 func (p packageRef) Field(name string) iface.Expr {

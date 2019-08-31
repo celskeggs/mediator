@@ -12,14 +12,25 @@ type Expr interface {
 	Call(args ...Expr) Expr
 	Invoke(name string, args ...Expr) Expr
 	Cast(goType gotype.Type) Expr
+	Equals(other Expr) Expr
 }
 
 type AutocodeFuncOn func(Gen, OutFunc, Expr, []Expr)
 type AutocodeFunc func(Gen, OutFunc, []Expr)
+type AutocodeBlock func(Gen, OutFunc)
 type OutFunc interface {
+	Assign(lvalue Expr, rvalue Expr)
 	AssignField(target Expr, field string, value Expr)
 	Invoke(target Expr, name string, args ...Expr)
+
 	Return(results ...Expr)
+	Panic(text string)
+
+	DeclareVar(vartype gotype.Type, initializer Expr) Expr
+	DeclareVars(vartypes []gotype.Type, initializers ...Expr) []Expr
+
+	For(condition Expr, body AutocodeBlock)
+	If(condition Expr, ifTrue AutocodeBlock, ifFalse AutocodeBlock)
 }
 
 type AutocodeStruct func(Gen, OutStruct)
@@ -39,6 +50,7 @@ type OutSource interface {
 	Struct(name string, body AutocodeStruct) gotype.Type
 	Interface(name string, body AutocodeInterface) gotype.Type
 	Global(name string, goType gotype.Type, initializer Expr)
+	Func(name string, params []gotype.Type, results []gotype.Type, body AutocodeFunc)
 	FuncOn(goType gotype.Type, name string, params []gotype.Type, results []gotype.Type, body AutocodeFuncOn)
 }
 
@@ -50,6 +62,7 @@ type Gen interface {
 	String(string) Expr
 	Int(int) Expr
 	Bool(bool) Expr
+	Nil() Expr
 }
 
 type Package interface {

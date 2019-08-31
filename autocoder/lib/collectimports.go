@@ -16,6 +16,8 @@ type importCollectorPackage struct {
 	ImportCollector *importCollector
 }
 
+type importCollectorDataType struct {}
+
 type importCollectorExpr struct {}
 
 func (ic *importCollector) ImportList() (out []string) {
@@ -27,8 +29,8 @@ func (ic *importCollector) ImportList() (out []string) {
 
 var _ iface.Gen = &importCollector{}
 var _ iface.OutSource = &importCollector{}
-var _ iface.OutInterface = &importCollector{}
-var _ iface.OutStruct = &importCollector{}
+var _ iface.OutInterface = importCollectorDataType{}
+var _ iface.OutStruct = &importCollectorDataType{}
 var _ iface.OutFunc = &importCollector{}
 
 var _ iface.Package = importCollectorPackage{}
@@ -75,18 +77,30 @@ func (ic *importCollector) Bool(bool) iface.Expr {
 	return importCollectorExpr{}
 }
 
+func (ic *importCollector) Nil() iface.Expr {
+	return importCollectorExpr{}
+}
+
 func (ic *importCollector) Struct(name string, body iface.AutocodeStruct) gotype.Type {
-	body(ic, ic)
+	body(ic, importCollectorDataType{})
 	return gotype.LocalType(name)
 }
 
 func (ic *importCollector) Interface(name string, body iface.AutocodeInterface) gotype.Type {
-	body(ic, ic)
+	body(ic, importCollectorDataType{})
 	return gotype.LocalType(name)
 }
 
 func (ic *importCollector) Global(name string, goType gotype.Type, initializer iface.Expr) {
 	// nothing to do
+}
+
+func (ic *importCollector) Func(name string, params []gotype.Type, results []gotype.Type, body iface.AutocodeFunc) {
+	paramExprs := make([]iface.Expr, len(params))
+	for i := range params {
+		paramExprs[i] = importCollectorExpr{}
+	}
+	body(ic, ic, paramExprs)
 }
 
 func (ic *importCollector) FuncOn(goType gotype.Type, name string, params []gotype.Type, results []gotype.Type, body iface.AutocodeFuncOn) {
@@ -97,15 +111,19 @@ func (ic *importCollector) FuncOn(goType gotype.Type, name string, params []goty
 	body(ic, ic, importCollectorExpr{}, paramExprs)
 }
 
-func (ic *importCollector) Include(goType gotype.Type) {
+func (ic importCollectorDataType) Include(goType gotype.Type) {
 	// nothing to do
 }
 
-func (ic *importCollector) Func(name string, params []gotype.Type, results []gotype.Type) {
+func (ic importCollectorDataType) Func(name string, params []gotype.Type, results []gotype.Type) {
 	// nothing to do
 }
 
-func (ic *importCollector) Field(name string, goType gotype.Type) {
+func (ic importCollectorDataType) Field(name string, goType gotype.Type) {
+	// nothing to do
+}
+
+func (ic *importCollector) Assign(lvalue iface.Expr, rvalue iface.Expr) {
 	// nothing to do
 }
 
@@ -119,6 +137,33 @@ func (ic *importCollector) Invoke(target iface.Expr, name string, args ...iface.
 
 func (ic *importCollector) Return(results ...iface.Expr) {
 	// nothing to do
+}
+
+func (ic *importCollector) Panic(text string) {
+	// nothing to do
+}
+
+func (ic *importCollector) DeclareVar(vartype gotype.Type, initializer iface.Expr) iface.Expr {
+	return importCollectorExpr{}
+}
+
+func (ic *importCollector) DeclareVars(vartypes []gotype.Type, initializers ...iface.Expr) []iface.Expr {
+	exprs := make([]iface.Expr, len(vartypes))
+	for i := range vartypes {
+		exprs[i] = importCollectorExpr{}
+	}
+	return exprs
+}
+
+func (ic *importCollector) For(condition iface.Expr, body iface.AutocodeBlock) {
+	body(ic, ic)
+}
+
+func (ic *importCollector) If(condition iface.Expr, ifTrue iface.AutocodeBlock, ifFalse iface.AutocodeBlock) {
+	ifTrue(ic, ic)
+	if ifFalse != nil {
+		ifFalse(ic, ic)
+	}
 }
 
 func (ice importCollectorExpr) Ref() iface.Expr {
@@ -138,6 +183,10 @@ func (ice importCollectorExpr) Invoke(name string, args ...iface.Expr) iface.Exp
 }
 
 func (ice importCollectorExpr) Cast(goType gotype.Type) iface.Expr {
+	return ice
+}
+
+func (ice importCollectorExpr) Equals(other iface.Expr) iface.Expr {
 	return ice
 }
 

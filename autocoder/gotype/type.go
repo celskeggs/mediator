@@ -9,7 +9,7 @@ const (
 	TypeTypeImported
 	TypeTypeLocal
 	TypeTypePtr
-	TypeTypeString
+	TypeTypePrimitive
 )
 
 type Type struct {
@@ -34,8 +34,8 @@ func (t Type) Name() string {
 		return t.RawName
 	case TypeTypePtr:
 		return t.Inner.Name()
-	case TypeTypeString:
-		return "string"
+	case TypeTypePrimitive:
+		return t.RawName
 	default:
 		panic(fmt.Sprintf("unrecognized type type %d", t.Type))
 	}
@@ -49,8 +49,8 @@ func (t Type) String() string {
 		return t.RawName
 	case TypeTypePtr:
 		return "*" + t.Inner.Name()
-	case TypeTypeString:
-		return "string"
+	case TypeTypePrimitive:
+		return t.RawName
 	default:
 		panic(fmt.Sprintf("unrecognized type type %d", t.Type))
 	}
@@ -67,9 +67,17 @@ func (t Type) UnwrapPtr() Type {
 	return *t.Inner
 }
 
+func TypeBool() Type {
+	return Type{
+		Type:    TypeTypePrimitive,
+		RawName: "bool",
+	}
+}
+
 func TypeString() Type {
 	return Type{
-		Type: TypeTypeString,
+		Type:    TypeTypePrimitive,
+		RawName: "string",
 	}
 }
 
