@@ -4,6 +4,7 @@ import (
 	"github.com/celskeggs/mediator/dream/tokenizer"
 	"fmt"
 	"github.com/celskeggs/mediator/util"
+	"github.com/pkg/errors"
 )
 
 type input struct {
@@ -62,7 +63,7 @@ func (i *input) Accept(tokenType tokenizer.TokenType) bool {
 func (i *input) ErrorExpect(tokenType tokenizer.TokenType) error {
 	tok := i.Take()
 	ntok := i.Take()
-	return fmt.Errorf("expected token of type %v but got token %v (next afterwards is %v)", tokenType, tok, ntok)
+	return fmt.Errorf("expected token of type %v at %v but got token %v (next afterwards is %v)", tokenType, tok.Loc, tok, ntok)
 }
 
 func (i *input) Expect(tokenType tokenizer.TokenType) error {
@@ -96,25 +97,25 @@ func ParseDM(tokens <-chan tokenizer.Token) (*DreamMakerFile, error) {
 }
 
 func ParseFile(filename string) (*DreamMakerFile, error) {
-	runeCh := make(chan rune)
+	runeCh := make(chan tokenizer.RuneLoc)
 	tokenCh := make(chan tokenizer.Token)
 	indentedCh := make(chan tokenizer.Token)
 	var dmf *DreamMakerFile
 
 	err := util.RunInParallel(
 		func() error {
-			return tokenizer.FileToRuneChannel(filename, runeCh)
+			return errors.Wrap(tokenizer.FileToRuneChannel(filename, runeCh), "while reading file")
 		},
 		func() error {
-			return tokenizer.Tokenize(runeCh, tokenCh)
+			return errors.Wrap(tokenizer.Tokenize(runeCh, tokenCh), "while tokenizing file")
 		},
 		func() error {
-			return tokenizer.ProcessIndentation(tokenCh, indentedCh)
+			return errors.Wrap(tokenizer.ProcessIndentation(tokenCh, indentedCh), "while deindenting file")
 		},
 		func() error {
 			parsed, err := ParseDM(indentedCh)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "while parsing DM code")
 			}
 			dmf = parsed
 			return nil

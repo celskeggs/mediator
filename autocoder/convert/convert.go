@@ -4,6 +4,7 @@ import (
 	"github.com/celskeggs/mediator/autocoder/gen"
 	"github.com/celskeggs/mediator/dream/parser"
 	"github.com/celskeggs/mediator/dream/path"
+	"github.com/pkg/errors"
 	"strings"
 	"strconv"
 )
@@ -130,15 +131,15 @@ func Convert(dmf *parser.DreamMakerFile) (*gen.DefinedTree, error) {
 func ConvertFiles(inputFile string, outputFile string) error {
 	dmf, err := parser.ParseFile(inputFile)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "while parsing input file")
 	}
 	tree, err := Convert(dmf)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "while building tree")
 	}
 	err = gen.GenerateTo(tree, outputFile)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "while generating output file")
 	}
 	return nil
 }

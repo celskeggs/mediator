@@ -1,18 +1,18 @@
 package tokenizer
 
 import (
-	"github.com/pkg/errors"
 	"fmt"
-	"unicode"
-	"strconv"
 	"github.com/celskeggs/mediator/util"
+	"strconv"
+	"unicode"
 )
 
 const NoChar rune = 0
 
 type scan struct {
-	Channel <-chan rune
+	Channel <-chan RuneLoc
 	Stashed rune
+	Loc     SourceLocation
 }
 
 func (s *scan) HasNext() bool {
@@ -21,7 +21,8 @@ func (s *scan) HasNext() bool {
 		if !ok {
 			return false
 		}
-		s.Stashed = next
+		s.Stashed = next.Rune
+		s.Loc = next.Loc
 	}
 	return true
 }
@@ -134,16 +135,17 @@ func (s *scan) Integer(negative bool) (int64, error) {
 	return strconv.ParseInt(prefix+strInt, 10, 64)
 }
 
-func (s *scan) StringChunk(terminator rune) (string, error) {
+func (s *scan) StringChunk(terminator rune) (string, SourceLocation, error) {
 	var runes []rune
+	loc := s.Loc
 	for {
 		ch := s.Take()
 		if ch == terminator || ch == '[' {
 			s.Untake(ch)
-			return string(runes), nil
+			return string(runes), loc, nil
 		}
 		if ch == NoChar {
-			return "", errors.New("unterminated string chunk")
+			return "", loc, fmt.Errorf("unterminated string chunk at %v", loc)
 		}
 		if ch == '\\' {
 			if ch != terminator && ch != '\\' {
@@ -170,34 +172,34 @@ func tokenizeInternal(s *scan, output chan<- Token, terminator rune) error {
 			return nil
 		}
 		if ch == NoChar {
-			return errors.New("unexpected end of input")
+			return fmt.Errorf("unexpected end of input at %v", s.Loc)
 		}
 		switch {
 		case ch == '/':
 			if s.Accept('*') {
 				// multi-line comment
 				if !s.ConsumeRemainderOfComment() {
-					return errors.New("unterminated */")
+					return fmt.Errorf("unterminated */ at %v", s.Loc)
 				}
 			} else if s.Accept('/') {
 				s.ConsumeUntil('\n')
 				// we don't care if we run out of characters, because we'll just treat that as a final "end of line"
 				s.Untake('\n')
 			} else {
-				output <- TokSlash.token()
+				output <- TokSlash.token(s.Loc)
 			}
 		case ch == '"':
-			output <- TokStringStart.token()
+			output <- TokStringStart.token(s.Loc)
 			for !s.Accept('"') {
-				chunk, err := s.StringChunk('"')
+				chunk, loc, err := s.StringChunk('"')
 				if err != nil {
 					return err
 				}
 				if chunk != "" {
-					output <- TokStringLiteral.tokenStr(chunk)
+					output <- TokStringLiteral.tokenStr(chunk, loc)
 				}
 				if s.Accept('[') {
-					output <- TokStringInsertStart.token()
+					output <- TokStringInsertStart.token(s.Loc)
 					util.NiceToHave("fix handling of [ and ] within []")
 					err := tokenizeInternal(s, output, ']')
 					if err != nil {
@@ -206,108 +208,118 @@ func tokenizeInternal(s *scan, output chan<- Token, terminator rune) error {
 					if !s.Accept(']') {
 						panic("should only have gotten here if we hit a ']'")
 					}
-					output <- TokStringInsertEnd.token()
+					output <- TokStringInsertEnd.token(s.Loc)
 				}
 			}
-			output <- TokStringEnd.token()
+			output <- TokStringEnd.token(s.Loc)
 		case ch == '\'':
-			chunk, err := s.StringChunk('\'')
+			chunk, loc, err := s.StringChunk('\'')
 			if err != nil {
 				return err
 			}
 			if !s.Accept('\'') {
-				return errors.New("expected resource literal to be ended with a single quote")
+				return fmt.Errorf("expected resource literal to be ended with a single quote at %v", s.Loc)
 			}
-			output <- TokResource.tokenStr(chunk)
+			output <- TokResource.tokenStr(chunk, loc)
 		case ch == '\r':
 			// ignore \r
 		case ch == '\n':
 			if s.Accept(' ') {
+				loc := s.Loc
 				spaces := 1 + s.AcceptCount(' ')
-				output <- TokSpaces.tokenInt(spaces)
+				output <- TokSpaces.tokenInt(spaces, loc)
 			} else if s.Accept('\t') {
+				loc := s.Loc
 				spaces := 1 + s.AcceptCount('\t')
-				output <- TokTabs.tokenInt(spaces)
+				output <- TokTabs.tokenInt(spaces, loc)
 			} else {
-				output <- TokNewline.token()
+				output <- TokNewline.token(s.Loc)
 			}
 		case ch == ' ':
 			// ignore spaces inside lines
 		case ch == '\t':
 			// ignore tabs inside lines
 		case ch == '(':
-			output <- TokParenOpen.token()
+			output <- TokParenOpen.token(s.Loc)
 		case ch == ')':
-			output <- TokParenClose.token()
+			output <- TokParenClose.token(s.Loc)
 		case ch == ',':
-			output <- TokComma.token()
+			output <- TokComma.token(s.Loc)
 		case ch == ':':
-			output <- TokColon.token()
+			output <- TokColon.token(s.Loc)
 		case ch == ';':
-			output <- TokSemicolon.token()
+			output <- TokSemicolon.token(s.Loc)
 		case ch == '.':
+			loc := s.Loc
 			if s.Accept('.') {
-				output <- TokDotDot.token()
+				output <- TokDotDot.token(loc)
 			} else {
-				output <- TokDot.token()
+				output <- TokDot.token(loc)
 			}
 		case ch == '!':
+			loc := s.Loc
 			if s.Accept('=') {
-				output <- TokNotEquals.token()
+				output <- TokNotEquals.token(loc)
 			} else {
-				output <- TokNot.token()
+				output <- TokNot.token(loc)
 			}
 		case ch == '=':
+			loc := s.Loc
 			if s.Accept('=') {
-				output <- TokEquals.token()
+				output <- TokEquals.token(loc)
 			} else {
-				output <- TokSetEqual.token()
+				output <- TokSetEqual.token(loc)
 			}
 		case ch == '<':
+			loc := s.Loc
 			if s.Accept('<') {
-				output <- TokLeftShift.token()
+				output <- TokLeftShift.token(loc)
 			} else if s.Accept('=') {
-				output <- TokLessThanOrEquals.token()
+				output <- TokLessThanOrEquals.token(loc)
 			} else {
-				output <- TokLessThan.token()
+				output <- TokLessThan.token(loc)
 			}
 		case ch == '>':
+			loc := s.Loc
 			if s.Accept('>') {
-				output <- TokRightShift.token()
+				output <- TokRightShift.token(loc)
 			} else if s.Accept('=') {
-				output <- TokGreaterThanOrEquals.token()
+				output <- TokGreaterThanOrEquals.token(loc)
 			} else {
-				output <- TokGreaterThan.token()
+				output <- TokGreaterThan.token(loc)
 			}
 		case ch == '-':
+			loc := s.Loc
 			if isDigit(s.Peek()) {
 				integer, err := s.Integer(true)
 				if err != nil {
 					return err
 				}
-				output <- TokInteger.tokenInt(integer)
+				output <- TokInteger.tokenInt(integer, loc)
 			} else {
-				output <- TokMinus.token()
+				output <- TokMinus.token(loc)
 			}
 		case isDigit(ch):
+			loc := s.Loc
 			s.Untake(ch)
 			integer, err := s.Integer(false)
 			if err != nil {
 				return err
 			}
-			output <- TokInteger.tokenInt(integer)
+			output <- TokInteger.tokenInt(integer, loc)
 		case IsValidInIdentifier(ch):
+			loc := s.Loc
 			s.Untake(ch)
-			output <- TokSymbol.tokenStr(s.AllMatching(IsValidInIdentifier))
+			output <- TokSymbol.tokenStr(s.AllMatching(IsValidInIdentifier), loc)
 		default:
-			return fmt.Errorf("unexpected character: '%s'", string([]rune{ch}))
+			return fmt.Errorf("unexpected character: '%s' at %v", string([]rune{ch}), s.Loc)
 		}
 	}
 }
 
-func Tokenize(input <-chan rune, output chan<- Token) error {
+func Tokenize(input <-chan RuneLoc, output chan<- Token) error {
 	// we start with a newline so that indentation handling does the right thing with the first line
-	scanner := &scan{input, '\n'}
+	scanner := &scan{input, '\n', SourceLocation{"", 0, 0}}
 	defer func() {
 		close(output)
 		for range input {

@@ -1,6 +1,8 @@
 package tokenizer
 
-import "github.com/pkg/errors"
+import (
+	"fmt"
+)
 
 type indentState struct {
 	IsTabs bool
@@ -8,62 +10,62 @@ type indentState struct {
 	Output chan<- Token
 }
 
-func (i *indentState) Clear() error {
-	i.Output <- TokNewline.token()
+func (i *indentState) Clear(loc SourceLocation) error {
+	i.Output <- TokNewline.token(loc)
 	for n := 0; n < len(i.Stops); n++ {
-		i.Output <- TokUnindent.token()
+		i.Output <- TokUnindent.token(loc)
 	}
 	i.Stops = nil
 	return nil
 }
 
-func (i *indentState) setCount(indent int) error {
+func (i *indentState) setCount(indent int, loc SourceLocation) error {
 	if indent == 0 {
 		// should have called Clear instead
 		panic("cannot have zero indent")
 	}
 	if len(i.Stops) == 0 || indent > i.Stops[len(i.Stops)-1] {
 		i.Stops = append(i.Stops, indent)
-		i.Output <- TokIndent.token()
+		i.Output <- TokIndent.token(loc)
 	} else {
-		i.Output <- TokNewline.token()
+		i.Output <- TokNewline.token(loc)
 		for len(i.Stops) > 0 && indent < i.Stops[len(i.Stops)-1] {
 			i.Stops = i.Stops[:len(i.Stops)-1]
 			if len(i.Stops) == 0 {
-				return errors.New("too much indent to run out of indent")
+				return fmt.Errorf("too much indent to run out of indent at %v", loc)
 			}
 			if indent > i.Stops[len(i.Stops)-1] {
-				return errors.New("did not remove enough indentation levels at once")
+				return fmt.Errorf("did not remove enough indentation levels at once at %v", loc)
 			}
-			i.Output <- TokUnindent.token()
+			i.Output <- TokUnindent.token(loc)
 		}
 	}
 	return nil
 }
 
-func (i *indentState) SetTabs(tabs int) error {
+func (i *indentState) SetTabs(tabs int, loc SourceLocation) error {
 	if !i.IsTabs && len(i.Stops) > 0 {
-		return errors.New("mixing tabs and spaces")
+		return fmt.Errorf("mixing tabs and spaces at %v", loc)
 	}
 	i.IsTabs = true
-	return i.setCount(tabs)
+	return i.setCount(tabs, loc)
 }
 
-func (i *indentState) SetSpaces(spaces int) error {
+func (i *indentState) SetSpaces(spaces int, loc SourceLocation) error {
 	if i.IsTabs && len(i.Stops) > 0 {
-		return errors.New("mixing tabs and spaces")
+		return fmt.Errorf("mixing tabs and spaces at %v", loc)
 	}
 	i.IsTabs = false
-	return i.setCount(spaces)
+	return i.setCount(spaces, loc)
 }
 
 func (i *indentState) UpdateForToken(t Token) error {
 	if t.TokenType == TokNewline {
-		return i.Clear()
+		return i.Clear(t.Loc)
 	} else if t.TokenType == TokSpaces {
-		return i.SetSpaces(int(t.Int))
+		return i.SetSpaces(int(t.Int), t.Loc)
 	} else if t.TokenType == TokTabs {
-		return i.SetTabs(int(t.Int))
+		return i.SetTabs(int(t.Int), t.Loc)
 	} else {
 		panic("not a spacing token")
 	}
@@ -100,5 +102,5 @@ func ProcessIndentation(input <-chan Token, output chan<- Token) error {
 			output <- token
 		}
 	}
-	return indentState.Clear()
+	return indentState.Clear(lastSpacingToken.Loc)
 }

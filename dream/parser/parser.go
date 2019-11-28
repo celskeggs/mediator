@@ -67,7 +67,7 @@ func parseExpression(i *input) (DreamMakerExpression, error) {
 		}
 		return ExprPathLiteral(tpath), nil
 	} else {
-		return ExprNone(), fmt.Errorf("invalid token when parsing expression: %v", i.Peek())
+		return ExprNone(), fmt.Errorf("invalid token %v when parsing expression at %v", i.Peek(), i.Peek().Loc)
 	}
 }
 
@@ -109,7 +109,7 @@ func parseBlock(i *input, basePath path.TypePath) ([]DreamMakerDefinition, error
 		}
 		return defs, nil
 	} else {
-		return nil, fmt.Errorf("expected valid start-of-block token, not: %s", i.Peek().String())
+		return nil, fmt.Errorf("expected valid start-of-block token, not %s at %v", i.Peek().String(), i.Peek().Loc)
 	}
 }
 

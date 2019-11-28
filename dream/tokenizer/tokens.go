@@ -56,23 +56,34 @@ const (
 	modeStr
 )
 
+type SourceLocation struct {
+	File string
+	Line int
+	Column int
+}
+
+func (s SourceLocation) String() string {
+	return fmt.Sprintf("%s:%d +%d", s.File, s.Line, s.Column)
+}
+
 type Token struct {
 	TokenType
 	mode tokenMode
 	Int  int64
 	Str  string
+	Loc  SourceLocation
 }
 
-func (t TokenType) token() Token {
-	return Token{t, modeNone, 0, ""}
+func (t TokenType) token(loc SourceLocation) Token {
+	return Token{t, modeNone, 0, "", loc}
 }
 
-func (t TokenType) tokenInt(integer int64) Token {
-	return Token{t, modeInt, integer, ""}
+func (t TokenType) tokenInt(integer int64, loc SourceLocation) Token {
+	return Token{t, modeInt, integer, "", loc}
 }
 
-func (t TokenType) tokenStr(str string) Token {
-	return Token{t, modeStr, 0, str}
+func (t TokenType) tokenStr(str string, loc SourceLocation) Token {
+	return Token{t, modeStr, 0, str, loc}
 }
 
 func (t TokenType) String() string {
@@ -166,5 +177,5 @@ func (t Token) IsNone() bool {
 }
 
 func NoToken() Token {
-	return TokNone.token()
+	return TokNone.token(SourceLocation{"", 0, 0})
 }

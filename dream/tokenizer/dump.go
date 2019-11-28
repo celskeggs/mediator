@@ -8,13 +8,20 @@ import (
 	"fmt"
 )
 
-func FileToRuneChannel(filename string, output chan<- rune) error {
+type RuneLoc struct {
+	Rune rune
+	Loc  SourceLocation
+}
+
+func FileToRuneChannel(filename string, output chan<- RuneLoc) error {
 	defer close(output)
 	f, err := os.Open(filename)
 	if err != nil {
 		return err
 	}
 	reader := bufio.NewReader(f)
+	line := 1
+	column := 1
 	for {
 		ch, _, err := reader.ReadRune()
 		if err == io.EOF {
@@ -22,7 +29,20 @@ func FileToRuneChannel(filename string, output chan<- rune) error {
 		} else if err != nil {
 			return err
 		}
-		output <- ch
+		output <- RuneLoc{
+			Rune: ch,
+			Loc: SourceLocation{
+				File: filename,
+				Line: line,
+				Column: column,
+			},
+		}
+		if ch == '\n' {
+			line += 1
+			column = 1
+		} else {
+			column += 1
+		}
 	}
 }
 
@@ -53,7 +73,7 @@ func DumpTokens(tokens <-chan Token, output io.Writer) error {
 }
 
 func DumpTokensFromFile(filename string, output io.Writer) error {
-	runeCh := make(chan rune)
+	runeCh := make(chan RuneLoc)
 	tokenCh := make(chan Token)
 	indentedCh := make(chan Token)
 	return util.RunInParallel(
