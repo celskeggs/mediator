@@ -83,7 +83,40 @@ var platformFields = []FieldInfo{
 }
 
 var platformGlobalProcs = []GlobalProcedureInfo{
-	{"ismob", "platform.IsMob", gotype.Func([]gotype.GoType{gotype.External("platform.IAtom")}, []gotype.GoType{gotype.Bool()})},
+	{"ismob", "platform.IsMob",
+		gotype.Func(
+			[]gotype.GoType{
+				gotype.External("platform.IAtom"),
+			}, []gotype.GoType{
+				gotype.Bool(),
+			}, []string{
+				"",
+			}, []string{
+				"",
+			})},
+	{"sound", "platform.NewSoundFull",
+		gotype.Func(
+			[]gotype.GoType{
+				gotype.String(),
+				gotype.Bool(),
+				gotype.Bool(),
+				gotype.Uint(),
+				gotype.Uint(),
+			}, []gotype.GoType{
+				gotype.External("sprite.Sound"),
+			}, []string{
+				"",
+				"false",
+				"false",
+				"0",
+				"100",
+			}, []string{
+				"",
+				"repeat",
+				"wait",
+				"channel",
+				"volume",
+			})},
 }
 
 type platformDefiner struct {

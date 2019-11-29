@@ -13,6 +13,7 @@ const (
 	KindExternal
 	KindBool
 	KindInt
+	KindUint
 	KindString
 	KindFunc
 	KindFuncAbstractParams
@@ -30,6 +31,8 @@ func (k Kind) String() string {
 		return "KindBool"
 	case KindInt:
 		return "KindInt"
+	case KindUint:
+		return "KindUint"
 	case KindString:
 		return "KindString"
 	case KindFunc:
@@ -43,9 +46,13 @@ func (k Kind) String() string {
 
 type GoType struct {
 	Kind
-	Ref string
-	Params []GoType
+	Ref     string
+	Params  []GoType
 	Results []GoType
+
+	// not part of the Go type, but useful hints anyway
+	DefaultExprs []string
+	KeywordNames []string
 }
 
 func typesToString(types []GoType) string {
@@ -128,8 +135,8 @@ func (g GoType) IsBool() bool {
 	return g.Kind == KindBool
 }
 
-func (g GoType) IsInt() bool {
-	return g.Kind == KindInt
+func (g GoType) IsInteger() bool {
+	return g.Kind == KindInt || g.Kind == KindUint
 }
 
 func (g GoType) IsString() bool {
@@ -175,17 +182,28 @@ func Int() GoType {
 	}
 }
 
+func Uint() GoType {
+	return GoType{
+		Kind: KindUint,
+	}
+}
+
 func String() GoType {
 	return GoType{
 		Kind: KindString,
 	}
 }
 
-func Func(params []GoType, results []GoType) GoType {
+func Func(params []GoType, results []GoType, defaultExprs []string, keywordNames []string) GoType {
+	if len(params) != len(defaultExprs) || len(params) != len(keywordNames) {
+		panic("invalid func decl: mismatched #'s")
+	}
 	return GoType{
-		Kind:    KindFunc,
-		Params:  params,
-		Results: results,
+		Kind:         KindFunc,
+		Params:       params,
+		Results:      results,
+		DefaultExprs: defaultExprs,
+		KeywordNames: keywordNames,
 	}
 }
 

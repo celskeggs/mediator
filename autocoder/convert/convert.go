@@ -99,7 +99,7 @@ func ExprToGo(expr parser.DreamMakerExpression, targetType gotype.GoType, ctx Co
 	case parser.ExprTypeIntegerLiteral:
 		if targetType.IsBool() {
 			return strconv.FormatBool(expr.Integer != 0), gotype.Bool(), nil
-		} else if targetType.IsInt() || targetType.IsInterfaceAny() {
+		} else if targetType.IsInteger() || targetType.IsInterfaceAny() {
 			return strconv.FormatInt(expr.Integer, 10), gotype.Int(), nil
 		}
 	case parser.ExprTypeStringLiteral:
@@ -115,11 +115,6 @@ func ExprToGo(expr parser.DreamMakerExpression, targetType gotype.GoType, ctx Co
 			return fmt.Sprintf("!(%s)", innerString), gotype.Bool(), nil
 		}
 	case parser.ExprTypeCall:
-		for _, name := range expr.Names {
-			if name != "" {
-				return "", gotype.None(), fmt.Errorf("unsupported keyword argument %s at %v", name, expr.SourceLoc)
-			}
-		}
 		target := expr.Children[0]
 		args := expr.Children[1:]
 		targetString, concrete, err := ExprToGo(target, gotype.FuncAbstractParams([]gotype.GoType{targetType}), ctx)
@@ -132,18 +127,63 @@ func ExprToGo(expr parser.DreamMakerExpression, targetType gotype.GoType, ctx Co
 		if len(concrete.Results) != 1 {
 			return "", gotype.None(), fmt.Errorf("can only handle funcs with exactly 1 result, but found %v", concrete)
 		}
-		if len(concrete.Params) != len(args) {
-			return "", gotype.None(), fmt.Errorf("expected func with %d arguments, but found %v", len(args), concrete)
-		}
-		var argStrings []string
-		for i, arg := range args {
-			argString, _, err := ExprToGo(arg, concrete.Params[i], ctx)
-			if err != nil {
-				return "", gotype.None(), err
+		filledArgs := make([]string, len(concrete.Params))
+
+		// fill keyword args first
+		for ni, name := range expr.Names {
+			if name != "" {
+				found := false
+				for ai, ak := range concrete.KeywordNames {
+					if name == ak {
+						if filledArgs[ai] != "" {
+							return "", gotype.None(), fmt.Errorf("duplicate keyword argument: %s", name)
+						}
+						argString, _, err := ExprToGo(args[ni], concrete.Params[ai], ctx)
+						if err != nil {
+							return "", gotype.None(), err
+						}
+						filledArgs[ai] = argString
+						found = true
+						break
+					}
+				}
+				if !found {
+					return "", gotype.None(), fmt.Errorf("no such keyword argument: %s", name)
+				}
 			}
-			argStrings = append(argStrings, argString)
 		}
-		return fmt.Sprintf("(%s)(%s)", targetString, strings.Join(argStrings, ", ")), concrete.Results[0], nil
+		// fill positional arguments second
+		for ai, arg := range args {
+			if expr.Names[ai] == "" {
+				found := false
+				for fi, fill := range filledArgs {
+					if fill == "" {
+						argString, _, err := ExprToGo(arg, concrete.Params[fi], ctx)
+						if err != nil {
+							return "", gotype.None(), err
+						}
+						filledArgs[fi] = argString
+						found = true
+						break
+					}
+				}
+				if !found {
+					return "", gotype.None(), fmt.Errorf("too many positional arguments when trying to use argument %d", ai)
+				}
+			}
+		}
+		// fill default arguments third
+		for i, expr := range concrete.DefaultExprs {
+			if filledArgs[i] == "" {
+				if expr != "" {
+					filledArgs[i] = expr
+				} else {
+					return "", gotype.None(), fmt.Errorf("too few parameters; no expression for argument %d", i)
+				}
+			}
+		}
+
+		return fmt.Sprintf("(%s)(%s)", targetString, strings.Join(filledArgs, ", ")), concrete.Results[0], nil
 	case parser.ExprTypeGetNonLocal:
 		util.FIXME("resolve more types of nonlocals")
 		// look for local fields
@@ -156,10 +196,10 @@ func ExprToGo(expr parser.DreamMakerExpression, targetType gotype.GoType, ctx Co
 		// look for global procedures
 		if targetType.IsFunc() || targetType.IsInterfaceAny() {
 			record, found := ctx.Tree.ResolveGlobalProcedure(expr.Str)
-			if !record.GoType.IsFuncConcrete() {
-				return "", gotype.None(), fmt.Errorf("discovered global func for %s must be of a concrete type, not %v", expr.Str, record.GoType)
-			}
 			if found {
+				if !record.GoType.IsFuncConcrete() {
+					return "", gotype.None(), fmt.Errorf("discovered global func for %s must be of a concrete type, not %v", expr.Str, record.GoType)
+				}
 				return record.GoRef, record.GoType, nil
 			}
 		}

@@ -13,3 +13,13 @@ func NewSound(file string) sprite.Sound {
 		Volume:  100,
 	}
 }
+
+func NewSoundFull(file string, repeat bool, wait bool, channel uint, volume uint) sprite.Sound {
+	return sprite.Sound{
+		File:    file,
+		Repeat:  repeat,
+		Wait:    wait,
+		Channel: channel,
+		Volume:  volume,
+	}
+}
