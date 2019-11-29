@@ -4,6 +4,7 @@ import (
 	"github.com/celskeggs/mediator/common"
 	"github.com/celskeggs/mediator/platform/datum"
 	"github.com/celskeggs/mediator/util"
+	"github.com/celskeggs/mediator/webclient/sprite"
 	"log"
 )
 
@@ -24,8 +25,8 @@ type IClient interface {
 	West() bool
 	Move(loc IAtom, dir common.Direction) bool
 	OutputString(output string)
-	OutputSound(output ISound)
-	PullClientRequests() (textDisplay []string, sounds []ISound)
+	OutputSound(output sprite.Sound)
+	PullClientRequests() (textDisplay []string, sounds []sprite.Sound)
 }
 
 var _ IClient = &Client{}
@@ -38,7 +39,7 @@ type Client struct {
 	eye          *datum.Ref
 	ViewDistance uint
 	textBuffer   []string
-	soundBuffer  []ISound
+	soundBuffer  []sprite.Sound
 }
 
 func (d *Client) Mob() IMob {
@@ -134,11 +135,11 @@ func (d *Client) OutputString(output string) {
 	d.textBuffer = append(d.textBuffer, output)
 }
 
-func (d *Client) OutputSound(output ISound) {
+func (d *Client) OutputSound(output sprite.Sound) {
 	d.soundBuffer = append(d.soundBuffer, output)
 }
 
-func (d *Client) PullClientRequests() (textDisplay []string, sounds []ISound) {
+func (d *Client) PullClientRequests() (textDisplay []string, sounds []sprite.Sound) {
 	textDisplay, sounds = d.textBuffer, d.soundBuffer
 	d.textBuffer = nil
 	d.soundBuffer = nil

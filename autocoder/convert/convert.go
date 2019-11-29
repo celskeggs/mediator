@@ -6,7 +6,6 @@ import (
 	"github.com/celskeggs/mediator/dream/parser"
 	"github.com/celskeggs/mediator/dream/path"
 	"github.com/celskeggs/mediator/dream/tokenizer"
-	"github.com/celskeggs/mediator/util"
 	"github.com/pkg/errors"
 	"runtime"
 	"strconv"
@@ -84,7 +83,9 @@ func ExprToGo(expr parser.DreamMakerExpression, targetType string) (string, erro
 				return "icons.LoadOrPanic(" + EscapeString(expr.Str) + ")", nil
 			}
 		case ResourceTypeAudio:
-			util.FIXME("implement audio support")
+			if targetType == "sprite.Sound" || targetType == "interface{}" {
+				return "platform.NewSound(" + EscapeString(expr.Str) + ")", nil
+			}
 		}
 	case parser.ExprTypeIntegerLiteral:
 		if targetType == "bool" {

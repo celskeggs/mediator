@@ -345,7 +345,7 @@ type IMob interface {
 	IAtomMovable
 	AsMob() *Mob
 	OutputString(output string)
-	OutputSound(output ISound)
+	OutputSound(output sprite.Sound)
 	Client() IClient
 	Key() string
 	Login()
@@ -402,7 +402,7 @@ func (d *Mob) OutputString(output string) {
 	}
 }
 
-func (d *Mob) OutputSound(output ISound) {
+func (d *Mob) OutputSound(output sprite.Sound) {
 	client := d.Client()
 	if client != nil {
 		client.OutputSound(output)
@@ -439,7 +439,6 @@ type TreeDefiner interface {
 	ObjTemplate(parent IAtomMovable) IObj
 	MobTemplate(parent IAtomMovable) IMob
 	ClientTemplate(parent datum.IDatum) IClient
-	SoundTemplate(parent datum.IDatum) ISound
 }
 
 type BaseTreeDefiner struct{}
@@ -502,15 +501,6 @@ func (td BaseTreeDefiner) ClientTemplate(parent datum.IDatum) IClient {
 	}
 }
 
-func (td BaseTreeDefiner) SoundTemplate(parent datum.IDatum) ISound {
-	return &Sound{
-		IDatum: parent,
-		Sound: sprite.Sound{
-			Volume: 100,
-		},
-	}
-}
-
 func NewAtomicTree(td TreeDefiner) *datum.TypeTree {
 	tree := datum.NewTypeTree()
 
@@ -541,10 +531,6 @@ func NewAtomicTree(td TreeDefiner) *datum.TypeTree {
 
 	tree.RegisterStruct("/client",
 		td.ClientTemplate(
-			tree.DeriveNew("/datum")))
-
-	tree.RegisterStruct("/sound",
-		td.SoundTemplate(
 			tree.DeriveNew("/datum")))
 
 	return tree

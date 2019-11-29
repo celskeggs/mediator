@@ -132,16 +132,6 @@ func (w *World) UpdateDefaultViewDistance() {
 	}
 }
 
-func (w *World) Sound(file string, repeat bool, wait bool, channel uint, volume uint) ISound {
-	sound := w.Tree.New("/sound").(ISound)
-	sound.AsSound().File = file
-	sound.AsSound().Repeat = repeat
-	sound.AsSound().Wait = wait
-	sound.AsSound().Channel = channel
-	sound.AsSound().Volume = volume
-	return sound
-}
-
 func NewWorld(tree *datum.TypeTree) *World {
 	world := &World{
 		Name:         "Untitled",
