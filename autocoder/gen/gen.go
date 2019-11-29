@@ -1,14 +1,16 @@
 package gen
 
 import (
-	"text/template"
-	"io"
-	"strings"
-	"unicode"
-	"github.com/celskeggs/mediator/util"
-	"os"
+	"fmt"
 	"github.com/celskeggs/mediator/autocoder/predefs"
+	"github.com/celskeggs/mediator/dream/tokenizer"
+	"github.com/celskeggs/mediator/util"
+	"io"
+	"os"
 	"sort"
+	"strings"
+	"text/template"
+	"unicode"
 )
 
 type DefinedField struct {
@@ -31,6 +33,7 @@ func (d DefinedField) LongName() string {
 type DefinedInit struct {
 	ShortName string
 	Value     string
+	SourceLoc tokenizer.SourceLocation
 
 	definingStruct string
 	longName       string
@@ -75,18 +78,22 @@ type DefinedType struct {
 	context *DefinedTree
 }
 
-func (d DefinedType) addContext(dt *DefinedTree) DefinedType {
+func (d DefinedType) addContext(dt *DefinedTree) (DefinedType, error) {
 	dPtr := &d
 	dPtr.context = dt
 	origInits := dPtr.Inits
 	dPtr.Inits = make([]DefinedInit, len(origInits))
 	copy(dPtr.Inits, origInits)
 	for i, orig := range origInits {
-		dPtr.Inits[i].definingStruct, dPtr.Inits[i].longName, _ = dt.ResolveField(d.TypePath, orig.ShortName)
+		var found bool
+		dPtr.Inits[i].definingStruct, dPtr.Inits[i].longName, _, found = dt.ResolveField(d.TypePath, orig.ShortName)
+		if !found {
+			return DefinedType{}, fmt.Errorf("no such field %s on %s at %v", orig.ShortName, d.TypePath, orig.SourceLoc)
+		}
 		oType := dt.GetType(dPtr.Inits[i].definingStruct)
 		dPtr.Inits[i].isOverride = oType != nil && oType.IsOverride()
 	}
-	return d
+	return d, nil
 }
 
 func (d *DefinedType) IsDefined() bool {
@@ -147,14 +154,18 @@ type DefinedTree struct {
 
 var _ predefs.TypeDefiner = &DefinedTree{}
 
-func (t DefinedTree) addContext() *DefinedTree {
+func (t DefinedTree) addContext() (*DefinedTree, error) {
 	tPtr := &t
 	newTypes := make([]DefinedType, len(tPtr.Types))
 	for i, ot := range tPtr.Types {
-		newTypes[i] = ot.addContext(tPtr)
+		var err error
+		newTypes[i], err = ot.addContext(tPtr)
+		if err != nil {
+			return nil, err
+		}
 	}
 	tPtr.Types = newTypes
-	return tPtr
+	return tPtr, nil
 }
 
 func (t *DefinedTree) Exists(path string) bool {
@@ -184,14 +195,14 @@ func (t *DefinedTree) Ref(path string, skipOverrides bool) (ref string) {
 	return ref
 }
 
-func (t *DefinedTree) ResolveField(typePath string, shortName string) (definingStruct string, longName string, goType string) {
+func (t *DefinedTree) ResolveField(typePath string, shortName string) (definingStruct string, longName string, goType string, found bool) {
 	defType := t.GetTypeByPath(typePath)
 	if defType == nil {
 		return predefs.PlatformDefiner.ResolveField(typePath, shortName)
 	}
 	for _, field := range defType.Fields {
 		if field.Name == shortName {
-			return defType.StructName(), field.LongName(), field.Type
+			return defType.StructName(), field.LongName(), field.Type, true
 		}
 	}
 	return t.ResolveField(t.ParentOf(typePath), shortName)
@@ -234,7 +245,7 @@ func containsStr(needle string, haystack []string) bool {
 	return false
 }
 
-var necessaryImports = []string {
+var necessaryImports = []string{
 	"github.com/celskeggs/mediator/platform",
 	"github.com/celskeggs/mediator/platform/datum",
 	"github.com/celskeggs/mediator/platform/icon",
@@ -262,7 +273,11 @@ func init() {
 }
 
 func Generate(tree *DefinedTree, out io.Writer) error {
-	err := templateFile.ExecuteTemplate(out, "world", tree.addContext())
+	treeC, err := tree.addContext()
+	if err != nil {
+		return err
+	}
+	err = templateFile.ExecuteTemplate(out, "world", treeC)
 	util.FIXME("make sure that string escaping is done correctly; or at least validation")
 	return err
 }

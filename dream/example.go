@@ -1,10 +1,10 @@
 package main
 
 import (
-	"os"
 	"fmt"
 	"github.com/celskeggs/mediator/dream/parser"
 	"github.com/celskeggs/mediator/dream/tokenizer"
+	"os"
 )
 
 func main() {

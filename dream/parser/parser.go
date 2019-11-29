@@ -1,9 +1,9 @@
 package parser
 
 import (
-	"github.com/celskeggs/mediator/dream/tokenizer"
-	"github.com/celskeggs/mediator/dream/path"
 	"fmt"
+	"github.com/celskeggs/mediator/dream/path"
+	"github.com/celskeggs/mediator/dream/tokenizer"
 )
 
 func parsePath(i *input) (path.TypePath, error) {
@@ -75,6 +75,7 @@ func parseBlock(i *input, basePath path.TypePath) ([]DreamMakerDefinition, error
 	if i.Accept(tokenizer.TokNewline) {
 		return nil, nil
 	}
+	loc := i.Peek().Loc
 	relPath, err := parsePath(i)
 	if err != nil {
 		return nil, err
@@ -90,15 +91,15 @@ func parseBlock(i *input, basePath path.TypePath) ([]DreamMakerDefinition, error
 			return nil, err
 		}
 		return []DreamMakerDefinition{
-			DefAssign(typePath, variable, expr),
+			DefAssign(typePath, variable, expr, loc),
 		}, nil
 	} else if i.Accept(tokenizer.TokNewline) {
 		return []DreamMakerDefinition{
-			DefDefine(fullPath),
+			DefDefine(fullPath, loc),
 		}, nil
 	} else if i.Accept(tokenizer.TokIndent) {
 		defs := []DreamMakerDefinition{
-			DefDefine(fullPath),
+			DefDefine(fullPath, loc),
 		}
 		for !i.Accept(tokenizer.TokUnindent) {
 			block, err := parseBlock(i, fullPath)

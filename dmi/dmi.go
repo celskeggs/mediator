@@ -27,7 +27,7 @@ func getBodyLines(whole string) ([]string, error) {
 	if lines[0] != "# BEGIN DMI" || lines[len(lines)-1] != "# END DMI" {
 		return nil, errors.New("did not find expected # BEGIN DMI and # END DMI in Description section")
 	}
-	return lines[1: len(lines)-1], nil
+	return lines[1 : len(lines)-1], nil
 }
 
 func getKVSections(whole string) (sections []map[string]string, err error) {
@@ -85,7 +85,7 @@ func parseString(value string) (string, error) {
 		return "", errors.New("invalid string format")
 	}
 	// TODO: escaping, maybe?
-	return value[1: len(value)-1], nil
+	return value[1 : len(value)-1], nil
 }
 
 func parseState(section map[string]string) (string, DMIState, error) {

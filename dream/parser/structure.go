@@ -1,15 +1,16 @@
 package parser
 
 import (
-	"github.com/celskeggs/mediator/dream/path"
 	"fmt"
+	"github.com/celskeggs/mediator/dream/path"
+	"github.com/celskeggs/mediator/dream/tokenizer"
 	"strings"
 )
 
 type ExprType uint8
 
 const (
-	ExprTypeNone            ExprType = iota
+	ExprTypeNone ExprType = iota
 	ExprTypeResourceLiteral
 	ExprTypePathLiteral
 	ExprTypeIntegerLiteral
@@ -109,7 +110,7 @@ func (dme DreamMakerExpression) String() string {
 type DreamMakerDefType int
 
 const (
-	DefTypeNone   DreamMakerDefType = iota
+	DefTypeNone DreamMakerDefType = iota
 	DefTypeDefine
 	DefTypeAssign
 )
@@ -132,21 +133,24 @@ type DreamMakerDefinition struct {
 	Path       path.TypePath
 	Variable   string
 	Expression DreamMakerExpression
+	SourceLoc  tokenizer.SourceLocation
 }
 
-func DefDefine(path path.TypePath) DreamMakerDefinition {
+func DefDefine(path path.TypePath, location tokenizer.SourceLocation) DreamMakerDefinition {
 	return DreamMakerDefinition{
-		Type: DefTypeDefine,
-		Path: path,
+		Type:      DefTypeDefine,
+		Path:      path,
+		SourceLoc: location,
 	}
 }
 
-func DefAssign(path path.TypePath, variable string, value DreamMakerExpression) DreamMakerDefinition {
+func DefAssign(path path.TypePath, variable string, value DreamMakerExpression, location tokenizer.SourceLocation) DreamMakerDefinition {
 	return DreamMakerDefinition{
 		Type:       DefTypeAssign,
 		Path:       path,
 		Variable:   variable,
 		Expression: value,
+		SourceLoc:  location,
 	}
 }
 

@@ -1,10 +1,10 @@
 package util
 
 import (
-	"os"
 	"crypto/sha256"
-	"io"
 	"encoding/hex"
+	"io"
+	"os"
 )
 
 func SHA256sum(file string) (string, error) {

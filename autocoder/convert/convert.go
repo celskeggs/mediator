@@ -1,12 +1,15 @@
 package convert
 
 import (
+	"fmt"
 	"github.com/celskeggs/mediator/autocoder/gen"
 	"github.com/celskeggs/mediator/dream/parser"
 	"github.com/celskeggs/mediator/dream/path"
+	"github.com/celskeggs/mediator/dream/tokenizer"
 	"github.com/pkg/errors"
-	"strings"
+	"runtime"
 	"strconv"
+	"strings"
 )
 
 func DefinePath(dt *gen.DefinedTree, path path.TypePath) {
@@ -64,7 +67,7 @@ func ExprToGo(expr parser.DreamMakerExpression, targetType string) string {
 	}
 }
 
-func AssignPath(dt *gen.DefinedTree, path path.TypePath, variable string, expr parser.DreamMakerExpression) {
+func AssignPath(dt *gen.DefinedTree, path path.TypePath, variable string, expr parser.DreamMakerExpression, loc tokenizer.SourceLocation) error {
 	switch path.String() {
 	case "/world":
 		switch variable {
@@ -82,20 +85,34 @@ func AssignPath(dt *gen.DefinedTree, path path.TypePath, variable string, expr p
 		if !dt.Exists(path.String()) {
 			panic("unimplemented: assigning path " + path.String() + " var " + variable)
 		}
-		_, _, goType := dt.ResolveField(path.String(), variable)
+		_, _, goType, found := dt.ResolveField(path.String(), variable)
+		if !found {
+			return fmt.Errorf("no such field %s on %s at %v", variable, path.String(), loc)
+		}
 		// CHECK: is this broken by assigning to a pointer grabbed from a slice?
 		defType := dt.GetTypeByPath(path.String())
 		defType.Inits = append(defType.Inits, gen.DefinedInit{
 			ShortName: variable,
 			Value:     ExprToGo(expr, goType),
+			SourceLoc: loc,
 		})
 	}
+	return nil
+}
+
+// Used when injecting new code
+func SourceHere() tokenizer.SourceLocation {
+	_, file, line, ok := runtime.Caller(1)
+	if ok {
+		return tokenizer.SourceLocation{file, line, 0}
+	}
+	return tokenizer.SourceLocation{"", 0, 0}
 }
 
 func Convert(dmf *parser.DreamMakerFile) (*gen.DefinedTree, error) {
 	dt := &gen.DefinedTree{
-		WorldMob:                "/mob",
-		WorldName:               "World",
+		WorldMob:  "/mob",
+		WorldName: "World",
 	}
 	for _, def := range dmf.Definitions {
 		if def.Type == parser.DefTypeDefine {
@@ -104,7 +121,10 @@ func Convert(dmf *parser.DreamMakerFile) (*gen.DefinedTree, error) {
 	}
 	for _, def := range dmf.Definitions {
 		if def.Type == parser.DefTypeAssign {
-			AssignPath(dt, def.Path, def.Variable, def.Expression)
+			err := AssignPath(dt, def.Path, def.Variable, def.Expression, def.SourceLoc)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	for i, t := range dt.Types {
@@ -120,6 +140,7 @@ func Convert(dmf *parser.DreamMakerFile) (*gen.DefinedTree, error) {
 				t.Inits = append(t.Inits, gen.DefinedInit{
 					ShortName: "name",
 					Value:     EscapeString(parts[len(parts)-1]),
+					SourceLoc: SourceHere(),
 				})
 				dt.Types[i] = t
 			}

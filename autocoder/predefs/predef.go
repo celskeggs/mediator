@@ -23,7 +23,7 @@ type TypeDefiner interface {
 	Exists(typePath string) bool
 	ParentOf(typePath string) string
 	Ref(typePath string, skipOverrides bool) string
-	ResolveField(typePath string, shortName string) (definingStruct string, longName string, goType string)
+	ResolveField(typePath string, shortName string) (definingStruct string, longName string, goType string, found bool)
 }
 
 type TypeInfo struct {
@@ -97,15 +97,15 @@ func (p platformDefiner) StructName(typePath string) string {
 	return p.GetTypeInfo(typePath).StructName()
 }
 
-func (p platformDefiner) ResolveField(typePath string, shortName string) (definingStruct string, longName string, goType string) {
+func (p platformDefiner) ResolveField(typePath string, shortName string) (definingStruct string, longName string, goType string, found bool) {
 	for _, field := range platformFields {
 		if field.DefPath == typePath && shortName == field.ShortName {
-			return p.StructName(field.DefPath), field.LongName, field.GoType
+			return p.StructName(field.DefPath), field.LongName, field.GoType, true
 		}
 	}
 	parentPath := p.ParentOf(typePath)
 	if parentPath == "" {
-		panic("no such field " + shortName)
+		return "", "", "", false
 	}
 	return p.ResolveField(parentPath, shortName)
 }

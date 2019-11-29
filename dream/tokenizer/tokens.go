@@ -57,13 +57,20 @@ const (
 )
 
 type SourceLocation struct {
-	File string
-	Line int
+	File   string
+	Line   int
 	Column int
 }
 
 func (s SourceLocation) String() string {
-	return fmt.Sprintf("%s:%d +%d", s.File, s.Line, s.Column)
+	if s.File == "" {
+		s.File = "unknown"
+	}
+	if s.Column == 0 {
+		return fmt.Sprintf("%s:%d", s.File, s.Line)
+	} else {
+		return fmt.Sprintf("%s:%d:%d", s.File, s.Line, s.Column)
+	}
 }
 
 type Token struct {

@@ -22,7 +22,7 @@ func readChunk(png []byte) (ctype string, data []byte, rest []byte, err error) {
 	if crc32.ChecksumIEEE(png[4:length+8]) != binary.BigEndian.Uint32(png[length+8:length+12]) {
 		return "", nil, nil, errors.New("crc32 mismatch")
 	}
-	return string(png[4:8]), png[8: 8+length], png[length+12:], nil
+	return string(png[4:8]), png[8 : 8+length], png[length+12:], nil
 }
 
 func decompress(zdata []byte) ([]byte, error) {

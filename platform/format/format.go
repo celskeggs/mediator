@@ -1,10 +1,10 @@
 package format
 
 import (
-	"strings"
 	"fmt"
-	"github.com/celskeggs/mediator/util"
 	"github.com/celskeggs/mediator/platform"
+	"github.com/celskeggs/mediator/util"
+	"strings"
 	"unicode"
 )
 

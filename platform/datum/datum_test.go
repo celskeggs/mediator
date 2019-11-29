@@ -1,8 +1,8 @@
 package datum
 
 import (
-	"testing"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 type brokenDatum struct {

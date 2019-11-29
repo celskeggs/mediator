@@ -1,12 +1,12 @@
 package midi
 
 import (
-	"os/exec"
-	"os"
 	"github.com/celskeggs/mediator/util"
-	"path"
-	"log"
 	"github.com/pkg/errors"
+	"log"
+	"os"
+	"os/exec"
+	"path"
 )
 
 func ConvertMIDICached(sourcePath string, cacheDir string) (string, error) {

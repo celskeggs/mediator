@@ -1,15 +1,15 @@
 package websession
 
 import (
+	"fmt"
+	"github.com/celskeggs/mediator/midi"
 	"github.com/celskeggs/mediator/util"
 	"github.com/celskeggs/mediator/webclient"
 	"github.com/celskeggs/mediator/webclient/sprite"
 	"io/ioutil"
 	"path"
-	"time"
-	"fmt"
 	"strings"
-	"github.com/celskeggs/mediator/midi"
+	"time"
 )
 
 type worldServer struct {

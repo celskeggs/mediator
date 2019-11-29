@@ -3,12 +3,12 @@ package webclient
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
 	"time"
-	"github.com/pkg/errors"
 )
 
 func StaticHandlerFromFile(filename string) (http.Handler, error) {

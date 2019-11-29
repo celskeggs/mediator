@@ -1,10 +1,10 @@
 package util
 
 import (
-	"testing"
+	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
-	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestSha256sum(t *testing.T) {

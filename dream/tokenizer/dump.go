@@ -1,11 +1,11 @@
 package tokenizer
 
 import (
-	"io"
-	"github.com/celskeggs/mediator/util"
-	"os"
 	"bufio"
 	"fmt"
+	"github.com/celskeggs/mediator/util"
+	"io"
+	"os"
 )
 
 type RuneLoc struct {
@@ -32,14 +32,16 @@ func FileToRuneChannel(filename string, output chan<- RuneLoc) error {
 		output <- RuneLoc{
 			Rune: ch,
 			Loc: SourceLocation{
-				File: filename,
-				Line: line,
+				File:   filename,
+				Line:   line,
 				Column: column,
 			},
 		}
 		if ch == '\n' {
 			line += 1
 			column = 1
+		} else if ch == '\t' {
+			column += 4
 		} else {
 			column += 1
 		}

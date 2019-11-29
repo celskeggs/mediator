@@ -2,8 +2,8 @@ package datum
 
 import (
 	"github.com/celskeggs/mediator/platform/debug"
-	"runtime"
 	"reflect"
+	"runtime"
 )
 
 // long-lived pointers to Datums need to be Refs
