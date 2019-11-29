@@ -87,54 +87,54 @@ func ExprToGo(expr parser.DreamMakerExpression, targetType gotype.GoType, ctx Co
 	case parser.ExprTypeResourceLiteral:
 		switch ResourceTypeByName(expr.Str) {
 		case ResourceTypeIcon:
-			if targetType == "icon.Icon" || targetType == "interface{}" {
-				return "icons.LoadOrPanic(" + EscapeString(expr.Str) + ")", "*icons.Icon", nil
+			if targetType.Is("*icon.Icon") || targetType.IsInterfaceAny() {
+				return "icons.LoadOrPanic(" + EscapeString(expr.Str) + ")", gotype.ParseGoType("*icons.Icon"), nil
 			}
 		case ResourceTypeAudio:
-			if targetType == "sprite.Sound" || targetType == "interface{}" {
-				return "platform.NewSound(" + EscapeString(expr.Str) + ")", "sprite.Sound", nil
+			if targetType.Is("sprite.Sound") || targetType.IsInterfaceAny() {
+				return "platform.NewSound(" + EscapeString(expr.Str) + ")", gotype.ParseGoType("sprite.Sound"), nil
 			}
 		}
 	case parser.ExprTypeIntegerLiteral:
-		if targetType == "bool" {
-			return strconv.FormatBool(expr.Integer != 0), "bool", nil
-		} else if targetType == "int" || targetType == "interface{}" {
-			return strconv.FormatInt(expr.Integer, 10), "int", nil
+		if targetType.IsBool() {
+			return strconv.FormatBool(expr.Integer != 0), gotype.Bool(), nil
+		} else if targetType.IsInt() || targetType.IsInterfaceAny() {
+			return strconv.FormatInt(expr.Integer, 10), gotype.Int(), nil
 		}
 	case parser.ExprTypeStringLiteral:
-		if targetType == "string" || targetType == "interface{}" {
-			return fmt.Sprintf("%q", expr.Str), "string", nil
+		if targetType.IsString() || targetType.IsInterfaceAny() {
+			return fmt.Sprintf("%q", expr.Str), gotype.String(), nil
 		}
 	case parser.ExprTypeBooleanNot:
-		if targetType == "bool" || targetType == "interface{}" {
-			innerString, _, err := ExprToGo(expr.Children[0], "bool", ctx)
+		if targetType.IsBool() || targetType.IsInterfaceAny() {
+			innerString, _, err := ExprToGo(expr.Children[0], gotype.Bool(), ctx)
 			if err != nil {
-				return "", "", err
+				return "", gotype.None(), err
 			}
-			return fmt.Sprintf("!(%s)", innerString), "bool", nil
+			return fmt.Sprintf("!(%s)", innerString), gotype.Bool(), nil
 		}
 	case parser.ExprTypeCall:
 		util.FIXME("type checking for calls")
 		for _, name := range expr.Names {
 			if name != "" {
-				return "", "", fmt.Errorf("unsupported keyword argument %s at %v", name, expr.SourceLoc)
+				return "", gotype.None(), fmt.Errorf("unsupported keyword argument %s at %v", name, expr.SourceLoc)
 			}
 		}
 		target := expr.Children[0]
 		args := expr.Children[1:]
-		targetString, _, err := ExprToGo(target, "func", ctx)
+		targetString, _, err := ExprToGo(target, gotype.Func(), ctx)
 		if err != nil {
-			return "", "", err
+			return "", gotype.None(), err
 		}
 		var argStrings []string
 		for _, arg := range args {
-			argString, _, err := ExprToGo(arg, "interface{}", ctx)
+			argString, _, err := ExprToGo(arg, gotype.InterfaceAny(), ctx)
 			if err != nil {
-				return "", "", err
+				return "", gotype.None(), err
 			}
 			argStrings = append(argStrings, argString)
 		}
-		return fmt.Sprintf("(%s)(%s)", targetString, strings.Join(argStrings, ", ")), "interface{}", nil
+		return fmt.Sprintf("(%s)(%s)", targetString, strings.Join(argStrings, ", ")), gotype.InterfaceAny(), nil
 	case parser.ExprTypeGetNonLocal:
 		util.FIXME("resolve more types of nonlocals")
 		// look for local fields
@@ -145,18 +145,18 @@ func ExprToGo(expr parser.DreamMakerExpression, targetType gotype.GoType, ctx Co
 			}
 		}
 		// look for global procedures
-		if targetType == "func" || targetType == "interface{}" {
+		if targetType.IsFunc() || targetType.IsInterfaceAny() {
 			record, found := ctx.Tree.ResolveGlobalProcedure(expr.Str)
 			if found {
-				return record.GoRef, "func", nil
+				return record.GoRef, gotype.Func(), nil
 			}
 		}
-		return "", "", fmt.Errorf("cannot find nonlocal %s at %v", expr.Str, expr.SourceLoc)
+		return "", gotype.None(), fmt.Errorf("cannot find nonlocal %s at %v", expr.Str, expr.SourceLoc)
 	case parser.ExprTypeGetLocal:
 		util.FIXME("type checking for locals")
-		return LocalVariablePrefix + expr.Str, "interface{}", nil
+		return LocalVariablePrefix + expr.Str, gotype.InterfaceAny(), nil
 	}
-	return "", "", fmt.Errorf("cannot convert expr %v to type %v at %v", expr, targetType, expr.SourceLoc)
+	return "", gotype.None(), fmt.Errorf("cannot convert expr %v to type %v at %v", expr, targetType, expr.SourceLoc)
 }
 
 func DefineVar(dt *gen.DefinedTree, path path.TypePath, variable string, loc tokenizer.SourceLocation) error {
@@ -175,7 +175,7 @@ func DefineVar(dt *gen.DefinedTree, path path.TypePath, variable string, loc tok
 
 	defType.Fields = append(defType.Fields, gen.DefinedField{
 		Name: variable,
-		Type: "interface{}",
+		Type: gotype.InterfaceAny(),
 	})
 	return nil
 }
@@ -222,7 +222,7 @@ func AssignPath(dt *gen.DefinedTree, path path.TypePath, variable string, expr p
 func StatementToGo(statement parser.DreamMakerStatement, ctx CodeGenContext) (lines []string, err error) {
 	switch statement.Type {
 	case parser.StatementTypeIf:
-		condition, _, err := ExprToGo(statement.From, "bool", ctx)
+		condition, _, err := ExprToGo(statement.From, gotype.Bool(), ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -237,19 +237,19 @@ func StatementToGo(statement parser.DreamMakerStatement, ctx CodeGenContext) (li
 		lines = append(lines, "}")
 		return lines, nil
 	case parser.StatementTypeWrite:
-		target, _, err := ExprToGo(statement.To, "platform.IMob", ctx)
+		target, _, err := ExprToGo(statement.To, gotype.ParseGoType("platform.IMob"), ctx)
 		if err != nil {
 			return nil, err
 		}
-		value, valueType, err := ExprToGo(statement.From, "interface{}", ctx)
+		value, valueType, err := ExprToGo(statement.From, gotype.InterfaceAny(), ctx)
 		if err != nil {
 			return nil, err
 		}
-		if valueType == "string" {
+		if valueType.IsString() {
 			return []string {
 				fmt.Sprintf("(%s).OutputString(%s)", target, value),
 			}, nil
-		} else if valueType == "sprite.Sound" {
+		} else if valueType.Is("sprite.Sound") {
 			return []string {
 				fmt.Sprintf("(%s).OutputSound(%s)", target, value),
 			}, nil
@@ -344,7 +344,7 @@ func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string,
 	defType.Funcs = append(defType.Funcs, gen.DefinedFunc{
 		Name:   function,
 		Params: params,
-		Body:   strings.Join(lines, "\n"),
+		Body:   MergeGoLines(lines),
 	})
 	return nil
 }

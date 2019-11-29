@@ -75,7 +75,7 @@ var platformDefs = []TypeInfo{
 
 var platformFields = []FieldInfo{
 	{"name", "Appearance.Name", "/atom", "string"},
-	{"icon", "Appearance.Icon", "/atom", "icon.Icon"},
+	{"icon", "Appearance.Icon", "/atom", "*icon.Icon"},
 	{"desc", "Appearance.Desc", "/atom", "string"},
 	{"density", "Density", "/atom", "bool"},
 	{"opacity", "Opacity", "/atom", "bool"},
@@ -123,7 +123,7 @@ func (p platformDefiner) ResolveField(typePath path.TypePath, shortName string) 
 	}
 	parentPath := p.ParentOf(typePath)
 	if parentPath.IsEmpty() {
-		return "", "", "", false
+		return "", "", gotype.None(), false
 	}
 	return p.ResolveField(parentPath, shortName)
 }
