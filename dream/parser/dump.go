@@ -42,7 +42,7 @@ func DumpStatementList(output io.Writer, header string, indent int, statements [
 		return err
 	}
 	for _, s := range statements {
-		err := s.Dump(output, indent + 1)
+		err := s.Dump(output, indent+1)
 		if err != nil {
 			return err
 		}

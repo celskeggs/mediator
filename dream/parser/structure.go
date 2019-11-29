@@ -67,40 +67,40 @@ func ExprNone() DreamMakerExpression {
 
 func ExprResourceLiteral(literal string, loc tokenizer.SourceLocation) DreamMakerExpression {
 	return DreamMakerExpression{
-		Type: ExprTypeResourceLiteral,
-		Str:  literal,
+		Type:      ExprTypeResourceLiteral,
+		Str:       literal,
 		SourceLoc: loc,
 	}
 }
 
 func ExprIntegerLiteral(literal int64, loc tokenizer.SourceLocation) DreamMakerExpression {
 	return DreamMakerExpression{
-		Type:    ExprTypeIntegerLiteral,
-		Integer: literal,
+		Type:      ExprTypeIntegerLiteral,
+		Integer:   literal,
 		SourceLoc: loc,
 	}
 }
 
 func ExprStringLiteral(literal string, loc tokenizer.SourceLocation) DreamMakerExpression {
 	return DreamMakerExpression{
-		Type: ExprTypeStringLiteral,
-		Str:  literal,
+		Type:      ExprTypeStringLiteral,
+		Str:       literal,
 		SourceLoc: loc,
 	}
 }
 
 func ExprPathLiteral(path path.TypePath, loc tokenizer.SourceLocation) DreamMakerExpression {
 	return DreamMakerExpression{
-		Type: ExprTypePathLiteral,
-		Path: path,
+		Type:      ExprTypePathLiteral,
+		Path:      path,
 		SourceLoc: loc,
 	}
 }
 
 func ExprStringConcat(exprs []DreamMakerExpression, loc tokenizer.SourceLocation) DreamMakerExpression {
 	return DreamMakerExpression{
-		Type:     ExprTypeStringConcat,
-		Children: exprs,
+		Type:      ExprTypeStringConcat,
+		Children:  exprs,
 		SourceLoc: loc,
 	}
 }

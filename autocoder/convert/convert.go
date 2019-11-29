@@ -64,6 +64,7 @@ type CodeGenContext struct {
 }
 
 type ResourceType int
+
 const (
 	ResourceTypeNone ResourceType = iota
 	ResourceTypeIcon
@@ -246,11 +247,11 @@ func StatementToGo(statement parser.DreamMakerStatement, ctx CodeGenContext) (li
 			return nil, err
 		}
 		if valueType.IsString() {
-			return []string {
+			return []string{
 				fmt.Sprintf("(%s).OutputString(%s)", target, value),
 			}, nil
 		} else if valueType.IsExternal("sprite.Sound") {
-			return []string {
+			return []string{
 				fmt.Sprintf("(%s).OutputSound(%s)", target, value),
 			}, nil
 		} else {
@@ -297,7 +298,7 @@ func MergeGoLines(lines []string) string {
 				panic("internal error: generated code went into negative indentation")
 			}
 		}
-		parts = append(parts, strings.Repeat("\t", indent) + line)
+		parts = append(parts, strings.Repeat("\t", indent)+line)
 		if strings.HasSuffix(line, "{") {
 			indent += 1
 		}
@@ -318,10 +319,10 @@ func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string,
 	}
 
 	util.FIXME("resolve the func first")
-//	_, _, _, found := dt.ResolveFunc(path.String(), function)
-//	if !found {
-//		return fmt.Errorf("no such function %s to implement on %v at %v", function, path, loc)
-//	}
+	//	_, _, _, found := dt.ResolveFunc(path.String(), function)
+	//	if !found {
+	//		return fmt.Errorf("no such function %s to implement on %v at %v", function, path, loc)
+	//	}
 
 	var params []gen.DefinedParam
 	for _, a := range arguments {

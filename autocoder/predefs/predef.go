@@ -81,7 +81,7 @@ var platformFields = []FieldInfo{
 	{"opacity", "Opacity", "/atom", gotype.Bool()},
 }
 
-var platformGlobalProcs = []GlobalProcedureInfo {
+var platformGlobalProcs = []GlobalProcedureInfo{
 	{"ismob", "platform.IsMob"},
 }
 

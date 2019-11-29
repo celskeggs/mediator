@@ -3,7 +3,7 @@ package gotype
 type Kind uint8
 
 const (
-	KindNone         Kind = iota
+	KindNone Kind = iota
 	KindInterfaceAny
 	KindExternal
 	KindBool
