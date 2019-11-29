@@ -62,6 +62,12 @@ func ExprToGo(expr parser.DreamMakerExpression, targetType string) string {
 		} else {
 			return strconv.FormatInt(expr.Integer, 10)
 		}
+	case parser.ExprTypeStringLiteral:
+		if targetType == "string" {
+			return fmt.Sprintf("%q", expr.Str)
+		} else {
+			panic("unimplemented: converting expr " + expr.String() + " to type " + targetType)
+		}
 	default:
 		panic("unimplemented: converting expr " + expr.String() + " to type " + targetType)
 	}
