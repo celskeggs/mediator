@@ -58,7 +58,7 @@ type FieldInfo struct {
 	ShortName string
 	LongName  string
 	DefPath   string
-	GoType    string
+	GoType    gotype.GoType
 }
 
 var platformDefs = []TypeInfo{
@@ -74,11 +74,11 @@ var platformDefs = []TypeInfo{
 }
 
 var platformFields = []FieldInfo{
-	{"name", "Appearance.Name", "/atom", "string"},
-	{"icon", "Appearance.Icon", "/atom", "*icon.Icon"},
-	{"desc", "Appearance.Desc", "/atom", "string"},
-	{"density", "Density", "/atom", "bool"},
-	{"opacity", "Opacity", "/atom", "bool"},
+	{"name", "Appearance.Name", "/atom", gotype.String()},
+	{"icon", "Appearance.Icon", "/atom", gotype.External("*icon.Icon")},
+	{"desc", "Appearance.Desc", "/atom", gotype.String()},
+	{"density", "Density", "/atom", gotype.Bool()},
+	{"opacity", "Opacity", "/atom", gotype.Bool()},
 }
 
 var platformGlobalProcs = []GlobalProcedureInfo {
@@ -118,7 +118,7 @@ func (p platformDefiner) StructName(typePath path.TypePath) string {
 func (p platformDefiner) ResolveField(typePath path.TypePath, shortName string) (definingStruct string, longName string, goType gotype.GoType, found bool) {
 	for _, field := range platformFields {
 		if field.DefPath == typePath.String() && shortName == field.ShortName {
-			return p.StructName(typePath), field.LongName, gotype.ParseGoType(field.GoType), true
+			return p.StructName(typePath), field.LongName, field.GoType, true
 		}
 	}
 	parentPath := p.ParentOf(typePath)

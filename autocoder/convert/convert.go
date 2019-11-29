@@ -87,12 +87,12 @@ func ExprToGo(expr parser.DreamMakerExpression, targetType gotype.GoType, ctx Co
 	case parser.ExprTypeResourceLiteral:
 		switch ResourceTypeByName(expr.Str) {
 		case ResourceTypeIcon:
-			if targetType.Is("*icon.Icon") || targetType.IsInterfaceAny() {
-				return "icons.LoadOrPanic(" + EscapeString(expr.Str) + ")", gotype.ParseGoType("*icons.Icon"), nil
+			if targetType.IsExternal("*icon.Icon") || targetType.IsInterfaceAny() {
+				return "icons.LoadOrPanic(" + EscapeString(expr.Str) + ")", gotype.External("*icons.Icon"), nil
 			}
 		case ResourceTypeAudio:
-			if targetType.Is("sprite.Sound") || targetType.IsInterfaceAny() {
-				return "platform.NewSound(" + EscapeString(expr.Str) + ")", gotype.ParseGoType("sprite.Sound"), nil
+			if targetType.IsExternal("sprite.Sound") || targetType.IsInterfaceAny() {
+				return "platform.NewSound(" + EscapeString(expr.Str) + ")", gotype.External("sprite.Sound"), nil
 			}
 		}
 	case parser.ExprTypeIntegerLiteral:
@@ -237,7 +237,7 @@ func StatementToGo(statement parser.DreamMakerStatement, ctx CodeGenContext) (li
 		lines = append(lines, "}")
 		return lines, nil
 	case parser.StatementTypeWrite:
-		target, _, err := ExprToGo(statement.To, gotype.ParseGoType("platform.IMob"), ctx)
+		target, _, err := ExprToGo(statement.To, gotype.External("platform.IMob"), ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -249,7 +249,7 @@ func StatementToGo(statement parser.DreamMakerStatement, ctx CodeGenContext) (li
 			return []string {
 				fmt.Sprintf("(%s).OutputString(%s)", target, value),
 			}, nil
-		} else if valueType.Is("sprite.Sound") {
+		} else if valueType.IsExternal("sprite.Sound") {
 			return []string {
 				fmt.Sprintf("(%s).OutputSound(%s)", target, value),
 			}, nil
