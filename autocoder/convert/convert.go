@@ -189,9 +189,16 @@ func ExprToGo(expr parser.DreamMakerExpression, targetType gotype.GoType, ctx Co
 		util.FIXME("resolve more types of nonlocals")
 		// look for local fields
 		if !ctx.SrcType.IsEmpty() {
-			_, longName, goType, found := ctx.Tree.ResolveField(ctx.SrcType, expr.Str)
+			definingStruct, longName, goType, found := ctx.Tree.ResolveField(ctx.SrcType, expr.Str)
 			if found {
-				return LocalVariablePrefix + "src." + longName, goType, nil
+				if !targetType.IsInterfaceAny() && !targetType.Equals(goType) {
+					return "", gotype.None(), fmt.Errorf("type mismatch: needed %v but src.%s was %v at %v", targetType, expr.Str, goType, expr.SourceLoc)
+				}
+				if definingStruct == ctx.Tree.GetTypeByPath(ctx.SrcType).StructName() {
+					return LocalVariablePrefix + "src." + longName, goType, nil
+				} else {
+					return LocalVariablePrefix + "src.As" + definingStruct + "()." + longName, goType, nil
+				}
 			}
 		}
 		// look for global procedures
