@@ -53,12 +53,9 @@ type DefinedParam struct {
 
 type DefinedFunc struct {
 	Name   string
+	This   string
 	Params []DefinedParam
 	Body   string
-}
-
-func (d DefinedFunc) Trimmed() string {
-	return "\t" + strings.Replace(strings.TrimSpace(d.Body), "\n", "\n\t", -1)
 }
 
 type DefinedType struct {
@@ -171,6 +168,15 @@ func (t DefinedTree) addContext() (*DefinedTree, error) {
 	return tPtr, nil
 }
 
+func (t *DefinedTree) AddImport(name string) {
+	for _, imp := range t.AllImports() {
+		if imp == name {
+			return
+		}
+	}
+	t.Imports = append(t.Imports, name)
+}
+
 func (t *DefinedTree) Exists(path path.TypePath) bool {
 	return predefs.PlatformDefiner.Exists(path) || t.GetTypeByPath(path) != nil
 }
@@ -209,6 +215,15 @@ func (t *DefinedTree) ResolveField(typePath path.TypePath, shortName string) (de
 		}
 	}
 	return t.ResolveField(t.ParentOf(typePath), shortName)
+}
+
+func (t DefinedTree) ResolveProcedure(typePath path.TypePath, shortName string) (predefs.ProcedureInfo, bool) {
+	defType := t.GetTypeByPath(typePath)
+	if defType == nil {
+		return predefs.PlatformDefiner.ResolveProcedure(typePath, shortName)
+	}
+	util.FIXME("when we actually have proc declarations, and not just implementations, search them here")
+	return t.ResolveProcedure(t.ParentOf(typePath), shortName)
 }
 
 func (t DefinedTree) ResolveGlobalProcedure(name string) (predefs.GlobalProcedureInfo, bool) {
@@ -379,8 +394,8 @@ func (d DefinedWorld) {{.ParentBase}}Template(parent {{.RealParentRef}}) {{.Pare
 {{end -}}
 
 {{- range .Funcs -}}
-func (this *{{$type.StructName}}) {{.Name}}({{range $index, $element := .Params}}{{if ne $index 0}}, {{end}}{{.Name}} {{.Type}}{{end}}) {
-{{.Trimmed}}
+func ({{.This}} *{{$type.StructName}}) {{.Name}}({{range $index, $element := .Params}}{{if ne $index 0}}, {{end}}{{.Name}} {{.Type}}{{end}}) {
+{{.Body}}
 }
 
 {{end -}}

@@ -72,7 +72,7 @@ const (
 )
 
 func ResourceTypeByName(name string) ResourceType {
-	if strings.HasSuffix(name, ".mid") {
+	if strings.HasSuffix(name, ".mid") || strings.HasSuffix(name, ".wav") {
 		return ResourceTypeAudio
 	} else if strings.HasSuffix(name, ".dmi") {
 		return ResourceTypeIcon
@@ -83,6 +83,7 @@ func ResourceTypeByName(name string) ResourceType {
 
 const LocalVariablePrefix = "var"
 
+// Typechecking is done on input; all ExprToGo paths should check that they can provide targetType. Callers do not need to validate goType.
 func ExprToGo(expr parser.DreamMakerExpression, targetType gotype.GoType, ctx CodeGenContext) (exprString string, goType gotype.GoType, err error) {
 	switch expr.Type {
 	case parser.ExprTypeResourceLiteral:
@@ -190,7 +191,7 @@ func ExprToGo(expr parser.DreamMakerExpression, targetType gotype.GoType, ctx Co
 		if !ctx.SrcType.IsEmpty() {
 			_, longName, goType, found := ctx.Tree.ResolveField(ctx.SrcType, expr.Str)
 			if found {
-				return longName, goType, nil
+				return LocalVariablePrefix + "src." + longName, goType, nil
 			}
 		}
 		// look for global procedures
@@ -207,6 +208,22 @@ func ExprToGo(expr parser.DreamMakerExpression, targetType gotype.GoType, ctx Co
 	case parser.ExprTypeGetLocal:
 		util.FIXME("type checking for locals")
 		return LocalVariablePrefix + expr.Str, gotype.InterfaceAny(), nil
+	case parser.ExprTypeStringConcat:
+		var terms []string
+		for _, term := range expr.Children {
+			termString, actualType, err := ExprToGo(term, gotype.InterfaceAny(), ctx)
+			if err != nil {
+				return "", gotype.None(), err
+			}
+			if actualType.IsString() {
+				terms = append(terms, "("+termString+")")
+			} else {
+				util.FIXME("think more carefully here than just assuming it's an atom")
+				ctx.Tree.AddImport("github.com/celskeggs/mediator/platform/format")
+				terms = append(terms, "format.FormatAtom("+termString+")")
+			}
+		}
+		return strings.Join(terms, " + "), gotype.String(), nil
 	}
 	return "", gotype.None(), fmt.Errorf("cannot convert expr %v to type %v at %v", expr, targetType, expr.SourceLoc)
 }
@@ -369,18 +386,35 @@ func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string,
 		panic("expected non-nil type " + path.String())
 	}
 
-	util.FIXME("resolve the func first")
-	//	_, _, _, found := dt.ResolveFunc(path.String(), function)
-	//	if !found {
-	//		return fmt.Errorf("no such function %s to implement on %v at %v", function, path, loc)
-	//	}
+	proc, found := dt.ResolveProcedure(path, function)
+	if !found {
+		return fmt.Errorf("no such function %s to implement on %v at %v", function, path, loc)
+	}
+	if !proc.GoType.IsFuncConcrete() {
+		panic("resolved procedures should always have a concrete type")
+	}
+	if len(proc.GoType.Results) > 0 {
+		return fmt.Errorf("unsupported: function with results at %v", tokenizer.SourceHere())
+	}
 
 	var params []gen.DefinedParam
 	for _, a := range arguments {
+		util.FIXME("check argument type compatibility")
 		params = append(params,
 			gen.DefinedParam{
 				Name: LocalVariablePrefix + a.Name,
-				Type: dt.Ref(a.Type, false),
+				Type: dt.Ref(a.Type, true),
+			},
+		)
+	}
+	if len(params) > len(proc.GoType.Params) {
+		return fmt.Errorf("attempt to define function with more parameters (%v) than overridden function (%v)", len(params), len(proc.GoType.Params))
+	}
+	for i := len(params); i < len(proc.GoType.Params); i++ {
+		params = append(params,
+			gen.DefinedParam{
+				Name: "_",
+				Type: proc.GoType.Params[i].String(),
 			},
 		)
 	}
@@ -395,6 +429,7 @@ func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string,
 
 	defType.Funcs = append(defType.Funcs, gen.DefinedFunc{
 		Name:   function,
+		This:   LocalVariablePrefix + "src",
 		Params: params,
 		Body:   MergeGoLines(lines),
 	})

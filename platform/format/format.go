@@ -28,7 +28,7 @@ func formatMacro(macro string, atom platform.IAtom) string {
 	}
 }
 
-func formatAtom(atom platform.IAtom) string {
+func FormatAtom(atom platform.IAtom) string {
 	return formatMacro("the", atom)
 }
 
@@ -41,7 +41,7 @@ func Format(str string, atoms ...platform.IAtom) string {
 	moreParts := make([]string, len(parts)+len(atoms))
 	moreParts[0] = parts[0]
 	for i := 0; i < len(atoms); i++ {
-		moreParts[2*i+1] = formatAtom(atoms[i])
+		moreParts[2*i+1] = FormatAtom(atoms[i])
 		moreParts[2*i+2] = parts[i+1]
 	}
 	return strings.Join(moreParts, "")

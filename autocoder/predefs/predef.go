@@ -27,6 +27,12 @@ func PathToStructName(path path.TypePath) string {
 	return strings.Join(title, "")
 }
 
+type ProcedureInfo struct {
+	Name    string
+	DefPath path.TypePath
+	GoType  gotype.GoType
+}
+
 type GlobalProcedureInfo struct {
 	Name   string
 	GoRef  string
@@ -39,6 +45,7 @@ type TypeDefiner interface {
 	Ref(typePath path.TypePath, skipOverrides bool) string
 	ResolveField(typePath path.TypePath, shortName string) (definingStruct string, longName string, goType gotype.GoType, found bool)
 	ResolveGlobalProcedure(name string) (GlobalProcedureInfo, bool)
+	ResolveProcedure(typePath path.TypePath, shortName string) (ProcedureInfo, bool)
 }
 
 type TypeInfo struct {
@@ -80,6 +87,36 @@ var platformFields = []FieldInfo{
 	{"desc", "Appearance.Desc", "/atom", gotype.String()},
 	{"density", "Density", "/atom", gotype.Bool()},
 	{"opacity", "Opacity", "/atom", gotype.Bool()},
+}
+
+var platformProcs = []ProcedureInfo{
+	{"Entered", path.ConstTypePath("/atom"),
+		gotype.Func(
+			[]gotype.GoType{
+				gotype.External("platform.IAtomMovable"),
+				gotype.External("platform.IAtom"),
+			},
+			nil,
+			[]string{
+				"",
+				"nil",
+			},
+			[]string{
+				"Obj",
+				"OldLoc",
+			})},
+	{"Bump", path.ConstTypePath("/atom/movable"),
+		gotype.Func(
+			[]gotype.GoType{
+				gotype.External("platform.IAtom"),
+			},
+			nil,
+			[]string{
+				"",
+			},
+			[]string{
+				"Obstacle",
+			})},
 }
 
 var platformGlobalProcs = []GlobalProcedureInfo{
@@ -160,6 +197,15 @@ func (p platformDefiner) ResolveField(typePath path.TypePath, shortName string) 
 		return "", "", gotype.None(), false
 	}
 	return p.ResolveField(parentPath, shortName)
+}
+
+func (p platformDefiner) ResolveProcedure(typePath path.TypePath, shortName string) (ProcedureInfo, bool) {
+	for _, proc := range platformProcs {
+		if proc.DefPath.Equals(typePath) && shortName == proc.Name {
+			return proc, true
+		}
+	}
+	return ProcedureInfo{}, false
 }
 
 func (p platformDefiner) ResolveGlobalProcedure(name string) (GlobalProcedureInfo, bool) {
