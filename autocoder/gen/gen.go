@@ -2,7 +2,9 @@ package gen
 
 import (
 	"fmt"
+	"github.com/celskeggs/mediator/autocoder/gotype"
 	"github.com/celskeggs/mediator/autocoder/predefs"
+	"github.com/celskeggs/mediator/dream/path"
 	"github.com/celskeggs/mediator/dream/tokenizer"
 	"github.com/celskeggs/mediator/util"
 	"io"
@@ -15,18 +17,11 @@ import (
 
 type DefinedField struct {
 	Name string
-	Type string
-}
-
-func ToTitle(name string) string {
-	if name == "" {
-		return ""
-	}
-	return strings.ToUpper(name[0:1]) + name[1:]
+	Type gotype.GoType
 }
 
 func (d DefinedField) LongName() string {
-	return ToTitle(d.Name)
+	return predefs.ToTitle(d.Name)
 }
 
 type DefinedInit struct {
@@ -67,8 +62,8 @@ func (d DefinedFunc) Trimmed() string {
 }
 
 type DefinedType struct {
-	TypePath string
-	BasePath string
+	TypePath path.TypePath
+	BasePath path.TypePath
 
 	Fields []DefinedField
 	Funcs  []DefinedFunc
@@ -101,7 +96,7 @@ func (d *DefinedType) IsDefined() bool {
 }
 
 func (d *DefinedType) IsOverride() bool {
-	return d.TypePath == d.ParentPath()
+	return d.TypePath.Equals(d.ParentPath())
 }
 
 func (d *DefinedType) StructName() string {
@@ -138,22 +133,25 @@ func (d *DefinedType) RealParentRef() string {
 	return d.context.Ref(realParent, true)
 }
 
-func (d *DefinedType) ParentPath() string {
-	if d.BasePath != "" {
+func (d *DefinedType) ParentPath() path.TypePath {
+	if !d.BasePath.IsEmpty() {
 		return d.BasePath
 	} else {
-		parts := strings.Split(d.TypePath, "/")
-		if len(parts) < 3 || parts[0] != "" {
-			panic("cannot autocompute parent path for " + d.TypePath)
+		parent, _, err := d.TypePath.SplitLast()
+		if err != nil {
+			panic("cannot autocompute parent path for " + d.TypePath.String() + ": " + err.Error())
 		}
-		return strings.Join(parts[:len(parts)-1], "/")
+		if len(parent.Segments) == 0 {
+			panic("cannot autocompute parent path for " + d.TypePath.String() + ": root is not a parent")
+		}
+		return parent
 	}
 }
 
 type DefinedTree struct {
 	Types     []DefinedType
 	WorldName string
-	WorldMob  string
+	WorldMob  path.TypePath
 	Imports   []string
 }
 
@@ -173,18 +171,18 @@ func (t DefinedTree) addContext() (*DefinedTree, error) {
 	return tPtr, nil
 }
 
-func (t *DefinedTree) Exists(path string) bool {
+func (t *DefinedTree) Exists(path path.TypePath) bool {
 	return predefs.PlatformDefiner.Exists(path) || t.GetTypeByPath(path) != nil
 }
 
-func (t *DefinedTree) ParentOf(path string) string {
+func (t *DefinedTree) ParentOf(path path.TypePath) path.TypePath {
 	if predefs.PlatformDefiner.Exists(path) {
 		return predefs.PlatformDefiner.ParentOf(path)
 	}
 	return t.GetTypeByPath(path).ParentPath()
 }
 
-func (t *DefinedTree) Ref(path string, skipOverrides bool) (ref string) {
+func (t *DefinedTree) Ref(path path.TypePath, skipOverrides bool) (ref string) {
 	if predefs.PlatformDefiner.Exists(path) {
 		ref = predefs.PlatformDefiner.Ref(path, skipOverrides)
 	}
@@ -195,12 +193,12 @@ func (t *DefinedTree) Ref(path string, skipOverrides bool) (ref string) {
 		}
 	}
 	if ref == "" {
-		panic("could not find ref: " + path)
+		panic("could not find ref: " + path.String())
 	}
 	return ref
 }
 
-func (t *DefinedTree) ResolveField(typePath string, shortName string) (definingStruct string, longName string, goType string, found bool) {
+func (t *DefinedTree) ResolveField(typePath path.TypePath, shortName string) (definingStruct string, longName string, goType gotype.GoType, found bool) {
 	defType := t.GetTypeByPath(typePath)
 	if defType == nil {
 		return predefs.PlatformDefiner.ResolveField(typePath, shortName)
@@ -217,9 +215,9 @@ func (t DefinedTree) ResolveGlobalProcedure(name string) (predefs.GlobalProcedur
 	return predefs.PlatformDefiner.ResolveGlobalProcedure(name)
 }
 
-func (t *DefinedTree) GetTypeByPath(path string) *DefinedType {
+func (t *DefinedTree) GetTypeByPath(path path.TypePath) *DefinedType {
 	for i, dType := range t.Types {
-		if dType.TypePath == path {
+		if dType.TypePath.Equals(path) {
 			return &t.Types[i]
 		}
 	}
@@ -235,9 +233,9 @@ func (t *DefinedTree) GetType(name string) *DefinedType {
 	return nil
 }
 
-func (d *DefinedTree) Extends(subpath string, superpath string) bool {
-	for subpath != "" {
-		if superpath == subpath {
+func (d *DefinedTree) Extends(subpath path.TypePath, superpath path.TypePath) bool {
+	for !subpath.IsEmpty() {
+		if superpath.Equals(subpath) {
 			return true
 		}
 		subpath = d.ParentOf(subpath)

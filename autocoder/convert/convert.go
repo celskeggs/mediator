@@ -3,6 +3,7 @@ package convert
 import (
 	"fmt"
 	"github.com/celskeggs/mediator/autocoder/gen"
+	"github.com/celskeggs/mediator/autocoder/gotype"
 	"github.com/celskeggs/mediator/dream/parser"
 	"github.com/celskeggs/mediator/dream/path"
 	"github.com/celskeggs/mediator/dream/tokenizer"
@@ -13,22 +14,22 @@ import (
 )
 
 func DefinePath(dt *gen.DefinedTree, path path.TypePath) error {
-	if dt.GetTypeByPath(path.String()) != nil {
+	if dt.GetTypeByPath(path) != nil {
 		return nil
 	}
 	switch path.String() {
 	case "/world":
 		// nothing to do
 	default:
-		if dt.Exists(path.String()) {
+		if dt.Exists(path) {
 			// exists, but not as a locally-defined type: we're trying to override something!
 			dt.Types = append(dt.Types, gen.DefinedType{
-				TypePath: path.String(),
-				BasePath: path.String(),
+				TypePath: path,
+				BasePath: path,
 			})
 		} else {
 			dt.Types = append(dt.Types, gen.DefinedType{
-				TypePath: path.String(),
+				TypePath: path,
 			})
 		}
 	}
@@ -81,7 +82,7 @@ func ResourceTypeByName(name string) ResourceType {
 
 const LocalVariablePrefix = "var"
 
-func ExprToGo(expr parser.DreamMakerExpression, targetType string, ctx CodeGenContext) (exprString string, goType string, err error) {
+func ExprToGo(expr parser.DreamMakerExpression, targetType gotype.GoType, ctx CodeGenContext) (exprString string, goType gotype.GoType, err error) {
 	switch expr.Type {
 	case parser.ExprTypeResourceLiteral:
 		switch ResourceTypeByName(expr.Str) {
@@ -138,7 +139,7 @@ func ExprToGo(expr parser.DreamMakerExpression, targetType string, ctx CodeGenCo
 		util.FIXME("resolve more types of nonlocals")
 		// look for local fields
 		if !ctx.SrcType.IsEmpty() {
-			_, longName, goType, found := ctx.Tree.ResolveField(ctx.SrcType.String(), expr.Str)
+			_, longName, goType, found := ctx.Tree.ResolveField(ctx.SrcType, expr.Str)
 			if found {
 				return longName, goType, nil
 			}
@@ -159,15 +160,15 @@ func ExprToGo(expr parser.DreamMakerExpression, targetType string, ctx CodeGenCo
 }
 
 func DefineVar(dt *gen.DefinedTree, path path.TypePath, variable string, loc tokenizer.SourceLocation) error {
-	if !dt.Exists(path.String()) {
+	if !dt.Exists(path) {
 		return fmt.Errorf("no such path %v for declaration of variable %v at %v", path, variable, loc)
 	}
-	defType := dt.GetTypeByPath(path.String())
+	defType := dt.GetTypeByPath(path)
 	if defType == nil {
 		panic("expected non-nil type " + path.String())
 	}
 
-	_, _, _, found := dt.ResolveField(path.String(), variable)
+	_, _, _, found := dt.ResolveField(path, variable)
 	if found {
 		return fmt.Errorf("field %s already defined on %v at %v", variable, path, loc)
 	}
@@ -186,23 +187,23 @@ func AssignPath(dt *gen.DefinedTree, path path.TypePath, variable string, expr p
 		case "name":
 			dt.WorldName = ConstantString(expr)
 		case "mob":
-			dt.WorldMob = ConstantPath(expr).String()
+			dt.WorldMob = ConstantPath(expr)
 			if !dt.Exists(dt.WorldMob) {
-				panic("path " + dt.WorldMob + " does not actually exist in the tree")
+				panic("path " + dt.WorldMob.String() + " does not actually exist in the tree")
 			}
 		default:
 			return fmt.Errorf("no such path %v for assignment of variable %v", path, variable)
 		}
 	default:
-		if !dt.Exists(path.String()) {
+		if !dt.Exists(path) {
 			return fmt.Errorf("no such path %v for assignment of variable %v", path, variable)
 		}
-		_, _, goType, found := dt.ResolveField(path.String(), variable)
+		_, _, goType, found := dt.ResolveField(path, variable)
 		if !found {
-			return fmt.Errorf("no such field %s on %s at %v", variable, path.String(), loc)
+			return fmt.Errorf("no such field %s on %v at %v", variable, path, loc)
 		}
 		// CHECK: is this broken by assigning to a pointer grabbed from a slice?
-		defType := dt.GetTypeByPath(path.String())
+		defType := dt.GetTypeByPath(path)
 		expr, _, err := ExprToGo(expr, goType, CodeGenContext{
 			Tree: dt,
 		})
@@ -308,10 +309,10 @@ func MergeGoLines(lines []string) string {
 }
 
 func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string, arguments []parser.DreamMakerTypedName, body []parser.DreamMakerStatement, loc tokenizer.SourceLocation) error {
-	if !dt.Exists(path.String()) {
+	if !dt.Exists(path) {
 		return fmt.Errorf("no such path %v for implementation of function %v at %v", path, function, loc)
 	}
-	defType := dt.GetTypeByPath(path.String())
+	defType := dt.GetTypeByPath(path)
 	if defType == nil {
 		panic("expected non-nil type " + path.String())
 	}
@@ -327,7 +328,7 @@ func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string,
 		params = append(params,
 			gen.DefinedParam{
 				Name: LocalVariablePrefix + a.Name,
-				Type: dt.GetTypeByPath(a.Type.String()).InterfaceName(),
+				Type: dt.Ref(a.Type, false),
 			},
 		)
 	}
@@ -350,7 +351,7 @@ func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string,
 
 func Convert(dmf *parser.DreamMakerFile) (*gen.DefinedTree, error) {
 	dt := &gen.DefinedTree{
-		WorldMob:  "/mob",
+		WorldMob:  path.ConstTypePath("/mob"),
 		WorldName: "World",
 	}
 	// define all types
@@ -391,7 +392,7 @@ func Convert(dmf *parser.DreamMakerFile) (*gen.DefinedTree, error) {
 	}
 	// insert names for everything unnamed
 	for i, t := range dt.Types {
-		if dt.Extends(t.TypePath, "/atom") && !t.IsOverride() {
+		if dt.Extends(t.TypePath, path.ConstTypePath("/atom")) && !t.IsOverride() {
 			specifiesName := false
 			for _, init := range t.Inits {
 				if init.ShortName == "name" {
@@ -399,10 +400,13 @@ func Convert(dmf *parser.DreamMakerFile) (*gen.DefinedTree, error) {
 				}
 			}
 			if !specifiesName {
-				parts := strings.Split(t.TypePath, "/")
+				_, lastComponent, err := t.TypePath.SplitLast()
+				if err != nil {
+					return nil, err
+				}
 				t.Inits = append(t.Inits, gen.DefinedInit{
 					ShortName: "name",
-					Value:     EscapeString(parts[len(parts)-1]),
+					Value:     EscapeString(lastComponent),
 					SourceLoc: tokenizer.SourceHere(),
 				})
 				dt.Types[i] = t

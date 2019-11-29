@@ -115,3 +115,44 @@ func (t TypePath) String() string {
 		return strings.Join(t.Segments, "/")
 	}
 }
+
+func (t TypePath) Equals(other TypePath) bool {
+	if t.IsAbsolute != other.IsAbsolute || len(t.Segments) != len(other.Segments) {
+		return false
+	}
+	for i, path := range t.Segments {
+		if other.Segments[i] != path {
+			return false
+		}
+	}
+	return true
+}
+
+func ParseTypePath(path string) (TypePath, error) {
+	output := Empty()
+	origPath := path
+	if strings.HasPrefix(path, "/") {
+		output = Root()
+		path = path[1:]
+	}
+	if strings.HasSuffix(path, "/") {
+		path = path[:len(path)-1]
+	}
+	if len(path) > 0 {
+		for _, segment := range strings.Split(path, "/") {
+			if segment == "" {
+				return Empty(), fmt.Errorf("invalid path %q: empty segment", origPath)
+			}
+			output = output.Add(segment)
+		}
+	}
+	return output, nil
+}
+
+func ConstTypePath(path string) TypePath {
+	tp, err := ParseTypePath(path)
+	if err != nil {
+		panic(fmt.Sprintf("constant type paths should always be valid, but %q wasn't", path))
+	}
+	return tp
+}

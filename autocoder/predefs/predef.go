@@ -1,20 +1,28 @@
 package predefs
 
 import (
+	"github.com/celskeggs/mediator/autocoder/gotype"
+	"github.com/celskeggs/mediator/dream/path"
 	"strings"
 )
 
-func PathToStructName(path string) string {
-	if path == "" || path[0] != '/' {
-		panic("invalid type path: " + path)
+func ToTitle(name string) string {
+	if name == "" {
+		return ""
 	}
-	parts := strings.Split(path[1:], "/")
-	title := make([]string, len(parts))
-	for i, part := range parts {
-		if part == "" {
-			panic("invalid type path: " + path)
-		}
-		title[i] = strings.ToUpper(part[0:1]) + part[1:]
+	return strings.ToUpper(name[0:1]) + name[1:]
+}
+
+func PathToStructName(path path.TypePath) string {
+	if path.IsEmpty() {
+		panic("cannot convert empty path to string")
+	}
+	if !path.IsAbsolute {
+		panic("cannot convert non-absolute path to string")
+	}
+	var title []string
+	for _, part := range path.Segments {
+		title = append(title, ToTitle(part))
 	}
 	return strings.Join(title, "")
 }
@@ -25,10 +33,10 @@ type GlobalProcedureInfo struct {
 }
 
 type TypeDefiner interface {
-	Exists(typePath string) bool
-	ParentOf(typePath string) string
-	Ref(typePath string, skipOverrides bool) string
-	ResolveField(typePath string, shortName string) (definingStruct string, longName string, goType string, found bool)
+	Exists(typePath path.TypePath) bool
+	ParentOf(typePath path.TypePath) path.TypePath
+	Ref(typePath path.TypePath, skipOverrides bool) string
+	ResolveField(typePath path.TypePath, shortName string) (definingStruct string, longName string, goType gotype.GoType, found bool)
 	ResolveGlobalProcedure(name string) (GlobalProcedureInfo, bool)
 }
 
@@ -39,7 +47,7 @@ type TypeInfo struct {
 }
 
 func (ti TypeInfo) StructName() string {
-	return PathToStructName(ti.Path)
+	return PathToStructName(path.ConstTypePath(ti.Path))
 }
 
 func (ti TypeInfo) Ref() string {
@@ -82,39 +90,39 @@ type platformDefiner struct {
 
 var PlatformDefiner TypeDefiner = &platformDefiner{}
 
-func (p platformDefiner) GetTypeInfo(typePath string) *TypeInfo {
+func (p platformDefiner) GetTypeInfo(typePath path.TypePath) *TypeInfo {
 	for _, ent := range platformDefs {
-		if ent.Path == typePath {
+		if ent.Path == typePath.String() {
 			return &ent
 		}
 	}
 	return nil
 }
 
-func (p platformDefiner) Exists(typePath string) bool {
+func (p platformDefiner) Exists(typePath path.TypePath) bool {
 	return p.GetTypeInfo(typePath) != nil
 }
 
-func (p platformDefiner) ParentOf(typePath string) string {
-	return p.GetTypeInfo(typePath).Parent
+func (p platformDefiner) ParentOf(typePath path.TypePath) path.TypePath {
+	return path.ConstTypePath(p.GetTypeInfo(typePath).Parent)
 }
 
-func (p platformDefiner) Ref(typePath string, skipOverrides bool) string {
+func (p platformDefiner) Ref(typePath path.TypePath, skipOverrides bool) string {
 	return p.GetTypeInfo(typePath).Ref()
 }
 
-func (p platformDefiner) StructName(typePath string) string {
+func (p platformDefiner) StructName(typePath path.TypePath) string {
 	return p.GetTypeInfo(typePath).StructName()
 }
 
-func (p platformDefiner) ResolveField(typePath string, shortName string) (definingStruct string, longName string, goType string, found bool) {
+func (p platformDefiner) ResolveField(typePath path.TypePath, shortName string) (definingStruct string, longName string, goType gotype.GoType, found bool) {
 	for _, field := range platformFields {
-		if field.DefPath == typePath && shortName == field.ShortName {
-			return p.StructName(field.DefPath), field.LongName, field.GoType, true
+		if field.DefPath == typePath.String() && shortName == field.ShortName {
+			return p.StructName(typePath), field.LongName, gotype.ParseGoType(field.GoType), true
 		}
 	}
 	parentPath := p.ParentOf(typePath)
-	if parentPath == "" {
+	if parentPath.IsEmpty() {
 		return "", "", "", false
 	}
 	return p.ResolveField(parentPath, shortName)
