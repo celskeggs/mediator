@@ -213,6 +213,10 @@ func (t *DefinedTree) ResolveField(typePath string, shortName string) (definingS
 	return t.ResolveField(t.ParentOf(typePath), shortName)
 }
 
+func (t DefinedTree) ResolveGlobalProcedure(name string) (predefs.GlobalProcedureInfo, bool) {
+	return predefs.PlatformDefiner.ResolveGlobalProcedure(name)
+}
+
 func (t *DefinedTree) GetTypeByPath(path string) *DefinedType {
 	for i, dType := range t.Types {
 		if dType.TypePath == path {

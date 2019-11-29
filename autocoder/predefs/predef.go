@@ -19,11 +19,17 @@ func PathToStructName(path string) string {
 	return strings.Join(title, "")
 }
 
+type GlobalProcedureInfo struct {
+	Name  string
+	GoRef string
+}
+
 type TypeDefiner interface {
 	Exists(typePath string) bool
 	ParentOf(typePath string) string
 	Ref(typePath string, skipOverrides bool) string
 	ResolveField(typePath string, shortName string) (definingStruct string, longName string, goType string, found bool)
+	ResolveGlobalProcedure(name string) (GlobalProcedureInfo, bool)
 }
 
 type TypeInfo struct {
@@ -67,6 +73,10 @@ var platformFields = []FieldInfo{
 	{"opacity", "Opacity", "/atom", "bool"},
 }
 
+var platformGlobalProcs = []GlobalProcedureInfo {
+	{"ismob", "platform.IsMob"},
+}
+
 type platformDefiner struct {
 }
 
@@ -108,4 +118,13 @@ func (p platformDefiner) ResolveField(typePath string, shortName string) (defini
 		return "", "", "", false
 	}
 	return p.ResolveField(parentPath, shortName)
+}
+
+func (p platformDefiner) ResolveGlobalProcedure(name string) (GlobalProcedureInfo, bool) {
+	for _, proc := range platformGlobalProcs {
+		if proc.Name == name {
+			return proc, true
+		}
+	}
+	return GlobalProcedureInfo{}, false
 }

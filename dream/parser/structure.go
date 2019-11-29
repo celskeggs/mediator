@@ -239,6 +239,11 @@ func (dms DreamMakerStatement) String() string {
 	if !dms.To.IsNone() {
 		params = append(params, fmt.Sprintf("to=%v", dms.To))
 	}
+	if len(dms.Body) > 0 {
+		for _, statement := range dms.Body {
+			params = append(params, statement.String())
+		}
+	}
 	return fmt.Sprintf("%v(%s)", dms.Type, strings.Join(params, ", "))
 }
 
