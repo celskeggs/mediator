@@ -9,12 +9,12 @@ import (
 )
 
 type input struct {
-	Channel   <-chan tokenizer.Token
-	NextToken tokenizer.Token
+	Channel    <-chan tokenizer.Token
+	NextTokens []tokenizer.Token
 }
 
-func (i *input) HasNext() bool {
-	if i.NextToken.IsNone() {
+func (i *input) HasLookahead(n int) bool {
+	for len(i.NextTokens) <= n {
 		next, ok := <-i.Channel
 		if !ok {
 			return false
@@ -22,23 +22,32 @@ func (i *input) HasNext() bool {
 		if next.IsNone() {
 			panic("should not have gotten TokNone")
 		}
-		i.NextToken = next
+		i.NextTokens = append(i.NextTokens, next)
 	}
 	return true
 }
 
-func (i *input) Peek() tokenizer.Token {
-	if !i.HasNext() {
+func (i *input) HasNext() bool {
+	return i.HasLookahead(0)
+}
+
+func (i *input) LookAhead(n int) tokenizer.Token {
+	if !i.HasLookahead(n) {
 		return tokenizer.NoToken()
 	}
-	return i.NextToken
+	return i.NextTokens[n]
+}
+
+func (i *input) Peek() tokenizer.Token {
+	return i.LookAhead(0)
 }
 
 func (i *input) Consume() {
 	if !i.HasNext() {
 		panic("consume when no tokens are available")
 	}
-	i.NextToken = tokenizer.NoToken()
+	copy(i.NextTokens[:len(i.NextTokens)-1], i.NextTokens[1:])
+	i.NextTokens = i.NextTokens[:len(i.NextTokens)-1]
 }
 
 func (i *input) Take() tokenizer.Token {
@@ -93,7 +102,7 @@ func ParseDM(tokens <-chan tokenizer.Token) (*DreamMakerFile, error) {
 			// drain input
 		}
 	}()
-	input := &input{tokens, tokenizer.NoToken()}
+	input := &input{tokens, nil}
 	return parseFile(input)
 }
 

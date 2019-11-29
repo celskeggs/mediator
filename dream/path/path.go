@@ -56,7 +56,7 @@ func (t TypePath) Join(o TypePath) TypePath {
 }
 
 func (t TypePath) SplitLast() (TypePath, string, error) {
-	if len(t.Segments) < 2 {
+	if len(t.Segments) < 1 {
 		return Empty(), "", errors.New("type path not long enough")
 	}
 	return TypePath{

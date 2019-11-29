@@ -40,8 +40,6 @@ func FileToRuneChannel(filename string, output chan<- RuneLoc) error {
 		if ch == '\n' {
 			line += 1
 			column = 1
-		} else if ch == '\t' {
-			column += 4
 		} else {
 			column += 1
 		}

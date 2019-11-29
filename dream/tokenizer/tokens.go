@@ -1,6 +1,9 @@
 package tokenizer
 
-import "fmt"
+import (
+	"fmt"
+	"runtime"
+)
 
 type TokenType uint8
 
@@ -28,6 +31,10 @@ const (
 	TokLeftShift
 	TokRightShift
 	TokNot
+
+	// keywords
+	TokKeywordIf
+	TokKeywordReturn
 
 	// literals
 	TokInteger
@@ -71,6 +78,15 @@ func (s SourceLocation) String() string {
 	} else {
 		return fmt.Sprintf("%s:%d:%d", s.File, s.Line, s.Column)
 	}
+}
+
+// Used when injecting new code
+func SourceHere() SourceLocation {
+	_, file, line, ok := runtime.Caller(1)
+	if ok {
+		return SourceLocation{file, line, 0}
+	}
+	return SourceLocation{"", 0, 0}
 }
 
 type Token struct {
@@ -135,6 +151,10 @@ func (t TokenType) String() string {
 		return "TokRightShift"
 	case TokNot:
 		return "TokNot"
+	case TokKeywordIf:
+		return "TokKeywordIf"
+	case TokKeywordReturn:
+		return "TokKeywordReturn"
 	case TokInteger:
 		return "TokInteger"
 	case TokSymbol:

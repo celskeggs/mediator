@@ -7,7 +7,6 @@ import (
 	"github.com/celskeggs/mediator/dream/path"
 	"github.com/celskeggs/mediator/dream/tokenizer"
 	"github.com/pkg/errors"
-	"runtime"
 	"strconv"
 	"strings"
 )
@@ -159,13 +158,8 @@ func AssignPath(dt *gen.DefinedTree, path path.TypePath, variable string, expr p
 	return nil
 }
 
-// Used when injecting new code
-func SourceHere() tokenizer.SourceLocation {
-	_, file, line, ok := runtime.Caller(1)
-	if ok {
-		return tokenizer.SourceLocation{file, line, 0}
-	}
-	return tokenizer.SourceLocation{"", 0, 0}
+func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string, arguments []parser.DreamMakerTypedName, body []parser.DreamMakerStatement, loc tokenizer.SourceLocation) error {
+	return fmt.Errorf("unimplemented: function implementation generation at %v", tokenizer.SourceHere())
 }
 
 func Convert(dmf *parser.DreamMakerFile) (*gen.DefinedTree, error) {
@@ -200,6 +194,15 @@ func Convert(dmf *parser.DreamMakerFile) (*gen.DefinedTree, error) {
 			}
 		}
 	}
+	// implement all functions
+	for _, def := range dmf.Definitions {
+		if def.Type == parser.DefTypeImplement {
+			err := ImplementFunction(dt, def.Path, def.Variable, def.Arguments, def.Body, def.SourceLoc)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
 	// insert names for everything unnamed
 	for i, t := range dt.Types {
 		if dt.Extends(t.TypePath, "/atom") && !t.IsOverride() {
@@ -214,7 +217,7 @@ func Convert(dmf *parser.DreamMakerFile) (*gen.DefinedTree, error) {
 				t.Inits = append(t.Inits, gen.DefinedInit{
 					ShortName: "name",
 					Value:     EscapeString(parts[len(parts)-1]),
-					SourceLoc: SourceHere(),
+					SourceLoc: tokenizer.SourceHere(),
 				})
 				dt.Types[i] = t
 			}

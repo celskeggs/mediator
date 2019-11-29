@@ -310,7 +310,15 @@ func tokenizeInternal(s *scan, output chan<- Token, terminator rune) error {
 		case IsValidInIdentifier(ch):
 			loc := s.Loc
 			s.Untake(ch)
-			output <- TokSymbol.tokenStr(s.AllMatching(IsValidInIdentifier), loc)
+			sym := s.AllMatching(IsValidInIdentifier)
+			switch sym {
+			case "if":
+				output <- TokKeywordIf.token(loc)
+			case "return":
+				output <- TokKeywordReturn.token(loc)
+			default:
+				output <- TokSymbol.tokenStr(sym, loc)
+			}
 		default:
 			return fmt.Errorf("unexpected character: '%s' at %v", string([]rune{ch}), s.Loc)
 		}
