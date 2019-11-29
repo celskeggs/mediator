@@ -115,7 +115,6 @@ func ExprToGo(expr parser.DreamMakerExpression, targetType gotype.GoType, ctx Co
 			return fmt.Sprintf("!(%s)", innerString), gotype.Bool(), nil
 		}
 	case parser.ExprTypeCall:
-		util.FIXME("type checking for calls")
 		for _, name := range expr.Names {
 			if name != "" {
 				return "", gotype.None(), fmt.Errorf("unsupported keyword argument %s at %v", name, expr.SourceLoc)
@@ -123,19 +122,28 @@ func ExprToGo(expr parser.DreamMakerExpression, targetType gotype.GoType, ctx Co
 		}
 		target := expr.Children[0]
 		args := expr.Children[1:]
-		targetString, _, err := ExprToGo(target, gotype.Func(), ctx)
+		targetString, concrete, err := ExprToGo(target, gotype.FuncAbstractParams([]gotype.GoType{targetType}), ctx)
 		if err != nil {
 			return "", gotype.None(), err
 		}
+		if !concrete.IsFuncConcrete() {
+			return "", gotype.None(), fmt.Errorf("concrete func required, but found %v", concrete)
+		}
+		if len(concrete.Results) != 1 {
+			return "", gotype.None(), fmt.Errorf("can only handle funcs with exactly 1 result, but found %v", concrete)
+		}
+		if len(concrete.Params) != len(args) {
+			return "", gotype.None(), fmt.Errorf("expected func with %d arguments, but found %v", len(args), concrete)
+		}
 		var argStrings []string
-		for _, arg := range args {
-			argString, _, err := ExprToGo(arg, gotype.InterfaceAny(), ctx)
+		for i, arg := range args {
+			argString, _, err := ExprToGo(arg, concrete.Params[i], ctx)
 			if err != nil {
 				return "", gotype.None(), err
 			}
 			argStrings = append(argStrings, argString)
 		}
-		return fmt.Sprintf("(%s)(%s)", targetString, strings.Join(argStrings, ", ")), gotype.InterfaceAny(), nil
+		return fmt.Sprintf("(%s)(%s)", targetString, strings.Join(argStrings, ", ")), concrete.Results[0], nil
 	case parser.ExprTypeGetNonLocal:
 		util.FIXME("resolve more types of nonlocals")
 		// look for local fields
@@ -148,8 +156,11 @@ func ExprToGo(expr parser.DreamMakerExpression, targetType gotype.GoType, ctx Co
 		// look for global procedures
 		if targetType.IsFunc() || targetType.IsInterfaceAny() {
 			record, found := ctx.Tree.ResolveGlobalProcedure(expr.Str)
+			if !record.GoType.IsFuncConcrete() {
+				return "", gotype.None(), fmt.Errorf("discovered global func for %s must be of a concrete type, not %v", expr.Str, record.GoType)
+			}
 			if found {
-				return record.GoRef, gotype.Func(), nil
+				return record.GoRef, record.GoType, nil
 			}
 		}
 		return "", gotype.None(), fmt.Errorf("cannot find nonlocal %s at %v", expr.Str, expr.SourceLoc)

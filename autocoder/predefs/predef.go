@@ -28,8 +28,9 @@ func PathToStructName(path path.TypePath) string {
 }
 
 type GlobalProcedureInfo struct {
-	Name  string
-	GoRef string
+	Name   string
+	GoRef  string
+	GoType gotype.GoType
 }
 
 type TypeDefiner interface {
@@ -82,7 +83,7 @@ var platformFields = []FieldInfo{
 }
 
 var platformGlobalProcs = []GlobalProcedureInfo{
-	{"ismob", "platform.IsMob"},
+	{"ismob", "platform.IsMob", gotype.Func([]gotype.GoType{gotype.External("platform.IAtom")}, []gotype.GoType{gotype.Bool()})},
 }
 
 type platformDefiner struct {

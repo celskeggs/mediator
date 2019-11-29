@@ -1,5 +1,10 @@
 package gotype
 
+import (
+	"fmt"
+	"strings"
+)
+
 type Kind uint8
 
 const (
@@ -10,6 +15,7 @@ const (
 	KindInt
 	KindString
 	KindFunc
+	KindFuncAbstractParams
 )
 
 func (k Kind) String() string {
@@ -28,6 +34,8 @@ func (k Kind) String() string {
 		return "KindString"
 	case KindFunc:
 		return "KindFunc"
+	case KindFuncAbstractParams:
+		return "KindFuncAbstractParams"
 	default:
 		panic("unrecognized kind with ID=" + string(k))
 	}
@@ -35,7 +43,17 @@ func (k Kind) String() string {
 
 type GoType struct {
 	Kind
-	Param string
+	Ref string
+	Params []GoType
+	Results []GoType
+}
+
+func typesToString(types []GoType) string {
+	var parts []string
+	for _, t := range types {
+		parts = append(parts, t.String())
+	}
+	return strings.Join(parts, ", ")
 }
 
 func (g GoType) String() string {
@@ -45,7 +63,7 @@ func (g GoType) String() string {
 	case KindInterfaceAny:
 		return "interface{}"
 	case KindExternal:
-		return g.Param
+		return g.Ref
 	case KindBool:
 		return "bool"
 	case KindInt:
@@ -53,14 +71,49 @@ func (g GoType) String() string {
 	case KindString:
 		return "string"
 	case KindFunc:
-		return "func"
+		return fmt.Sprintf("func(%s)(%s)", typesToString(g.Params), typesToString(g.Results))
+	case KindFuncAbstractParams:
+		return fmt.Sprintf("func(...)(%s)", typesToString(g.Results))
 	default:
 		panic("cannot stringify Go type with unrecognized kind " + g.Kind.String())
 	}
 }
 
 func (g GoType) Equals(other GoType) bool {
-	return g == other
+	if g.Kind != other.Kind {
+		return false
+	}
+	switch g.Kind {
+	case KindExternal:
+		return g.Ref == other.Ref
+	case KindFunc:
+		if len(g.Params) != len(other.Params) || len(g.Results) != len(other.Results) {
+			return false
+		}
+		for i, param := range g.Params {
+			if !param.Equals(other.Params[i]) {
+				return false
+			}
+		}
+		for i, result := range g.Results {
+			if !result.Equals(other.Results[i]) {
+				return false
+			}
+		}
+		return true
+	case KindFuncAbstractParams:
+		if len(g.Results) != len(other.Results) {
+			return false
+		}
+		for i, result := range g.Results {
+			if !result.Equals(other.Results[i]) {
+				return false
+			}
+		}
+		return true
+	default:
+		return true
+	}
 }
 
 func (g GoType) IsInterfaceAny() bool {
@@ -68,7 +121,7 @@ func (g GoType) IsInterfaceAny() bool {
 }
 
 func (g GoType) IsExternal(other string) bool {
-	return g.Kind == KindExternal && g.Param == other
+	return g.Kind == KindExternal && g.Ref == other
 }
 
 func (g GoType) IsBool() bool {
@@ -84,6 +137,10 @@ func (g GoType) IsString() bool {
 }
 
 func (g GoType) IsFunc() bool {
+	return g.Kind == KindFunc || g.Kind == KindFuncAbstractParams
+}
+
+func (g GoType) IsFuncConcrete() bool {
 	return g.Kind == KindFunc
 }
 
@@ -101,8 +158,8 @@ func InterfaceAny() GoType {
 
 func External(ref string) GoType {
 	return GoType{
-		Kind:  KindExternal,
-		Param: ref,
+		Kind: KindExternal,
+		Ref:  ref,
 	}
 }
 
@@ -124,8 +181,17 @@ func String() GoType {
 	}
 }
 
-func Func() GoType {
+func Func(params []GoType, results []GoType) GoType {
 	return GoType{
-		Kind: KindFunc,
+		Kind:    KindFunc,
+		Params:  params,
+		Results: results,
+	}
+}
+
+func FuncAbstractParams(results []GoType) GoType {
+	return GoType{
+		Kind:    KindFuncAbstractParams,
+		Results: results,
 	}
 }
