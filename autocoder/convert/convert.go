@@ -6,24 +6,34 @@ import (
 	"github.com/celskeggs/mediator/dream/parser"
 	"github.com/celskeggs/mediator/dream/path"
 	"github.com/celskeggs/mediator/dream/tokenizer"
+	"github.com/celskeggs/mediator/util"
 	"github.com/pkg/errors"
 	"runtime"
 	"strconv"
 	"strings"
 )
 
-func DefinePath(dt *gen.DefinedTree, path path.TypePath) {
-	if dt.Exists(path.String()) {
-		return
+func DefinePath(dt *gen.DefinedTree, path path.TypePath) error {
+	if dt.GetTypeByPath(path.String()) != nil {
+		return nil
 	}
 	switch path.String() {
 	case "/world":
 		// nothing to do
 	default:
-		dt.Types = append(dt.Types, gen.DefinedType{
-			TypePath: path.String(),
-		})
+		if dt.Exists(path.String()) {
+			// exists, but not as a locally-defined type: we're trying to override something!
+			dt.Types = append(dt.Types, gen.DefinedType{
+				TypePath: path.String(),
+				BasePath: path.String(),
+			})
+		} else {
+			dt.Types = append(dt.Types, gen.DefinedType{
+				TypePath: path.String(),
+			})
+		}
 	}
+	return nil
 }
 
 func ConstantString(expr parser.DreamMakerExpression) string {
@@ -48,29 +58,67 @@ func EscapeString(str string) string {
 	return "\"" + str + "\""
 }
 
-func ExprToGo(expr parser.DreamMakerExpression, targetType string) string {
+type ResourceType int
+const (
+	ResourceTypeNone ResourceType = iota
+	ResourceTypeIcon
+	ResourceTypeAudio
+)
+
+func ResourceTypeByName(name string) ResourceType {
+	if strings.HasSuffix(name, ".mid") {
+		return ResourceTypeAudio
+	} else if strings.HasSuffix(name, ".dmi") {
+		return ResourceTypeIcon
+	} else {
+		return ResourceTypeNone
+	}
+}
+
+func ExprToGo(expr parser.DreamMakerExpression, targetType string) (string, error) {
 	switch expr.Type {
 	case parser.ExprTypeResourceLiteral:
-		if targetType == "icon.Icon" {
-			return "icons.LoadOrPanic(" + EscapeString(expr.Str) + ")"
-		} else {
-			panic("unimplemented: converting expr " + expr.String() + " to type " + targetType)
+		switch ResourceTypeByName(expr.Str) {
+		case ResourceTypeIcon:
+			if targetType == "icon.Icon" || targetType == "interface{}" {
+				return "icons.LoadOrPanic(" + EscapeString(expr.Str) + ")", nil
+			}
+		case ResourceTypeAudio:
+			util.FIXME("implement audio support")
 		}
 	case parser.ExprTypeIntegerLiteral:
 		if targetType == "bool" {
-			return strconv.FormatBool(expr.Integer != 0)
-		} else {
-			return strconv.FormatInt(expr.Integer, 10)
+			return strconv.FormatBool(expr.Integer != 0), nil
+		} else if targetType == "int" || targetType == "interface{}" {
+			return strconv.FormatInt(expr.Integer, 10), nil
 		}
 	case parser.ExprTypeStringLiteral:
-		if targetType == "string" {
-			return fmt.Sprintf("%q", expr.Str)
-		} else {
-			panic("unimplemented: converting expr " + expr.String() + " to type " + targetType)
+		if targetType == "string" || targetType == "interface{}" {
+			return fmt.Sprintf("%q", expr.Str), nil
 		}
-	default:
-		panic("unimplemented: converting expr " + expr.String() + " to type " + targetType)
 	}
+	return "", fmt.Errorf("cannot convert expr %v to type %v at %v", expr, targetType, expr.SourceLoc)
+}
+
+func DefineVar(dt *gen.DefinedTree, path path.TypePath, variable string, loc tokenizer.SourceLocation) error {
+	if !dt.Exists(path.String()) {
+		return fmt.Errorf("no such path %v for declaration of variable %v at %v", path, variable, loc)
+	}
+	defType := dt.GetTypeByPath(path.String())
+	if defType == nil {
+		panic("expected non-nil type " + path.String())
+	}
+
+	_, _, _, found := dt.ResolveField(path.String(), variable)
+	if found {
+		return fmt.Errorf("field %s already defined on %v at %v", variable, path, loc)
+	}
+
+	defType.Fields = append(defType.Fields, gen.DefinedField{
+		Name: variable,
+		Type: "interface{}",
+	})
+	return nil
 }
 
 func AssignPath(dt *gen.DefinedTree, path path.TypePath, variable string, expr parser.DreamMakerExpression, loc tokenizer.SourceLocation) error {
@@ -85,11 +133,11 @@ func AssignPath(dt *gen.DefinedTree, path path.TypePath, variable string, expr p
 				panic("path " + dt.WorldMob + " does not actually exist in the tree")
 			}
 		default:
-			panic("unimplemented: assigning path " + path.String() + " var " + variable)
+			return fmt.Errorf("no such path %v for assignment of variable %v", path, variable)
 		}
 	default:
 		if !dt.Exists(path.String()) {
-			panic("unimplemented: assigning path " + path.String() + " var " + variable)
+			return fmt.Errorf("no such path %v for assignment of variable %v", path, variable)
 		}
 		_, _, goType, found := dt.ResolveField(path.String(), variable)
 		if !found {
@@ -97,9 +145,13 @@ func AssignPath(dt *gen.DefinedTree, path path.TypePath, variable string, expr p
 		}
 		// CHECK: is this broken by assigning to a pointer grabbed from a slice?
 		defType := dt.GetTypeByPath(path.String())
+		expr, err := ExprToGo(expr, goType)
+		if err != nil {
+			return err
+		}
 		defType.Inits = append(defType.Inits, gen.DefinedInit{
 			ShortName: variable,
-			Value:     ExprToGo(expr, goType),
+			Value:     expr,
 			SourceLoc: loc,
 		})
 	}
@@ -120,11 +172,25 @@ func Convert(dmf *parser.DreamMakerFile) (*gen.DefinedTree, error) {
 		WorldMob:  "/mob",
 		WorldName: "World",
 	}
+	// define all types
 	for _, def := range dmf.Definitions {
 		if def.Type == parser.DefTypeDefine {
-			DefinePath(dt, def.Path)
+			err := DefinePath(dt, def.Path)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
+	// declare all variables
+	for _, def := range dmf.Definitions {
+		if def.Type == parser.DefTypeVarDef {
+			err := DefineVar(dt, def.Path, def.Variable, def.SourceLoc)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	// assign all values
 	for _, def := range dmf.Definitions {
 		if def.Type == parser.DefTypeAssign {
 			err := AssignPath(dt, def.Path, def.Variable, def.Expression, def.SourceLoc)
@@ -133,8 +199,9 @@ func Convert(dmf *parser.DreamMakerFile) (*gen.DefinedTree, error) {
 			}
 		}
 	}
+	// insert names for everything unnamed
 	for i, t := range dt.Types {
-		if dt.Extends(t.TypePath, "/atom") {
+		if dt.Extends(t.TypePath, "/atom") && !t.IsOverride() {
 			specifiesName := false
 			for _, init := range t.Inits {
 				if init.ShortName == "name" {

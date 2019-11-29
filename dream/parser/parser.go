@@ -29,6 +29,7 @@ func parsePath(i *input) (path.TypePath, error) {
 }
 
 func parseExpression(i *input) (DreamMakerExpression, error) {
+	loc := i.Peek().Loc
 	if i.Accept(tokenizer.TokStringStart) {
 		var subexpressions []DreamMakerExpression
 		for !i.Accept(tokenizer.TokStringEnd) {
@@ -46,26 +47,26 @@ func parseExpression(i *input) (DreamMakerExpression, error) {
 				if err != nil {
 					return ExprNone(), err
 				}
-				subexpressions = append(subexpressions, ExprStringLiteral(tok.Str))
+				subexpressions = append(subexpressions, ExprStringLiteral(tok.Str, tok.Loc))
 			}
 		}
 		if len(subexpressions) == 0 {
-			return ExprStringLiteral(""), nil
+			return ExprStringLiteral("", loc), nil
 		} else if len(subexpressions) == 1 {
 			return subexpressions[0], nil
 		} else {
-			return ExprStringConcat(subexpressions), nil
+			return ExprStringConcat(subexpressions, loc), nil
 		}
 	} else if tok, ok := i.AcceptParam(tokenizer.TokInteger); ok {
-		return ExprIntegerLiteral(tok.Int), nil
+		return ExprIntegerLiteral(tok.Int, loc), nil
 	} else if tok, ok := i.AcceptParam(tokenizer.TokResource); ok {
-		return ExprResourceLiteral(tok.Str), nil
+		return ExprResourceLiteral(tok.Str, loc), nil
 	} else if i.Peek().TokenType == tokenizer.TokSlash {
 		tpath, err := parsePath(i)
 		if err != nil {
 			return ExprNone(), err
 		}
-		return ExprPathLiteral(tpath), nil
+		return ExprPathLiteral(tpath, loc), nil
 	} else {
 		return ExprNone(), fmt.Errorf("invalid token %v when parsing expression at %v", i.Peek(), i.Peek().Loc)
 	}
@@ -81,6 +82,29 @@ func parseBlock(i *input, basePath path.TypePath) ([]DreamMakerDefinition, error
 		return nil, err
 	}
 	fullPath := basePath.Join(relPath)
+	err = fullPath.CheckKeywords()
+	if err != nil {
+		return nil, err
+	}
+	if fullPath.IsVarDef() {
+		varTarget, varName := fullPath.SplitVarDef()
+		if i.Accept(tokenizer.TokSetEqual) {
+			expr, err := parseExpression(i)
+			if err != nil {
+				return nil, err
+			}
+			return []DreamMakerDefinition{
+				DefVarDef(varTarget, varName, loc),
+				DefAssign(varTarget, varName, expr, loc),
+			}, nil
+		} else if i.Accept(tokenizer.TokNewline) {
+			return []DreamMakerDefinition{
+				DefVarDef(varTarget, varName, loc),
+			}, nil
+		} else {
+			return nil, fmt.Errorf("expected valid start-var token, not %s at %v", i.Peek().String(), i.Peek().Loc)
+		}
+	}
 	if i.Accept(tokenizer.TokSetEqual) {
 		expr, err := parseExpression(i)
 		if err != nil {

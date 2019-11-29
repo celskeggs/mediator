@@ -14,9 +14,8 @@ import (
 )
 
 type DefinedField struct {
-	Name    string
-	Type    string
-	Default string
+	Name string
+	Type string
 }
 
 func ToTitle(name string) string {
@@ -78,6 +77,7 @@ type DefinedType struct {
 	context *DefinedTree
 }
 
+// collects additional information required for actually setting the initialized fields
 func (d DefinedType) addContext(dt *DefinedTree) (DefinedType, error) {
 	dPtr := &d
 	dPtr.context = dt
@@ -131,6 +131,11 @@ func (d *DefinedType) ParentName() string {
 
 func (d *DefinedType) ParentRef() string {
 	return d.context.Ref(d.ParentPath(), true)
+}
+
+func (d *DefinedType) RealParentRef() string {
+	realParent := d.context.ParentOf(d.TypePath)
+	return d.context.Ref(realParent, true)
 }
 
 func (d *DefinedType) ParentPath() string {
@@ -359,12 +364,12 @@ func Cast{{.StructName}}(base {{.ParentRef}}) {{.InterfaceName}} {
 	}
 }
 
-func (d DefinedWorld) {{.ParentBase}}Template(parent platform.IAtom) {{.ParentRef}} {
+func (d DefinedWorld) {{.ParentBase}}Template(parent {{.RealParentRef}}) {{.ParentRef}} {
 	base := d.BaseTreeDefiner.{{.ParentBase}}Template(parent)
 	return &{{.StructName}}{
 		{{.ParentName}}: base,
-		{{- range .Fields}}
-		{{.LongName}}: {{.Default}},
+		{{- range .Inits}}
+		{{.LongName}}: {{.Value}},
 		{{- end}}
 	}
 }

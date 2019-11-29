@@ -38,11 +38,12 @@ func (et ExprType) String() string {
 }
 
 type DreamMakerExpression struct {
-	Type     ExprType
-	Str      string
-	Integer  int64
-	Children []DreamMakerExpression
-	Path     path.TypePath
+	Type      ExprType
+	Str       string
+	Integer   int64
+	Children  []DreamMakerExpression
+	Path      path.TypePath
+	SourceLoc tokenizer.SourceLocation
 }
 
 func ExprNone() DreamMakerExpression {
@@ -51,38 +52,43 @@ func ExprNone() DreamMakerExpression {
 	}
 }
 
-func ExprResourceLiteral(literal string) DreamMakerExpression {
+func ExprResourceLiteral(literal string, loc tokenizer.SourceLocation) DreamMakerExpression {
 	return DreamMakerExpression{
 		Type: ExprTypeResourceLiteral,
 		Str:  literal,
+		SourceLoc: loc,
 	}
 }
 
-func ExprIntegerLiteral(literal int64) DreamMakerExpression {
+func ExprIntegerLiteral(literal int64, loc tokenizer.SourceLocation) DreamMakerExpression {
 	return DreamMakerExpression{
 		Type:    ExprTypeIntegerLiteral,
 		Integer: literal,
+		SourceLoc: loc,
 	}
 }
 
-func ExprStringLiteral(literal string) DreamMakerExpression {
+func ExprStringLiteral(literal string, loc tokenizer.SourceLocation) DreamMakerExpression {
 	return DreamMakerExpression{
 		Type: ExprTypeStringLiteral,
 		Str:  literal,
+		SourceLoc: loc,
 	}
 }
 
-func ExprPathLiteral(path path.TypePath) DreamMakerExpression {
+func ExprPathLiteral(path path.TypePath, loc tokenizer.SourceLocation) DreamMakerExpression {
 	return DreamMakerExpression{
 		Type: ExprTypePathLiteral,
 		Path: path,
+		SourceLoc: loc,
 	}
 }
 
-func ExprStringConcat(exprs []DreamMakerExpression) DreamMakerExpression {
+func ExprStringConcat(exprs []DreamMakerExpression, loc tokenizer.SourceLocation) DreamMakerExpression {
 	return DreamMakerExpression{
 		Type:     ExprTypeStringConcat,
 		Children: exprs,
+		SourceLoc: loc,
 	}
 }
 
@@ -113,6 +119,7 @@ const (
 	DefTypeNone DreamMakerDefType = iota
 	DefTypeDefine
 	DefTypeAssign
+	DefTypeVarDef
 )
 
 func (t DreamMakerDefType) String() string {
@@ -123,6 +130,8 @@ func (t DreamMakerDefType) String() string {
 		return "Define"
 	case DefTypeAssign:
 		return "Assign"
+	case DefTypeVarDef:
+		return "VarDef"
 	default:
 		panic(fmt.Sprintf("unexpected definition type %d", t))
 	}
@@ -151,6 +160,15 @@ func DefAssign(path path.TypePath, variable string, value DreamMakerExpression, 
 		Variable:   variable,
 		Expression: value,
 		SourceLoc:  location,
+	}
+}
+
+func DefVarDef(path path.TypePath, variable string, location tokenizer.SourceLocation) DreamMakerDefinition {
+	return DreamMakerDefinition{
+		Type:      DefTypeVarDef,
+		Path:      path,
+		Variable:  variable,
+		SourceLoc: location,
 	}
 }
 

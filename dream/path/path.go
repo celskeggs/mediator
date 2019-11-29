@@ -1,6 +1,7 @@
 package path
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 	"strings"
 )
@@ -62,6 +63,49 @@ func (t TypePath) SplitLast() (TypePath, string, error) {
 		IsAbsolute: t.IsAbsolute,
 		Segments:   t.Segments[:len(t.Segments)-1],
 	}, t.Segments[len(t.Segments)-1], nil
+}
+
+func (t TypePath) IndexOf(segment string) int {
+	for i, s := range t.Segments {
+		if s == segment {
+			return i
+		}
+	}
+	return -1
+}
+
+func (t TypePath) EndsWith(segment ...string) bool {
+	if len(t.Segments) < len(segment) {
+		return false
+	}
+	for i, seg := range segment {
+		if t.Segments[len(t.Segments)-len(segment)+i] != seg {
+			return false
+		}
+	}
+	return true
+}
+
+func (t TypePath) IsVarDef() bool {
+	return len(t.Segments) >= 3 && t.Segments[len(t.Segments)-2] == "var"
+}
+
+func (t TypePath) SplitVarDef() (TypePath, string) {
+	if !t.IsVarDef() {
+		panic("not a variable definition")
+	}
+	return TypePath{
+		IsAbsolute: t.IsAbsolute,
+		Segments:   t.Segments[:len(t.Segments)-2],
+	}, t.Segments[len(t.Segments)-1]
+}
+
+func (t TypePath) CheckKeywords() error {
+	varIndex := t.IndexOf("var")
+	if varIndex >= 0 && varIndex < len(t.Segments)-2 || t.EndsWith("var", "var") {
+		return fmt.Errorf("invalid path %v: var not expected", t)
+	}
+	return nil
 }
 
 func (t TypePath) String() string {
