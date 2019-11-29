@@ -104,6 +104,23 @@ func parseBlock(i *input, basePath path.TypePath) ([]DreamMakerDefinition, error
 		} else {
 			return nil, fmt.Errorf("expected valid start-var token, not %s at %v", i.Peek().String(), i.Peek().Loc)
 		}
+	} else if fullPath.EndsWith("var") {
+		if i.Accept(tokenizer.TokNewline) {
+			// nothing to define
+			return nil, nil
+		} else if i.Accept(tokenizer.TokIndent) {
+			var defs []DreamMakerDefinition
+			for !i.Accept(tokenizer.TokUnindent) {
+				block, err := parseBlock(i, fullPath)
+				if err != nil {
+					return nil, err
+				}
+				defs = append(defs, block...)
+			}
+			return defs, nil
+		} else {
+			return nil, fmt.Errorf("expected valid start-of-var-block token, not %s at %v", i.Peek().String(), i.Peek().Loc)
+		}
 	}
 	if i.Accept(tokenizer.TokSetEqual) {
 		expr, err := parseExpression(i)
