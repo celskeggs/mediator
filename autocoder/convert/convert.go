@@ -149,10 +149,10 @@ func Convert(dmf *parser.DreamMakerFile) (*gen.DefinedTree, error) {
 	return dt, nil
 }
 
-func ConvertFiles(inputFile string, outputFile string) error {
-	dmf, err := parser.ParseFile(inputFile)
+func ConvertFiles(inputFiles []string, outputFile string) error {
+	dmf, err := parser.ParseFiles(inputFiles)
 	if err != nil {
-		return errors.Wrap(err, "while parsing input file")
+		return errors.Wrap(err, "while parsing input files")
 	}
 	tree, err := Convert(dmf)
 	if err != nil {

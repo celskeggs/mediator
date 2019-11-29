@@ -157,3 +157,7 @@ func DefAssign(path path.TypePath, variable string, value DreamMakerExpression, 
 type DreamMakerFile struct {
 	Definitions []DreamMakerDefinition
 }
+
+func (dmf *DreamMakerFile) Extend(file *DreamMakerFile) {
+	dmf.Definitions = append(dmf.Definitions, file.Definitions...)
+}

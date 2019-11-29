@@ -1,10 +1,11 @@
 package parser
 
 import (
-	"github.com/celskeggs/mediator/dream/tokenizer"
 	"fmt"
+	"github.com/celskeggs/mediator/dream/tokenizer"
 	"github.com/celskeggs/mediator/util"
 	"github.com/pkg/errors"
+	"os"
 )
 
 type input struct {
@@ -125,4 +126,19 @@ func ParseFile(filename string) (*DreamMakerFile, error) {
 		return nil, err
 	}
 	return dmf, nil
+}
+
+func ParseFiles(filenames []string) (*DreamMakerFile, error) {
+	total := &DreamMakerFile{
+		Definitions: nil,
+	}
+	for _, file := range filenames {
+		single, err := ParseFile(file)
+		if err != nil {
+			return nil, err
+		}
+		total.Extend(single)
+	}
+	total.Dump(os.Stdout)
+	return total, nil
 }
