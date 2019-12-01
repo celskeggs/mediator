@@ -49,7 +49,7 @@ func MobDataChunk(v types.Value) (*MobData, bool) {
 	return chunk.(*MobData), true
 }
 
-func SetClient(mobV types.Value, client types.Value) {
+func MobSetClient(mobV types.Value, client types.Value) {
 	util.FIXME("make this publicly accessible?")
 	mob, ismob := MobDataChunk(mobV)
 	if !ismob {

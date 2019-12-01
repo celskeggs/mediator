@@ -1,6 +1,8 @@
 package types
 
-import "sync"
+import (
+	"sync"
+)
 
 var TRACE = false
 
@@ -111,6 +113,10 @@ func (realm *Realm) WorldRef() interface{} {
 	return realm.worldRef
 }
 
+func (realm *Realm) New(path TypePath, params ...Value) Value {
+	return realm.typeTree.New(realm, path, params...)
+}
+
 func (realm *Realm) NewDatum(impl DatumImpl) *Datum {
 	return &Datum{
 		impl:     impl,
@@ -126,4 +132,5 @@ func (realm *Realm) IsSubType(path TypePath, of TypePath) bool {
 		}
 		path = realm.typeTree.Parent(path)
 	}
+	return false
 }

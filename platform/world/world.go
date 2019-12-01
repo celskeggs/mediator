@@ -1,25 +1,26 @@
-package platform
+package world
 
 import (
-	"github.com/celskeggs/mediator/platform/datum"
+	"github.com/celskeggs/mediator/platform/atom"
 	"github.com/celskeggs/mediator/platform/debug"
+	"github.com/celskeggs/mediator/platform/types"
 	"github.com/celskeggs/mediator/util"
 	"github.com/celskeggs/mediator/websession"
 )
 
 type World struct {
 	Name         string
-	Mob          datum.TypePath
-	Client       datum.TypePath
+	Mob          types.TypePath
+	Client       types.TypePath
 	ViewDistance uint
 
 	defaultLazyEye uint
 
 	MaxX, MaxY, MaxZ uint
 
-	Tree *datum.TypeTree
+	Tree *types.TypeTree
 
-	clients map[IClient]*datum.Ref
+	clients map[world.IClient]*types.Ref
 
 	// true if this instance has an API associated with it
 	// we never provide more than one API so that we avoid double-threading
@@ -27,6 +28,32 @@ type World struct {
 
 	// true if the virtual eye should be set to the middle of the may
 	setVirtualEye bool
+}
+
+var _ atom.World = &World{}
+
+func (w World) PlayerExists(client types.Value) bool {
+	panic("implement me")
+}
+
+func (w World) MaxXYZ() (int, int, int) {
+	panic("implement me")
+}
+
+func (w World) LocateXYZ(x int, y int, z int) (turf types.Value) {
+	panic("implement me")
+}
+
+func (w *World) ViewX(value types.Value, value2 types.Value, value3 types.Value) []types.Value {
+	panic("implement me")
+}
+
+func (w *World) Realm() *types.Realm {
+	panic("implement me")
+}
+
+func (w World) FindOne(predicate func(atom types.Value) bool) types.Value {
+	panic("implement me")
 }
 
 func (w *World) FindAll(predicate func(IAtom) bool) []IAtom {
@@ -61,8 +88,8 @@ func (w *World) Dump(o *debug.Output) {
 	o.Footer()
 }
 
-func (w *World) CreateNewPlayer(key string) IClient {
-	client := w.Tree.New(w.Client).(IClient)
+func (w *World) CreateNewPlayer(key string) world.IClient {
+	client := w.Tree.New(w.Client).(world.IClient)
 
 	if _, found := w.clients[client]; found {
 		panic("duplicate client objects should not exist")
@@ -81,13 +108,13 @@ func (w *World) CreateNewPlayer(key string) IClient {
 	return client
 }
 
-func (w *World) RemovePlayer(client IClient) {
+func (w *World) RemovePlayer(client world.IClient) {
 	datum.AssertConsistent(client)
 	delete(w.clients, client)
 	client.Del()
 }
 
-func (w *World) PlayerExists(client IClient) bool {
+func (w *World) PlayerExists(client world.IClient) bool {
 	datum.AssertConsistent(client)
 	_, found := w.clients[client]
 	return found
@@ -132,14 +159,14 @@ func (w *World) UpdateDefaultViewDistance() {
 	}
 }
 
-func NewWorld(tree *datum.TypeTree) *World {
+func NewWorld(tree *types.TypeTree) *World {
 	world := &World{
 		Name:         "Untitled",
 		Mob:          "/mob",
 		Client:       "/client",
 		ViewDistance: 5,
 		Tree:         tree,
-		clients:      map[IClient]*datum.Ref{},
+		clients:      map[world.IClient]*types.Ref{},
 		claimed:      false,
 	}
 	tree.Realm().SetWorldRef(world)

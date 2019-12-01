@@ -4,8 +4,9 @@ import "github.com/celskeggs/mediator/platform/types"
 
 type World interface {
 	PlayerExists(client types.Value) bool
-	MaxXYZ() (uint, uint, uint)
-	LocateXYZ(x uint, y uint, z uint) (turf types.Value)
+	MaxXYZ() (int, int, int)
+	LocateXYZ(x int, y int, z int) (turf types.Value)
+	Realm() *types.Realm
 }
 
 func WorldOf(t *types.Datum) World {

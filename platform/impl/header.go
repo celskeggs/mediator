@@ -4,4 +4,5 @@ package impl
 import (
 	_ "github.com/celskeggs/mediator/platform/atom"
 	_ "github.com/celskeggs/mediator/platform/datum"
+	_ "github.com/celskeggs/mediator/platform/world"
 )
