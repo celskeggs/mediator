@@ -127,3 +127,7 @@ func (d Direction) SetVar(name string, value types.Value) {
 func (d Direction) Invoke(name string, parameters ...types.Value) types.Value {
 	panic("no proc " + name + " on direction")
 }
+
+func (d Direction) String() string {
+	return "[direction]"
+}

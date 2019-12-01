@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -28,6 +29,10 @@ func (s String) Invoke(name string, parameters ...Value) Value {
 	panic("no proc " + name + " on string")
 }
 
+func (s String) String() string {
+	return fmt.Sprintf("[string: %q]", string(s))
+}
+
 type Int int
 
 var _ Value = Int(0)
@@ -52,6 +57,10 @@ func (i Int) Invoke(name string, parameters ...Value) Value {
 	panic("no proc " + name + " on int")
 }
 
+func (i Int) String() string {
+	return fmt.Sprintf("[int: %d]", int(i))
+}
+
 type Bool bool
 
 var _ Value = Bool(false)
@@ -74,6 +83,14 @@ func (b Bool) SetVar(name string, value Value) {
 
 func (b Bool) Invoke(name string, parameters ...Value) Value {
 	panic("no proc " + name + " on bool")
+}
+
+func (b Bool) String() string {
+	if b {
+		return "[true]"
+	} else {
+		return "[false]"
+	}
 }
 
 type TypePath string

@@ -1,6 +1,9 @@
 package datum
 
-import "github.com/celskeggs/mediator/platform/types"
+import (
+	"fmt"
+	"github.com/celskeggs/mediator/platform/types"
+)
 
 // remember: indices start from 1!
 
@@ -48,4 +51,8 @@ func (l List) SetVar(name string, value types.Value) {
 
 func (l List) Invoke(name string, parameters ...types.Value) types.Value {
 	panic("unimplemented: list procs")
+}
+
+func (l List) String() string {
+	return fmt.Sprintf("[list of length %d]", l.Length())
 }

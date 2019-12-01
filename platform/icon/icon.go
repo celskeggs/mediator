@@ -70,3 +70,7 @@ func (icon *Icon) Invoke(name string, parameters ...types.Value) types.Value {
 	util.FIXME("implement Icon procedures")
 	panic("no such proc " + name + " on icon")
 }
+
+func (icon *Icon) String() string {
+	return "[icon]"
+}

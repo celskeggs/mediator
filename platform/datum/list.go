@@ -31,3 +31,12 @@ func (c *ConcreteList) RemoveLast() {
 func NewList(initial ...*types.Ref) types.Value {
 	return List{&ConcreteList{Contents: initial}}
 }
+
+func Elements(list types.Value) []types.Value {
+	ll := list.(List)
+	result := make([]types.Value, ll.Length())
+	for i := 0; i < len(result); i++ {
+		result[i] = ll.Get(i).Dereference()
+	}
+	return result
+}

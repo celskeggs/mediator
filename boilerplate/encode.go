@@ -17,6 +17,14 @@ func (t *PreparedProc) ParamNums() []int {
 	return result
 }
 
+func (i *PreparedProc) ProcName() string {
+	name := i.Name
+	if name == "<<" {
+		return "OperatorWrite"
+	}
+	return "Proc" + name
+}
+
 func (t *PreparedVar) ConvertTo() []string {
 	if ident, ok := t.Type.(*ast.Ident); ok {
 		switch ident.Name {

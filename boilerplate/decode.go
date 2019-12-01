@@ -135,8 +135,8 @@ func (info *TypeInfo) LoadNewFunc(fset *token.FileSet, decl *ast.FuncDecl) error
 	return nil
 }
 
-func (info *TypeInfo) LoadProc(fset *token.FileSet, decl *ast.FuncDecl) error {
-	// can assume that receiver was already checked and that name starts with Proc but is longer
+func (info *TypeInfo) LoadProc(fset *token.FileSet, decl *ast.FuncDecl, name string) error {
+	// can assume that receiver was already checked and that 'name' is the name of the proc
 	var types []ast.Expr
 	for _, param := range decl.Type.Params.List {
 		types = append(types, param.Type)
@@ -166,7 +166,7 @@ func (info *TypeInfo) LoadProc(fset *token.FileSet, decl *ast.FuncDecl) error {
 		return errors.New("proc must return a types.Value")
 	}
 	info.Procs = append(info.Procs, ProcInfo{
-		Name:       decl.Name.Name[4:],
+		Name:       name,
 		ParamCount: len(types) - 1,
 	})
 	return nil
@@ -270,7 +270,7 @@ func (t *TreeInfo) LoadAST(fset *token.FileSet, file *ast.File) error {
 					if ident, ok := recvType.(*ast.Ident); ok {
 						if ident.Name == ti.StructName {
 							if strings.HasPrefix(fun.Name.Name, "Proc") && len(fun.Name.Name) > len("Proc") {
-								err := ti.LoadProc(fset, fun)
+								err := ti.LoadProc(fset, fun, fun.Name.Name[4:])
 								if err != nil {
 									return err
 								}
@@ -281,6 +281,11 @@ func (t *TreeInfo) LoadAST(fset *token.FileSet, file *ast.File) error {
 								}
 							} else if strings.HasPrefix(fun.Name.Name, "Set") && len(fun.Name.Name) > len("Set") {
 								err := ti.LoadSetter(fset, fun)
+								if err != nil {
+									return err
+								}
+							} else if fun.Name.Name == "OperatorWrite" {
+								err := ti.LoadProc(fset, fun, "<<")
 								if err != nil {
 									return err
 								}

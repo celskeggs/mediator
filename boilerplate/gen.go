@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"github.com/hashicorp/go-multierror"
 	"go/format"
 	"io/ioutil"
 	"strings"
@@ -69,7 +70,9 @@ func WriteImpl(impl *PreparedImplementation, filename string) error {
 	}
 	out, err := format.Source(buf.Bytes())
 	if err != nil {
-		return err
+		// write anyway for the sake of debugging
+		err2 := ioutil.WriteFile(filename, buf.Bytes(), 0644)
+		return multierror.Append(err, err2)
 	}
 	err = ioutil.WriteFile(filename, out, 0644)
 	if err != nil {
@@ -159,7 +162,7 @@ func (t *{{.Type}}Impl) Proc(src *types.Datum, name string, params ...types.Valu
 	switch name {
 {{- range .Procs}}
 	case "{{.Name}}":
-		return t.{{.StructName}}.Proc{{.Name}}(src{{range .ParamNums}}, types.Param(params, {{ . }}){{end}}), true
+		return t.{{.StructName}}.{{.ProcName}}(src{{range .ParamNums}}, types.Param(params, {{ . }}){{end}}), true
 {{- end}}
 	default:
 		return nil, false

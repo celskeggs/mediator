@@ -37,6 +37,7 @@ type Value interface {
 	Var(name string) Value
 	SetVar(name string, value Value)
 	Invoke(name string, parameters ...Value) Value
+	String() string
 }
 
 type Datum struct {
@@ -132,6 +133,10 @@ func (d *Datum) Dump(o *debug.Output) {
 
 func (d *Datum) Realm() *Realm {
 	return d.realm
+}
+
+func (d *Datum) String() string {
+	return fmt.Sprintf("[datum of type %s]", d.Type())
 }
 
 func Unpack(v Value) (DatumImpl, bool) {

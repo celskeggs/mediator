@@ -73,3 +73,7 @@ func (a Appearance) SetVar(name string, value types.Value) {
 func (a Appearance) Invoke(name string, parameters ...types.Value) types.Value {
 	panic("no such function " + name + " on appearance")
 }
+
+func (a Appearance) String() string {
+	return "[appearance]"
+}
