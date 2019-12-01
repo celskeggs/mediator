@@ -10,6 +10,14 @@ type Realm struct {
 	datums           map[*Datum]struct{}
 	deferredRemovals []*Datum
 	worldRef         interface{}
+	typeTree         TypeTree
+}
+
+func NewRealm(tree TypeTree) *Realm {
+	return &Realm{
+		datums:   map[*Datum]struct{}{},
+		typeTree: nil,
+	}
 }
 
 func (r *Realm) setBusy(busy bool) {
@@ -108,5 +116,14 @@ func (realm *Realm) NewDatum(impl DatumImpl) *Datum {
 		impl:     impl,
 		refCount: 0,
 		realm:    realm,
+	}
+}
+
+func (realm *Realm) IsSubType(path TypePath, of TypePath) bool {
+	for path != "" {
+		if path == of {
+			return true
+		}
+		path = realm.typeTree.Parent(path)
 	}
 }

@@ -156,3 +156,10 @@ func Param(params []Value, i int) Value {
 	}
 	return params[i]
 }
+
+func IsType(v Value, path TypePath) bool {
+	if datum, ok := v.(*Datum); ok {
+		return datum.realm.IsSubType(datum.Type(), path)
+	}
+	return false
+}
