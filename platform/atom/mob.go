@@ -12,7 +12,9 @@ type MobData struct {
 	client types.Value // not a ref to avoid refcounting cycle
 }
 
-func NewMobData(_ ...types.Value) MobData {
+func NewMobData(src *types.Datum, _ ...types.Value) MobData {
+	src.SetVar("name", types.String("mob"))
+	src.SetVar("layer", types.Int(MobLayer))
 	return MobData{}
 }
 

@@ -13,7 +13,9 @@ type TurfData struct {
 	Z uint
 }
 
-func NewTurfData(_ ...types.Value) TurfData {
+func NewTurfData(src *types.Datum, _ ...types.Value) TurfData {
+	src.SetVar("name", types.String("turf"))
+	src.SetVar("layer", types.Int(TurfLayer))
 	return TurfData{}
 }
 

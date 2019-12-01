@@ -97,11 +97,11 @@ type {{.Type}}Impl struct {
 }
 
 func New{{.Type}}(params ...types.Value) types.DatumImpl {
-	return &{{.Type}}Impl{
-{{- range .Chunks}}
-		{{.StructName}}: {{.PackageShort}}.New{{.StructName}}(params...),
+	result := &{{.Type}}Impl{}
+{{- range .RevChunks}}
+	result.{{.StructName}} = {{.PackageShort}}.New{{.StructName}}(result, params...)
 {{- end}}
-	}
+	return result
 }
 
 func (t *{{.Type}}Impl) Type() types.TypePath {

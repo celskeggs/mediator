@@ -110,26 +110,29 @@ func IsValueType(ref ast.Expr) bool {
 func (info *TypeInfo) LoadNewFunc(fset *token.FileSet, decl *ast.FuncDecl) error {
 	// can assume that name is correct
 	if decl.Recv != nil && len(decl.Recv.List) > 0 {
-		return errors.New("constructor must be global")
+		return fmt.Errorf("constructor for %s must be global", info.StructName)
 	}
 	if len(decl.Type.Results.List) != 1 {
-		return errors.New("constructor must return exactly one value")
+		return fmt.Errorf("constructor for %s must return exactly one value", info.StructName)
 	}
 	resultType := decl.Type.Results.List[0].Type
 	ident, ok := resultType.(*ast.Ident)
 	if !ok || ident.Name != info.StructName {
-		return errors.New("constructor must return plain structure result")
+		return fmt.Errorf("constructor for %s must return plain structure result", info.StructName)
 	}
-	if len(decl.Type.Params.List) != 1 {
-		return errors.New("constructor must accept exactly one parameter")
+	if len(decl.Type.Params.List) != 2 {
+		return fmt.Errorf("constructor for %s must accept exactly two parameters", info.StructName)
 	}
-	paramType := decl.Type.Params.List[0].Type
-	elt, ok := paramType.(*ast.Ellipsis)
+	if !IsDatumType(decl.Type.Params.List[0].Type) {
+		return fmt.Errorf("constructor for %s must accept a datum parameter", info.StructName)
+	}
+	paramType2 := decl.Type.Params.List[1].Type
+	elt, ok := paramType2.(*ast.Ellipsis)
 	if !ok {
-		return errors.New("constructor must accept a varargs parameter")
+		return fmt.Errorf("constructor for %s must accept a varargs parameter", info.StructName)
 	}
 	if !IsValueType(elt.Elt) {
-		return errors.New("constructor must accept varargs of types.Value")
+		return fmt.Errorf("constructor for %s must accept varargs of types.Value", info.StructName)
 	}
 	info.FoundConstructor = true
 	return nil

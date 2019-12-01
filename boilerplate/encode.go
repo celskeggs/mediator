@@ -202,6 +202,14 @@ func (t *TypeInfo) Encode(tree *TreeInfo) (PreparedChunk, error) {
 	}, nil
 }
 
+func (p *PreparedImplementation) RevChunks() []PreparedChunk {
+	nchunks := make([]PreparedChunk, len(p.Chunks))
+	for i := 0; i < len(nchunks); i++ {
+		nchunks[i] = p.Chunks[len(nchunks)-1-i]
+	}
+	return nchunks
+}
+
 func (t *TreeInfo) Encode() ([]*PreparedImplementation, error) {
 	var pis []*PreparedImplementation
 	for _, typeInfo := range t.Paths {

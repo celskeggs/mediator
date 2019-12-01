@@ -9,8 +9,10 @@ import (
 //mediator:declare AreaData /area /atom
 type AreaData struct{}
 
-func NewAreaData(_ ...types.Value) AreaData {
+func NewAreaData(src *types.Datum, _ ...types.Value) AreaData {
 	util.FIXME("handle area.X, .Y, .Z correctly")
+	src.SetVar("name", types.String("area"))
+	src.SetVar("layer", types.Int(AreaLayer))
 	return AreaData{}
 }
 

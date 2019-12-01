@@ -9,7 +9,8 @@ import (
 //mediator:declare AtomMovableData /atom/movable /atom
 type AtomMovableData struct{}
 
-func NewAtomMovableData(_ ...types.Value) AtomMovableData {
+func NewAtomMovableData(src *types.Datum, _ ...types.Value) AtomMovableData {
+	src.SetVar("name", types.String("movable"))
 	return AtomMovableData{}
 }
 

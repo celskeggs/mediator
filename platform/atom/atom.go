@@ -18,7 +18,7 @@ type AtomData struct {
 	contents      map[*types.Datum]*types.Ref
 }
 
-func NewAtomData(_ ...types.Value) AtomData {
+func NewAtomData(src *types.Datum, _ ...types.Value) AtomData {
 	util.FIXME("handle location early per docs")
 	return AtomData{
 		VarDir: common.South,
