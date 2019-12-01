@@ -1,4 +1,4 @@
-package datum
+package types
 
 import "sync"
 
@@ -43,7 +43,7 @@ func (r *Realm) add(d *Datum) {
 	// no busy check here; it's only really for garbage collection, which means remove
 	r.datums[d] = struct{}{}
 	if TRACE {
-		println("added datum", d, "of type", d.Type, "to realm")
+		println("added datum", d, "of type", d.Type(), "to realm")
 	}
 }
 
@@ -59,28 +59,28 @@ func (r *Realm) remove(d *Datum) {
 		delete(r.datums, d)
 	}
 	if TRACE {
-		println("removed datum", d, "of type", d.Type, "from realm")
+		println("removed datum", d, "of type", d.Type(), "from realm")
 	}
 }
 
-func (r *Realm) FindAll(predicate func(IDatum) bool) (out []IDatum) {
+func (r *Realm) FindAll(predicate func(*Datum) bool) (out []*Datum) {
 	r.setBusy(true)
 	defer r.setBusy(false)
 	for datum := range r.datums {
-		if predicate(datum.impl) {
-			out = append(out, datum.impl)
+		if predicate(datum) {
+			out = append(out, datum)
 		}
 	}
 	return out
 }
 
 // returns nil if not found
-func (r *Realm) FindOne(predicate func(IDatum) bool) IDatum {
+func (r *Realm) FindOne(predicate func(*Datum) bool) *Datum {
 	r.setBusy(true)
 	defer r.setBusy(false)
 	for datum := range r.datums {
-		if predicate(datum.impl) {
-			return datum.impl
+		if predicate(datum) {
+			return datum
 		}
 	}
 	return nil
@@ -101,4 +101,12 @@ func (realm *Realm) WorldRef() interface{} {
 		panic("no worldref registered")
 	}
 	return realm.worldRef
+}
+
+func (realm *Realm) NewDatum(impl DatumImpl) *Datum {
+	return &Datum{
+		impl:     impl,
+		refCount: 0,
+		realm:    realm,
+	}
 }

@@ -1,6 +1,9 @@
 package common
 
-import "github.com/celskeggs/mediator/util"
+import (
+	"github.com/celskeggs/mediator/platform/types"
+	"github.com/celskeggs/mediator/util"
+)
 
 type Direction uint8
 
@@ -105,4 +108,22 @@ func (d Direction) FourDirectionIndex() uint {
 
 var FourDirections = []Direction{
 	South, North, East, West,
+}
+
+var _ types.Value = North
+
+func (d Direction) Reference() *types.Ref {
+	return &types.Ref{d}
+}
+
+func (d Direction) Var(name string) types.Value {
+	panic("no field " + name + " on direction")
+}
+
+func (d Direction) SetVar(name string, value types.Value) {
+	panic("no field " + name + " on direction")
+}
+
+func (d Direction) Invoke(name string, parameters ...types.Value) types.Value {
+	panic("no proc " + name + " on direction")
 }
