@@ -2,7 +2,7 @@ package world
 
 import (
 	"github.com/celskeggs/mediator/common"
-	"github.com/celskeggs/mediator/platform/atom"
+	"github.com/celskeggs/mediator/platform/atoms"
 	"github.com/celskeggs/mediator/platform/types"
 	"github.com/celskeggs/mediator/util"
 	"github.com/celskeggs/mediator/webclient/sprite"
@@ -33,7 +33,7 @@ func (d *ClientData) SetMob(src *types.Datum, mob types.Value) {
 	}
 	d.mob = types.Reference(mob)
 	d.SetEye(src, mob)
-	atom.MobSetClient(mob, src)
+	atoms.MobSetClient(mob, src)
 }
 
 func (d *ClientData) GetEye(src *types.Datum) types.Value {
@@ -52,7 +52,7 @@ func (d *ClientData) SetEye(src *types.Datum, eye types.Value) {
 }
 
 func (d *ClientData) GetVirtualEye(src *types.Datum) types.Value {
-	world := atom.WorldOf(src).(*World)
+	world := atoms.WorldOf(src).(*World)
 	maxX, maxY, _ := world.MaxXYZ()
 	if world.setVirtualEye {
 		eyeZ := types.Unuint(d.GetEye(src).Var("z"))
@@ -82,7 +82,7 @@ func InvokeVerb(client types.Value, verb string) {
 func (d *ClientData) relMove(src *types.Datum, direction common.Direction) types.Value {
 	var turf types.Value
 	mob := d.GetMob(src)
-	world := atom.WorldOf(src)
+	world := atoms.WorldOf(src)
 	if mob != nil {
 		x, y, z := XYZ(mob)
 		dx, dy := direction.XY()
@@ -180,7 +180,7 @@ func (d *ClientData) ProcNew(src *types.Datum, usr types.Value) types.Value {
 	mob := usr
 	util.FIXME("add support for 'prototype mobs'")
 	if mob == nil {
-		mob = atom.WorldOf(src).(*World).constructNewMob()
+		mob = atoms.WorldOf(src).(*World).constructNewMob()
 	}
 	util.NiceToHave("add support for Topics")
 	d.SetMob(src, mob)

@@ -1,4 +1,4 @@
-package atom
+package atoms
 
 import (
 	"github.com/celskeggs/mediator/common"

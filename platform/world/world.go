@@ -1,7 +1,7 @@
 package world
 
 import (
-	"github.com/celskeggs/mediator/platform/atom"
+	"github.com/celskeggs/mediator/platform/atoms"
 	"github.com/celskeggs/mediator/platform/types"
 	"github.com/celskeggs/mediator/util"
 	"github.com/celskeggs/mediator/websession"
@@ -28,7 +28,7 @@ type World struct {
 	setVirtualEye bool
 }
 
-var _ atom.World = &World{}
+var _ atoms.World = &World{}
 
 func (w World) MaxXYZ() (uint, uint, uint) {
 	panic("implement me")

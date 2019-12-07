@@ -2,7 +2,7 @@ package world
 
 import (
 	"github.com/celskeggs/mediator/common"
-	"github.com/celskeggs/mediator/platform/atom"
+	"github.com/celskeggs/mediator/platform/atoms"
 	"github.com/celskeggs/mediator/platform/types"
 	"github.com/celskeggs/mediator/util"
 	"github.com/celskeggs/mediator/webclient"
@@ -90,7 +90,7 @@ func (p playerAPI) Render() sprite.SpriteView {
 		layers := map[int][]sprite.GameSprite{}
 		for _, visibleAtom := range atoms {
 			x, y := XY(visibleAtom)
-			found, layer, s := visibleAtom.Var("appearance").(atom.Appearance).ToSprite(x*SpriteSize-shiftX, y*SpriteSize-shiftY, visibleAtom.Var("dir").(common.Direction))
+			found, layer, s := visibleAtom.Var("appearance").(atoms.Appearance).ToSprite(x*SpriteSize-shiftX, y*SpriteSize-shiftY, visibleAtom.Var("dir").(common.Direction))
 			if found {
 				layers[layer] = append(layers[layer], s)
 			}
