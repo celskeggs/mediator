@@ -26,10 +26,7 @@ type ProcInfo struct {
 	ParamCount int
 }
 
-type TypeInfo struct {
-	Path   string
-	Parent string
-
+type SourceInfo struct {
 	StructName   string
 	Package      string
 	PackageShort string
@@ -38,6 +35,13 @@ type TypeInfo struct {
 	Getters          []*GetterInfo
 	Vars             []VarInfo
 	Procs            []ProcInfo
+}
+
+type TypeInfo struct {
+	Path   string
+	Parent string
+
+	Sources []*SourceInfo
 }
 
 type TreeInfo struct {

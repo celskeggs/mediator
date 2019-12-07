@@ -48,17 +48,31 @@ func ScanDeclsInFile(filename string, pkg *build.Package) ([]Decl, error) {
 	for _, commentGroup := range ast.Comments {
 		for _, comment := range commentGroup.List {
 			text := strings.TrimSpace(strings.TrimLeft(comment.Text, "/*"))
-			if strings.HasPrefix(text, "mediator:declare ") {
+			if strings.HasPrefix(text, "mediator:") {
 				parts := strings.Split(text, " ")
-				if len(parts) != 4 {
-					return nil, fmt.Errorf("mediator:declare does not have exactly three arguments in %q", text)
+				if parts[0] == "mediator:declare" {
+					if len(parts) != 4 {
+						return nil, fmt.Errorf("mediator:declare does not have exactly three arguments in %q", text)
+					}
+					decls = append(decls, Decl{
+						Package:    pkg,
+						StructName: parts[1],
+						Path:       parts[2],
+						ParentPath: parts[3],
+					})
+				} else if parts[0] == "mediator:extend" {
+					if len(parts) != 3 {
+						return nil, fmt.Errorf("mediator:declare does not have exactly three arguments in %q", text)
+					}
+					decls = append(decls, Decl{
+						Package:    pkg,
+						StructName: parts[1],
+						Path:       parts[2],
+						ParentPath: parts[2],
+					})
+				} else {
+					return nil, fmt.Errorf("unknown meta-comment variant %s", parts[0])
 				}
-				decls = append(decls, Decl{
-					Package:    pkg,
-					StructName: parts[1],
-					Path:       parts[2],
-					ParentPath: parts[3],
-				})
 			}
 		}
 	}

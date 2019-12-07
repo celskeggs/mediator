@@ -42,10 +42,21 @@ func Generate() error {
 	}
 	tree := NewTreeInfo(pkg)
 	for _, decl := range decls {
-		println("decl", decl.Package.ImportPath, decl.StructName, decl.Path, decl.ParentPath)
-		err := tree.LoadFromDecl(decl)
-		if err != nil {
-			return errors.Wrapf(err, "while loading from declarations for %s", decl.Path)
+		if decl.Path != decl.ParentPath {
+			println("decl", decl.Package.ImportPath, decl.StructName, decl.Path, decl.ParentPath)
+			err := tree.LoadFromDecl(decl)
+			if err != nil {
+				return errors.Wrapf(err, "while loading from declarations for %s", decl.Path)
+			}
+		}
+	}
+	for _, decl := range decls {
+		if decl.Path == decl.ParentPath {
+			println("extension", decl.Package.ImportPath, decl.StructName, decl.Path)
+			err := tree.LoadFromExtension(decl)
+			if err != nil {
+				return errors.Wrapf(err, "while loading from extensions for %s", decl.Path)
+			}
 		}
 	}
 	err = tree.LoadPackages()

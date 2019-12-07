@@ -29,36 +29,39 @@ func ToSnakeCase(name string) string {
 
 func (info *TreeInfo) Dump() error {
 	for _, t := range info.Paths {
-		if t.FoundConstructor {
-			fmt.Printf("FOUND CONSTRUCTOR FOR %s\n", t.Path)
-		}
-		for _, vi := range t.Vars {
-			fmt.Printf("FIELD: %s for %s\n", vi.FieldName, t.Path)
-			err := ast.Print(vi.FileSet, vi.Type)
-			if err != nil {
-				return err
+		for _, source := range t.Sources {
+			fmt.Printf("SOURCE %s.%s FOR %s\n", source.Package, source.StructName, t.Path)
+			if source.FoundConstructor {
+				fmt.Printf("FOUND CONSTRUCTOR FOR %s\n", t.Path)
 			}
-		}
-		for _, gi := range t.Getters {
-			if gi.HasGetter {
-				fmt.Printf("GETTER: %s for %s\n", gi.FieldName, t.Path)
+			for _, vi := range source.Vars {
+				fmt.Printf("FIELD: %s for %s\n", vi.FieldName, t.Path)
+				err := ast.Print(vi.FileSet, vi.Type)
+				if err != nil {
+					return err
+				}
 			}
-			if gi.HasSetter {
-				fmt.Printf("SETTER: %s for %s\n", gi.FieldName, t.Path)
+			for _, gi := range source.Getters {
+				if gi.HasGetter {
+					fmt.Printf("GETTER: %s for %s\n", gi.FieldName, t.Path)
+				}
+				if gi.HasSetter {
+					fmt.Printf("SETTER: %s for %s\n", gi.FieldName, t.Path)
+				}
 			}
-		}
-		for _, p := range t.Procs {
-			fmt.Printf("PROC: %s for %s with %d parameters\n", p.Name, t.Path, p.ParamCount)
+			for _, p := range source.Procs {
+				fmt.Printf("PROC: %s for %s with %d parameters\n", p.Name, t.Path, p.ParamCount)
+			}
 		}
 	}
 	return nil
 }
 
-func (info *TypeInfo) LoadStruct(fset *token.FileSet, structType *ast.StructType, context *ast.File) error {
+func (source *SourceInfo) LoadStruct(fset *token.FileSet, structType *ast.StructType, context *ast.File) error {
 	for _, field := range structType.Fields.List {
 		for _, name := range field.Names {
 			if strings.HasPrefix(name.Name, "Var") {
-				info.Vars = append(info.Vars, VarInfo{
+				source.Vars = append(source.Vars, VarInfo{
 					FieldName: ToSnakeCase(name.Name[3:]),
 					LongName:  name.Name,
 					Type:      field.Type,
@@ -108,76 +111,76 @@ func IsValueType(ref ast.Expr) bool {
 	return true
 }
 
-func (info *TypeInfo) LoadNewFunc(fset *token.FileSet, decl *ast.FuncDecl) error {
+func (source *SourceInfo) LoadNewFunc(fset *token.FileSet, structName string, decl *ast.FuncDecl) error {
 	// can assume that name is correct
 	if decl.Recv != nil && len(decl.Recv.List) > 0 {
-		return fmt.Errorf("constructor for %s must be global", info.StructName)
+		return fmt.Errorf("constructor for %s must be global", structName)
 	}
 	if len(decl.Type.Results.List) != 1 {
-		return fmt.Errorf("constructor for %s must return exactly one value", info.StructName)
+		return fmt.Errorf("constructor for %s must return exactly one value", structName)
 	}
 	resultType := decl.Type.Results.List[0].Type
 	ident, ok := resultType.(*ast.Ident)
-	if !ok || ident.Name != info.StructName {
-		return fmt.Errorf("constructor for %s must return plain structure result", info.StructName)
+	if !ok || ident.Name != structName {
+		return fmt.Errorf("constructor for %s must return plain structure result", structName)
 	}
 	if len(decl.Type.Params.List) != 2 {
-		return fmt.Errorf("constructor for %s must accept exactly two parameters", info.StructName)
+		return fmt.Errorf("constructor for %s must accept exactly two parameters", structName)
 	}
 	if !IsDatumType(decl.Type.Params.List[0].Type) {
-		return fmt.Errorf("constructor for %s must accept a datum parameter", info.StructName)
+		return fmt.Errorf("constructor for %s must accept a datum parameter", structName)
 	}
 	paramType2 := decl.Type.Params.List[1].Type
 	elt, ok := paramType2.(*ast.Ellipsis)
 	if !ok {
-		return fmt.Errorf("constructor for %s must accept a varargs parameter", info.StructName)
+		return fmt.Errorf("constructor for %s must accept a varargs parameter", structName)
 	}
 	if !IsValueType(elt.Elt) {
-		return fmt.Errorf("constructor for %s must accept varargs of types.Value", info.StructName)
+		return fmt.Errorf("constructor for %s must accept varargs of types.Value", structName)
 	}
-	info.FoundConstructor = true
+	source.FoundConstructor = true
 	return nil
 }
 
-func (info *TypeInfo) LoadProc(fset *token.FileSet, decl *ast.FuncDecl, name string) error {
+func (source *SourceInfo) LoadProc(fset *token.FileSet, structName string, decl *ast.FuncDecl, name string) error {
 	// can assume that receiver was already checked and that 'name' is the name of the proc
 	var types []ast.Expr
 	for _, param := range decl.Type.Params.List {
 		types = append(types, param.Type)
 	}
 	if len(types) < 1 {
-		return fmt.Errorf("proc %s.%s must take at least src at %v", info.StructName, decl.Name.Name, fset.Position(decl.Pos()))
+		return fmt.Errorf("proc %s.%s must take at least src at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
 	}
 	for i, t := range types {
 		if i == 0 {
 			if !IsDatumType(t) {
-				return fmt.Errorf("proc %s.%s must take src from *types.Datum at %v", info.StructName, decl.Name.Name, fset.Position(decl.Pos()))
+				return fmt.Errorf("proc %s.%s must take src from *types.Datum at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
 			}
 		} else {
 			if !IsValueType(t) {
-				return fmt.Errorf("proc %s.%s must take only types.Value at %v", info.StructName, decl.Name.Name, fset.Position(decl.Pos()))
+				return fmt.Errorf("proc %s.%s must take only types.Value at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
 			}
 		}
 	}
 	if decl.Type.Results != nil && len(decl.Type.Results.List) > 1 {
-		return fmt.Errorf("proc %s.%s cannot have more than one result at %v", info.StructName, decl.Name.Name, fset.Position(decl.Pos()))
+		return fmt.Errorf("proc %s.%s cannot have more than one result at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
 	}
 	var resultType ast.Expr
 	if decl.Type.Results != nil && len(decl.Type.Results.List) > 0 {
 		resultType = decl.Type.Results.List[0].Type
 	}
 	if !IsValueType(resultType) {
-		return fmt.Errorf("proc %s.%s must return a types.Value at %v", info.StructName, decl.Name.Name, fset.Position(decl.Pos()))
+		return fmt.Errorf("proc %s.%s must return a types.Value at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
 	}
-	info.Procs = append(info.Procs, ProcInfo{
+	source.Procs = append(source.Procs, ProcInfo{
 		Name:       name,
 		ParamCount: len(types) - 1,
 	})
 	return nil
 }
 
-func (info *TypeInfo) GetterInfo(name string) *GetterInfo {
-	for _, gi := range info.Getters {
+func (source *SourceInfo) GetterInfo(name string) *GetterInfo {
+	for _, gi := range source.Getters {
 		if gi.LongName == name {
 			return gi
 		}
@@ -188,50 +191,50 @@ func (info *TypeInfo) GetterInfo(name string) *GetterInfo {
 		HasGetter: false,
 		HasSetter: false,
 	}
-	info.Getters = append(info.Getters, gi)
+	source.Getters = append(source.Getters, gi)
 	return gi
 }
 
-func (info *TypeInfo) LoadGetter(fset *token.FileSet, decl *ast.FuncDecl) error {
+func (source *SourceInfo) LoadGetter(fset *token.FileSet, structName string, decl *ast.FuncDecl) error {
 	// can assume that receiver was already checked and that name starts with Get but is longer
 	if decl.Type.Results == nil || len(decl.Type.Results.List) != 1 {
-		return fmt.Errorf("getter %s.%s must return exactly one value at %v", info.StructName, decl.Name.Name, fset.Position(decl.Pos()))
+		return fmt.Errorf("getter %s.%s must return exactly one value at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
 	}
 	if !IsValueType(decl.Type.Results.List[0].Type) {
-		return fmt.Errorf("getter %s.%s must return a types.Value at %v", info.StructName, decl.Name.Name, fset.Position(decl.Pos()))
+		return fmt.Errorf("getter %s.%s must return a types.Value at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
 	}
 	if decl.Type.Params == nil || len(decl.Type.Params.List) != 1 {
-		return fmt.Errorf("getter %s.%s must accept exactly one parameter at %v", info.StructName, decl.Name.Name, fset.Position(decl.Type.Pos()))
+		return fmt.Errorf("getter %s.%s must accept exactly one parameter at %v", structName, decl.Name.Name, fset.Position(decl.Type.Pos()))
 	}
 	if !IsDatumType(decl.Type.Params.List[0].Type) {
-		return fmt.Errorf("getter %s.%s must accept a *types.Datum at %v", info.StructName, decl.Name.Name, fset.Position(decl.Pos()))
+		return fmt.Errorf("getter %s.%s must accept a *types.Datum at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
 	}
 	util.FIXME("make sure that vars and getters don't conflict")
-	gi := info.GetterInfo(decl.Name.Name[3:])
+	gi := source.GetterInfo(decl.Name.Name[3:])
 	if gi.HasGetter {
-		return fmt.Errorf("duplicate getter %s.%s at %v", info.StructName, decl.Name.Name, fset.Position(decl.Pos()))
+		return fmt.Errorf("duplicate getter %s.%s at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
 	}
 	gi.HasGetter = true
 	return nil
 }
 
-func (info *TypeInfo) LoadSetter(fset *token.FileSet, decl *ast.FuncDecl) error {
+func (source *SourceInfo) LoadSetter(fset *token.FileSet, structName string, decl *ast.FuncDecl) error {
 	// can assume that receiver was already checked and that name starts with Set but is longer
 	if decl.Type.Results != nil && len(decl.Type.Results.List) != 0 {
-		return fmt.Errorf("setter %s.%s must return no value at %v", info.StructName, decl.Name.Name, fset.Position(decl.Pos()))
+		return fmt.Errorf("setter %s.%s must return no value at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
 	}
 	if len(decl.Type.Params.List) != 2 {
-		return fmt.Errorf("setter %s.%s must accept exactly two parameters at %v", info.StructName, decl.Name.Name, fset.Position(decl.Pos()))
+		return fmt.Errorf("setter %s.%s must accept exactly two parameters at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
 	}
 	if !IsDatumType(decl.Type.Params.List[0].Type) {
-		return fmt.Errorf("setter %s.%s must accept a *types.Datum at %v", info.StructName, decl.Name.Name, fset.Position(decl.Pos()))
+		return fmt.Errorf("setter %s.%s must accept a *types.Datum at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
 	}
 	if !IsValueType(decl.Type.Params.List[1].Type) {
-		return fmt.Errorf("setter %s.%s must accept a types.Value at %v", info.StructName, decl.Name.Name, fset.Position(decl.Pos()))
+		return fmt.Errorf("setter %s.%s must accept a types.Value at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
 	}
-	gi := info.GetterInfo(decl.Name.Name[3:])
+	gi := source.GetterInfo(decl.Name.Name[3:])
 	if gi.HasSetter {
-		return fmt.Errorf("duplicate setter %s.%s at %v", info.StructName, decl.Name.Name, fset.Position(decl.Pos()))
+		return fmt.Errorf("duplicate setter %s.%s at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
 	}
 	gi.HasSetter = true
 	return nil
@@ -246,12 +249,12 @@ func (t *TreeInfo) LoadAST(fset *token.FileSet, file *ast.File, importPath strin
 				}
 				spec := gen.Specs[0].(*ast.TypeSpec)
 				for _, ti := range t.Paths {
-					if ti.StructName == spec.Name.Name && ti.Package == importPath {
+					if source := ti.GetSource(importPath, spec.Name.Name); source != nil {
 						stype, ok := spec.Type.(*ast.StructType)
 						if !ok {
 							return errors.New("expected struct type")
 						}
-						err := ti.LoadStruct(fset, stype, file)
+						err := source.LoadStruct(fset, stype, file)
 						if err != nil {
 							return err
 						}
@@ -260,10 +263,13 @@ func (t *TreeInfo) LoadAST(fset *token.FileSet, file *ast.File, importPath strin
 			}
 		} else if fun, ok := decl.(*ast.FuncDecl); ok {
 			for _, ti := range t.Paths {
-				if fun.Name.Name == "New"+ti.StructName && ti.Package == importPath {
-					err := ti.LoadNewFunc(fset, fun)
-					if err != nil {
-						return err
+				if strings.HasPrefix(fun.Name.Name, "New") && len(fun.Name.Name) > 3 {
+					structName := fun.Name.Name[3:]
+					if source := ti.GetSource(importPath, structName); source != nil {
+						err := source.LoadNewFunc(fset, structName, fun)
+						if err != nil {
+							return err
+						}
 					}
 				}
 				if fun.Recv != nil && len(fun.Recv.List) == 1 {
@@ -272,24 +278,24 @@ func (t *TreeInfo) LoadAST(fset *token.FileSet, file *ast.File, importPath strin
 						recvType = star.X
 					}
 					if ident, ok := recvType.(*ast.Ident); ok {
-						if ident.Name == ti.StructName && ti.Package == importPath {
+						if source := ti.GetSource(importPath, ident.Name); source != nil {
 							if strings.HasPrefix(fun.Name.Name, "Proc") && len(fun.Name.Name) > len("Proc") {
-								err := ti.LoadProc(fset, fun, fun.Name.Name[4:])
+								err := source.LoadProc(fset, ident.Name, fun, fun.Name.Name[4:])
 								if err != nil {
 									return err
 								}
 							} else if strings.HasPrefix(fun.Name.Name, "Get") && len(fun.Name.Name) > len("Get") {
-								err := ti.LoadGetter(fset, fun)
+								err := source.LoadGetter(fset, ident.Name, fun)
 								if err != nil {
 									return err
 								}
 							} else if strings.HasPrefix(fun.Name.Name, "Set") && len(fun.Name.Name) > len("Set") {
-								err := ti.LoadSetter(fset, fun)
+								err := source.LoadSetter(fset, ident.Name, fun)
 								if err != nil {
 									return err
 								}
 							} else if fun.Name.Name == "OperatorWrite" {
-								err := ti.LoadProc(fset, fun, "<<")
+								err := source.LoadProc(fset, ident.Name, fun, "<<")
 								if err != nil {
 									return err
 								}
@@ -329,15 +335,48 @@ func (t *TreeInfo) NewType(path string) (*TypeInfo, error) {
 	return ti, nil
 }
 
+func (t *TypeInfo) AddSource(tree *TreeInfo, structName string, importPath string) error {
+	packageShort, err := tree.GetPackageName(importPath)
+	if err != nil {
+		return err
+	}
+	t.Sources = append(t.Sources, &SourceInfo{
+		StructName:   structName,
+		Package:      importPath,
+		PackageShort: packageShort,
+	})
+	return nil
+}
+
 func (t *TreeInfo) LoadFromDecl(decl Decl) error {
 	nt, err := t.NewType(decl.Path)
 	if err != nil {
 		return err
 	}
 	nt.Parent = decl.ParentPath
-	nt.StructName = decl.StructName
-	nt.Package = decl.Package.ImportPath
-	nt.PackageShort, err = t.GetPackageName(nt.Package)
+	err = nt.AddSource(t, decl.StructName, decl.Package.ImportPath)
+	if err != nil {
+		return err
+	}
+	alreadyExists := false
+	for _, pkg := range t.Packages {
+		if pkg.Dir == decl.Package.Dir {
+			alreadyExists = true
+			break
+		}
+	}
+	if !alreadyExists {
+		t.Packages = append(t.Packages, decl.Package)
+	}
+	return nil
+}
+
+func (t *TreeInfo) LoadFromExtension(decl Decl) error {
+	et, ok := t.Paths[decl.Path]
+	if !ok {
+		return fmt.Errorf("attempt to extend type %s when it was never defined", decl.Path)
+	}
+	err := et.AddSource(t, decl.StructName, decl.Package.ImportPath)
 	if err != nil {
 		return err
 	}
@@ -364,4 +403,13 @@ func (t *TreeInfo) GetPackageName(importPath string) (string, error) {
 	}
 	t.PkgNames[importPath] = pkg.Name
 	return pkg.Name, nil
+}
+
+func (t *TypeInfo) GetSource(importPath string, structName string) *SourceInfo {
+	for _, source := range t.Sources {
+		if source.StructName == structName && source.Package == importPath {
+			return source
+		}
+	}
+	return nil
 }

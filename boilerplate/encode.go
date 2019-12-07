@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/celskeggs/mediator/autocoder/predefs"
+	"github.com/celskeggs/mediator/util"
 	"go/ast"
 	"sort"
 	"strings"
@@ -30,6 +31,12 @@ func (t *PreparedVar) ConvertTo() []string {
 		switch ident.Name {
 		case "bool":
 			return []string{"types.Bool(", ")"}
+		case "string":
+			return []string{"types.String(", ")"}
+		case "int":
+			return []string{"types.Int(", ")"}
+		case "uint":
+			return []string{"types.Int(", ")"}
 		}
 	}
 	return []string{"", ""}
@@ -40,6 +47,12 @@ func (t *PreparedVar) ConvertFrom() []string {
 		switch ident.Name {
 		case "bool":
 			return []string{"types.Unbool(", ")"}
+		case "string":
+			return []string{"types.Unstring(", ")"}
+		case "int":
+			return []string{"types.Unint(", ")"}
+		case "uint":
+			return []string{"types.Unuint(", ")"}
 		default:
 			if len(ident.Name) >= 1 && unicode.IsUpper(rune(ident.Name[0])) {
 				// local custom type
@@ -77,11 +90,19 @@ func (t *TypeInfo) EncodedChunks(tree *TreeInfo) ([]PreparedChunk, error) {
 	}
 	var encodedChunks []PreparedChunk
 	for _, chunk := range chunks {
-		enc, err := chunk.Encode(tree)
-		if err != nil {
-			return nil, err
+		for _, source := range chunk.Sources {
+			enc, err := source.Encode(tree, chunk)
+			if err != nil {
+				return nil, err
+			}
+			for _, existing := range encodedChunks {
+				if existing.StructName == enc.StructName {
+					util.FIXME("rename structs to support reused names better")
+					return nil, fmt.Errorf("structure name reused: %s", enc.StructName)
+				}
+			}
+			encodedChunks = append(encodedChunks, enc)
 		}
-		encodedChunks = append(encodedChunks, enc)
 	}
 	return encodedChunks, nil
 }
@@ -104,20 +125,22 @@ func (t *TypeInfo) Imports(tree *TreeInfo) ([]string, error) {
 		"github.com/celskeggs/mediator/platform/types": {},
 	}
 	for _, chunk := range chunks {
-		imports[chunk.Package] = struct{}{}
-		for _, vi := range chunk.Vars {
-			if sel, ok := vi.Type.(*ast.SelectorExpr); ok {
-				if ident, ok := sel.X.(*ast.Ident); ok {
-					var found string
-					for _, imp := range vi.DefiningImports {
-						if ImportName(imp) == ident.Name {
-							found = Unquote(imp.Path.Value)
+		for _, source := range chunk.Sources {
+			imports[source.Package] = struct{}{}
+			for _, vi := range source.Vars {
+				if sel, ok := vi.Type.(*ast.SelectorExpr); ok {
+					if ident, ok := sel.X.(*ast.Ident); ok {
+						var found string
+						for _, imp := range vi.DefiningImports {
+							if ImportName(imp) == ident.Name {
+								found = Unquote(imp.Path.Value)
+							}
 						}
+						if found == "" {
+							return nil, fmt.Errorf("could not find import %s", ident.Name)
+						}
+						imports[found] = struct{}{}
 					}
-					if found == "" {
-						return nil, fmt.Errorf("could not find import %s", ident.Name)
-					}
-					imports[found] = struct{}{}
 				}
 			}
 		}
@@ -142,35 +165,37 @@ func (t *TypeInfo) AllVars(tree *TreeInfo) ([]PreparedGetter, []PreparedVar, []P
 	hasproc := map[string]bool{}
 	// order of chunks is such that subclasses override superclass getters and procs
 	for _, chunk := range chunks {
-		for _, vi := range chunk.Vars {
-			vars = append(vars, PreparedVar{
-				VarInfo:      vi,
-				StructName:   chunk.StructName,
-				PackageShort: chunk.PackageShort,
-			})
-		}
-		for _, gi := range chunk.Getters {
-			if hasgetter[gi.FieldName] {
-				continue
+		for _, source := range chunk.Sources {
+			for _, vi := range source.Vars {
+				vars = append(vars, PreparedVar{
+					VarInfo:      vi,
+					StructName:   source.StructName,
+					PackageShort: source.PackageShort,
+				})
 			}
-			hasgetter[gi.FieldName] = true
-			if !gi.HasGetter {
-				return nil, nil, nil, fmt.Errorf("no getter for field: %s", gi.FieldName)
+			for _, gi := range source.Getters {
+				if hasgetter[gi.FieldName] {
+					continue
+				}
+				hasgetter[gi.FieldName] = true
+				if !gi.HasGetter {
+					return nil, nil, nil, fmt.Errorf("no getter for field: %s", gi.FieldName)
+				}
+				getters = append(getters, PreparedGetter{
+					GetterInfo: *gi,
+					StructName: source.StructName,
+				})
 			}
-			getters = append(getters, PreparedGetter{
-				GetterInfo: *gi,
-				StructName: chunk.StructName,
-			})
-		}
-		for _, pi := range chunk.Procs {
-			if hasproc[pi.Name] {
-				continue
+			for _, pi := range source.Procs {
+				if hasproc[pi.Name] {
+					continue
+				}
+				hasproc[pi.Name] = true
+				procs = append(procs, PreparedProc{
+					ProcInfo:   pi,
+					StructName: source.StructName,
+				})
 			}
-			hasproc[pi.Name] = true
-			procs = append(procs, PreparedProc{
-				ProcInfo:   pi,
-				StructName: chunk.StructName,
-			})
 		}
 	}
 	sort.Slice(vars, func(i, j int) bool {
@@ -185,15 +210,15 @@ func (t *TypeInfo) AllVars(tree *TreeInfo) ([]PreparedGetter, []PreparedVar, []P
 	return getters, vars, procs, nil
 }
 
-func (t *TypeInfo) Encode(tree *TreeInfo) (PreparedChunk, error) {
-	if !t.FoundConstructor {
-		return PreparedChunk{}, fmt.Errorf("no constructor for %s", t.Path)
+func (source *SourceInfo) Encode(tree *TreeInfo, t *TypeInfo) (PreparedChunk, error) {
+	if !source.FoundConstructor {
+		return PreparedChunk{}, fmt.Errorf("no constructor for %s source %s.%s", t.Path, source.Package, source.StructName)
 	}
 	return PreparedChunk{
-		PackageShort: t.PackageShort,
-		Package:      t.Package,
-		StructName:   t.StructName,
-		Vars:         t.Vars,
+		PackageShort: source.PackageShort,
+		Package:      source.Package,
+		StructName:   source.StructName,
+		Vars:         source.Vars,
 	}, nil
 }
 
