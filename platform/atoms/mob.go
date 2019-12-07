@@ -15,6 +15,7 @@ type MobData struct {
 func NewMobData(src *types.Datum, _ ...types.Value) MobData {
 	src.SetVar("name", types.String("mob"))
 	src.SetVar("layer", types.Int(MobLayer))
+	src.SetVar("density", types.Bool(true))
 	return MobData{}
 }
 
