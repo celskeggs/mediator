@@ -2,17 +2,16 @@ package framework
 
 import (
 	"flag"
-	"github.com/celskeggs/mediator/platform"
 	"github.com/celskeggs/mediator/platform/icon"
 	"github.com/celskeggs/mediator/platform/types"
+	"github.com/celskeggs/mediator/platform/world"
 	"github.com/celskeggs/mediator/platform/worldmap"
+	"github.com/celskeggs/mediator/util"
 	"github.com/celskeggs/mediator/websession"
 )
 
 type Game interface {
-	Definer() platform.TreeDefiner
-	ElaborateTree(*types.TypeTree, *icon.IconCache)
-	BeforeMap(world *platform.World)
+	BeforeMap(world *world.World)
 }
 
 type ResourceDefaults struct {
@@ -23,7 +22,7 @@ type ResourceDefaults struct {
 
 var mapPath = flag.String("map", "map.dmm", "the path to the game map")
 
-func BuildWorld(game Game, defaults ResourceDefaults, parseFlags bool) *platform.World {
+func BuildWorld(tree types.TypeTree, game Game, defaults ResourceDefaults, parseFlags bool) *world.World {
 	websession.SetDefaultFlags(defaults.CoreResourcesDir, defaults.IconsDir)
 	*mapPath = defaults.MapPath
 
@@ -33,25 +32,24 @@ func BuildWorld(game Game, defaults ResourceDefaults, parseFlags bool) *platform
 	} else {
 		resources = defaults.IconsDir
 	}
-	tree := platform.NewAtomicTree(game.Definer())
-	icons := icon.NewIconCache(resources)
-	game.ElaborateTree(tree, icons)
+	util.FIXME("figure out where this should be used")
+	_ = icon.NewIconCache(resources)
 
-	world := platform.NewWorld(tree)
+	gameworld := world.NewWorld(types.NewRealm(tree))
 
-	game.BeforeMap(world)
+	game.BeforeMap(gameworld)
 
-	err := worldmap.LoadMapFromFile(world, *mapPath)
+	err := worldmap.LoadMapFromFile(gameworld, *mapPath)
 	if err != nil {
 		panic("cannot load world: " + err.Error())
 	}
-	world.UpdateDefaultViewDistance()
+	gameworld.UpdateDefaultViewDistance()
 
-	return world
+	return gameworld
 }
 
-func Launch(game Game, defaults ResourceDefaults) {
-	world := BuildWorld(game, defaults, true)
+func Launch(tree types.TypeTree, game Game, defaults ResourceDefaults) {
+	gameworld := BuildWorld(tree, game, defaults, true)
 
-	websession.LaunchServerFromFlags(world.ServerAPI())
+	websession.LaunchServerFromFlags(gameworld.ServerAPI())
 }

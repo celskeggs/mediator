@@ -2,7 +2,7 @@ package format
 
 import (
 	"fmt"
-	"github.com/celskeggs/mediator/platform"
+	"github.com/celskeggs/mediator/platform/types"
 	"github.com/celskeggs/mediator/util"
 	"strings"
 	"unicode"
@@ -15,9 +15,9 @@ func isUpperCase(s string) bool {
 	return false
 }
 
-func formatMacro(macro string, atom platform.IAtom) string {
+func formatMacro(macro string, atom *types.Datum) string {
 	if macro == "the" || macro == "The" {
-		name := atom.AsAtom().Appearance.Name
+		name := types.Unstring(atom.Var("name"))
 		if isUpperCase(name) {
 			return name
 		} else {
@@ -28,20 +28,20 @@ func formatMacro(macro string, atom platform.IAtom) string {
 	}
 }
 
-func FormatAtom(atom platform.IAtom) string {
+func FormatAtom(atom *types.Datum) string {
 	return formatMacro("the", atom)
 }
 
-func Format(str string, atoms ...platform.IAtom) string {
+func Format(str string, data ...types.Value) string {
 	util.FIXME("make this more generic than only accepting atoms")
 	parts := strings.Split(str, "[]")
-	if len(parts) != len(atoms)+1 {
-		panic(fmt.Sprintf("invalid format string: %d text expressions but %d parameters", len(parts)-1, len(atoms)))
+	if len(parts) != len(data)+1 {
+		panic(fmt.Sprintf("invalid format string: %d text expressions but %d parameters", len(parts)-1, len(data)))
 	}
-	moreParts := make([]string, len(parts)+len(atoms))
+	moreParts := make([]string, len(parts)+len(data))
 	moreParts[0] = parts[0]
-	for i := 0; i < len(atoms); i++ {
-		moreParts[2*i+1] = FormatAtom(atoms[i])
+	for i := 0; i < len(data); i++ {
+		moreParts[2*i+1] = FormatAtom(data[i].(*types.Datum))
 		moreParts[2*i+2] = parts[i+1]
 	}
 	return strings.Join(moreParts, "")
