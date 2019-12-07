@@ -1,6 +1,9 @@
 package atoms
 
-import "github.com/celskeggs/mediator/platform/types"
+import (
+	"github.com/celskeggs/mediator/platform/icon"
+	"github.com/celskeggs/mediator/platform/types"
+)
 
 type World interface {
 	PlayerExists(client types.Value) bool
@@ -8,6 +11,7 @@ type World interface {
 	SetMaxXYZ(x, y, z uint)
 	LocateXYZ(x, y, z uint) (turf *types.Datum)
 	Realm() *types.Realm
+	Icon(name string) *icon.Icon
 }
 
 func WorldOf(t *types.Datum) World {

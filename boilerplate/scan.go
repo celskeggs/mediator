@@ -24,18 +24,18 @@ func Unquote(name string) string {
 	return name[1 : len(name)-1]
 }
 
-func EnumeratePackages(filename string) ([]string, error) {
+func EnumeratePackages(filename string) (packages []string, topPackage string, e error) {
 	fset := token.NewFileSet()
 	ast, err := parser.ParseFile(fset, filename, nil, parser.ImportsOnly)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	var imports []string
 	for _, i := range ast.Imports {
 		imports = append(imports, Unquote(i.Path.Value))
 	}
-	return imports, nil
+	return imports, ast.Name.Name, nil
 }
 
 func ScanDeclsInFile(filename string, pkg *build.Package) ([]Decl, error) {
@@ -73,9 +73,6 @@ func ScanDeclsInPackage(pkgname string) ([]Decl, error) {
 	if len(pkg.CgoFiles) > 0 {
 		return nil, errors.New("nonzero number of cgo files")
 	}
-	if len(pkg.IgnoredGoFiles) > 0 {
-		return nil, errors.New("nonzero number of ignored go files")
-	}
 	if len(pkg.InvalidGoFiles) > 0 {
 		return nil, errors.New("nonzero number of invalid go files")
 	}
@@ -102,14 +99,14 @@ func ScanDecls(packages []string) ([]Decl, error) {
 	return allDecls, nil
 }
 
-func EnumerateDecls(filename string) ([]Decl, error) {
-	packages, err := EnumeratePackages("header.go")
+func EnumerateDecls(filename string) (decls []Decl, topPackage string, err error) {
+	packages, topPackage, err := EnumeratePackages("header.go")
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	decls, err := ScanDecls(packages)
+	decls, err = ScanDecls(packages)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return decls, nil
+	return decls, topPackage, nil
 }

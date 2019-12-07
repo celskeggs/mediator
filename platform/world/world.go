@@ -2,6 +2,7 @@ package world
 
 import (
 	"github.com/celskeggs/mediator/platform/atoms"
+	"github.com/celskeggs/mediator/platform/icon"
 	"github.com/celskeggs/mediator/platform/types"
 	"github.com/celskeggs/mediator/util"
 	"github.com/celskeggs/mediator/websession"
@@ -16,7 +17,8 @@ type World struct {
 
 	MaxX, MaxY, MaxZ uint
 
-	realm *types.Realm
+	realm     *types.Realm
+	iconCache *icon.IconCache
 
 	clients map[*types.Datum]*types.Ref
 
@@ -51,9 +53,21 @@ func (w *World) FindAll(predicate func(*types.Datum) bool) []*types.Datum {
 	})
 }
 
+func (w *World) FindAllType(tp types.TypePath) []*types.Datum {
+	return w.Realm().FindAll(func(datum *types.Datum) bool {
+		return types.IsType(datum, tp)
+	})
+}
+
 func (w *World) FindOne(predicate func(*types.Datum) bool) *types.Datum {
 	return w.Realm().FindOne(func(datum *types.Datum) bool {
 		return types.IsType(datum, "/atom") && predicate(datum)
+	})
+}
+
+func (w *World) FindOneType(tp types.TypePath) *types.Datum {
+	return w.Realm().FindOne(func(datum *types.Datum) bool {
+		return types.IsType(datum, tp)
 	})
 }
 
@@ -112,12 +126,17 @@ func (w *World) UpdateDefaultViewDistance() {
 	}
 }
 
-func NewWorld(realm *types.Realm) *World {
+func (w *World) Icon(name string) *icon.Icon {
+	return w.iconCache.LoadOrPanic(name)
+}
+
+func NewWorld(realm *types.Realm, cache *icon.IconCache) *World {
 	world := &World{
 		Name:          "Untitled",
 		Mob:           "/mob",
 		VarView:       5,
 		realm:         realm,
+		iconCache:     cache,
 		clients:       map[*types.Datum]*types.Ref{},
 		claimed:       false,
 		setVirtualEye: false,

@@ -17,10 +17,7 @@ func NewAreaData(src *types.Datum, _ ...types.Value) AreaData {
 }
 
 func TurfsInArea(area types.Value) (turfs []types.Value) {
-	util.FIXME("is this method actually needed?")
-	if !types.IsType(area, "/area") {
-		panic("not an /area")
-	}
+	types.AssertType(area, "/area")
 	for _, atom := range datum.Elements(area.Var("contents")) {
 		if types.IsType(atom, "/turf") {
 			turfs = append(turfs, atom)

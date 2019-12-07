@@ -33,14 +33,14 @@ func Generate() error {
 	if err != nil {
 		return errors.Wrap(err, "while removing existing")
 	}
-	decls, err := EnumerateDecls("header.go")
+	decls, pkg, err := EnumerateDecls("header.go")
 	if err != nil {
 		return errors.Wrap(err, "while enumerating declarations")
 	}
 	if len(decls) == 0 {
 		return fmt.Errorf("no mediator declarations found")
 	}
-	tree := NewTreeInfo()
+	tree := NewTreeInfo(pkg)
 	for _, decl := range decls {
 		println("decl", decl.Package.ImportPath, decl.StructName, decl.Path, decl.ParentPath)
 		err := tree.LoadFromDecl(decl)

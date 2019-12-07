@@ -14,10 +14,10 @@ func NewAtomMovableData(src *types.Datum, _ ...types.Value) AtomMovableData {
 	return AtomMovableData{}
 }
 
-func ContainingArea(atom types.Value) types.Value {
+func ContainingArea(atom types.Value) *types.Datum {
 	for atom != nil {
 		if types.IsType(atom, "/area") {
-			return atom
+			return atom.(*types.Datum)
 		}
 		atom = atom.Var("loc")
 	}

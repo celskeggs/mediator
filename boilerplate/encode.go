@@ -146,7 +146,7 @@ func (t *TypeInfo) AllVars(tree *TreeInfo) ([]PreparedGetter, []PreparedVar, []P
 			vars = append(vars, PreparedVar{
 				VarInfo:      vi,
 				StructName:   chunk.StructName,
-				PackageShort: chunk.PackageShort(),
+				PackageShort: chunk.PackageShort,
 			})
 		}
 		for _, gi := range chunk.Getters {
@@ -185,17 +185,12 @@ func (t *TypeInfo) AllVars(tree *TreeInfo) ([]PreparedGetter, []PreparedVar, []P
 	return getters, vars, procs, nil
 }
 
-func (t *TypeInfo) PackageShort() string {
-	parts := strings.Split(t.Package, "/")
-	return parts[len(parts)-1]
-}
-
 func (t *TypeInfo) Encode(tree *TreeInfo) (PreparedChunk, error) {
 	if !t.FoundConstructor {
 		return PreparedChunk{}, fmt.Errorf("no constructor for %s", t.Path)
 	}
 	return PreparedChunk{
-		PackageShort: t.PackageShort(),
+		PackageShort: t.PackageShort,
 		Package:      t.Package,
 		StructName:   t.StructName,
 		Vars:         t.Vars,
@@ -230,14 +225,15 @@ func (t *TreeInfo) Encode() ([]*PreparedImplementation, error) {
 			return nil, err
 		}
 		pis = append(pis, &PreparedImplementation{
-			TypePath:   typeInfo.Path,
-			Type:       typeInfo.Type(),
-			Imports:    imports,
-			Chunks:     chunks,
-			ParentPath: parent,
-			Vars:       vars,
-			Procs:      procs,
-			Getters:    getters,
+			TypePath:    typeInfo.Path,
+			ImplPackage: t.ImplPackage,
+			Type:        typeInfo.Type(),
+			Imports:     imports,
+			Chunks:      chunks,
+			ParentPath:  parent,
+			Vars:        vars,
+			Procs:       procs,
+			Getters:     getters,
 		})
 	}
 	return pis, nil

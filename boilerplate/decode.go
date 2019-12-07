@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/celskeggs/mediator/util"
 	"go/ast"
+	"go/build"
 	"go/parser"
 	"go/token"
 	"path"
@@ -145,28 +146,28 @@ func (info *TypeInfo) LoadProc(fset *token.FileSet, decl *ast.FuncDecl, name str
 		types = append(types, param.Type)
 	}
 	if len(types) < 1 {
-		return errors.New("proc must take at least src")
+		return fmt.Errorf("proc %s.%s must take at least src at %v", info.StructName, decl.Name.Name, fset.Position(decl.Pos()))
 	}
 	for i, t := range types {
 		if i == 0 {
 			if !IsDatumType(t) {
-				return errors.New("proc must take src from *types.Datum")
+				return fmt.Errorf("proc %s.%s must take src from *types.Datum at %v", info.StructName, decl.Name.Name, fset.Position(decl.Pos()))
 			}
 		} else {
 			if !IsValueType(t) {
-				return errors.New("proc must take only types.Value")
+				return fmt.Errorf("proc %s.%s must take only types.Value at %v", info.StructName, decl.Name.Name, fset.Position(decl.Pos()))
 			}
 		}
 	}
 	if decl.Type.Results != nil && len(decl.Type.Results.List) > 1 {
-		return errors.New("cannot have more than one result")
+		return fmt.Errorf("proc %s.%s cannot have more than one result at %v", info.StructName, decl.Name.Name, fset.Position(decl.Pos()))
 	}
 	var resultType ast.Expr
 	if decl.Type.Results != nil && len(decl.Type.Results.List) > 0 {
 		resultType = decl.Type.Results.List[0].Type
 	}
 	if !IsValueType(resultType) {
-		return errors.New("proc must return a types.Value")
+		return fmt.Errorf("proc %s.%s must return a types.Value at %v", info.StructName, decl.Name.Name, fset.Position(decl.Pos()))
 	}
 	info.Procs = append(info.Procs, ProcInfo{
 		Name:       name,
@@ -236,7 +237,7 @@ func (info *TypeInfo) LoadSetter(fset *token.FileSet, decl *ast.FuncDecl) error 
 	return nil
 }
 
-func (t *TreeInfo) LoadAST(fset *token.FileSet, file *ast.File) error {
+func (t *TreeInfo) LoadAST(fset *token.FileSet, file *ast.File, importPath string) error {
 	for _, decl := range file.Decls {
 		if gen, ok := decl.(*ast.GenDecl); ok {
 			if gen.Tok == token.TYPE {
@@ -245,7 +246,7 @@ func (t *TreeInfo) LoadAST(fset *token.FileSet, file *ast.File) error {
 				}
 				spec := gen.Specs[0].(*ast.TypeSpec)
 				for _, ti := range t.Paths {
-					if ti.StructName == spec.Name.Name {
+					if ti.StructName == spec.Name.Name && ti.Package == importPath {
 						stype, ok := spec.Type.(*ast.StructType)
 						if !ok {
 							return errors.New("expected struct type")
@@ -259,7 +260,7 @@ func (t *TreeInfo) LoadAST(fset *token.FileSet, file *ast.File) error {
 			}
 		} else if fun, ok := decl.(*ast.FuncDecl); ok {
 			for _, ti := range t.Paths {
-				if fun.Name.Name == "New"+ti.StructName {
+				if fun.Name.Name == "New"+ti.StructName && ti.Package == importPath {
 					err := ti.LoadNewFunc(fset, fun)
 					if err != nil {
 						return err
@@ -271,7 +272,7 @@ func (t *TreeInfo) LoadAST(fset *token.FileSet, file *ast.File) error {
 						recvType = star.X
 					}
 					if ident, ok := recvType.(*ast.Ident); ok {
-						if ident.Name == ti.StructName {
+						if ident.Name == ti.StructName && ti.Package == importPath {
 							if strings.HasPrefix(fun.Name.Name, "Proc") && len(fun.Name.Name) > len("Proc") {
 								err := ti.LoadProc(fset, fun, fun.Name.Name[4:])
 								if err != nil {
@@ -310,7 +311,7 @@ func (t *TreeInfo) LoadPackages() error {
 			if err != nil {
 				return err
 			}
-			err = t.LoadAST(fset, fileAST)
+			err = t.LoadAST(fset, fileAST, pkg.ImportPath)
 			if err != nil {
 				return err
 			}
@@ -336,6 +337,10 @@ func (t *TreeInfo) LoadFromDecl(decl Decl) error {
 	nt.Parent = decl.ParentPath
 	nt.StructName = decl.StructName
 	nt.Package = decl.Package.ImportPath
+	nt.PackageShort, err = t.GetPackageName(nt.Package)
+	if err != nil {
+		return err
+	}
 	alreadyExists := false
 	for _, pkg := range t.Packages {
 		if pkg.Dir == decl.Package.Dir {
@@ -347,4 +352,16 @@ func (t *TreeInfo) LoadFromDecl(decl Decl) error {
 		t.Packages = append(t.Packages, decl.Package)
 	}
 	return nil
+}
+
+func (t *TreeInfo) GetPackageName(importPath string) (string, error) {
+	if val, ok := t.PkgNames[importPath]; ok {
+		return val, nil
+	}
+	pkg, err := build.Default.Import(importPath, "", 0)
+	if err != nil {
+		return "", err
+	}
+	t.PkgNames[importPath] = pkg.Name
+	return pkg.Name, nil
 }

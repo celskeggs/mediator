@@ -18,7 +18,7 @@ type Realm struct {
 func NewRealm(tree TypeTree) *Realm {
 	return &Realm{
 		datums:   map[*Datum]struct{}{},
-		typeTree: nil,
+		typeTree: tree,
 	}
 }
 

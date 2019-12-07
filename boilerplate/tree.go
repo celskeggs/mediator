@@ -30,8 +30,9 @@ type TypeInfo struct {
 	Path   string
 	Parent string
 
-	StructName string
-	Package    string
+	StructName   string
+	Package      string
+	PackageShort string
 
 	FoundConstructor bool
 	Getters          []*GetterInfo
@@ -40,12 +41,16 @@ type TypeInfo struct {
 }
 
 type TreeInfo struct {
-	Packages []*build.Package
-	Paths    map[string]*TypeInfo
+	ImplPackage string
+	Packages    []*build.Package
+	Paths       map[string]*TypeInfo
+	PkgNames    map[string]string
 }
 
-func NewTreeInfo() *TreeInfo {
+func NewTreeInfo(pkg string) *TreeInfo {
 	return &TreeInfo{
-		Paths: map[string]*TypeInfo{},
+		ImplPackage: pkg,
+		Paths:       map[string]*TypeInfo{},
+		PkgNames:    map[string]string{},
 	}
 }
