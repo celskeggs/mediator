@@ -348,6 +348,36 @@ func (t *TypeInfo) AddSource(tree *TreeInfo, structName string, importPath strin
 	return nil
 }
 
+func (t *TypeInfo) Option(opt string) error {
+	if opt == "!singleton" {
+		t.Singleton = true
+		return nil
+	} else {
+		return fmt.Errorf("unknown option: %q", opt)
+	}
+}
+
+func (t *TreeInfo) CascadeOptions() error {
+	found := true
+	for found {
+		found = false
+		for _, ti := range t.Paths {
+			if ti.Parent == "/" {
+				continue
+			}
+			parent, ok := t.Paths[ti.Parent]
+			if !ok {
+				return fmt.Errorf("cannot find parent for path: %q", ti.Parent)
+			}
+			if parent.Singleton && !ti.Singleton {
+				ti.Singleton = true
+				found = true
+			}
+		}
+	}
+	return nil
+}
+
 func (t *TreeInfo) LoadFromDecl(decl Decl) error {
 	nt, err := t.NewType(decl.Path)
 	if err != nil {
@@ -357,6 +387,12 @@ func (t *TreeInfo) LoadFromDecl(decl Decl) error {
 	err = nt.AddSource(t, decl.StructName, decl.Package.ImportPath)
 	if err != nil {
 		return err
+	}
+	for _, option := range decl.Options {
+		err := nt.Option(option)
+		if err != nil {
+			return err
+		}
 	}
 	alreadyExists := false
 	for _, pkg := range t.Packages {

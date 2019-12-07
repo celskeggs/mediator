@@ -13,13 +13,16 @@ type Realm struct {
 	deferredRemovals []*Datum
 	worldRef         interface{}
 	typeTree         TypeTree
+	TreePrivateState interface{} // populated by the TypeTree
 }
 
 func NewRealm(tree TypeTree) *Realm {
-	return &Realm{
+	realm := &Realm{
 		datums:   map[*Datum]struct{}{},
 		typeTree: tree,
 	}
+	tree.PopulateRealm(realm)
+	return realm
 }
 
 func (r *Realm) setBusy(busy bool) {

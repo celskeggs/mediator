@@ -43,7 +43,7 @@ func Generate() error {
 	tree := NewTreeInfo(pkg)
 	for _, decl := range decls {
 		if decl.Path != decl.ParentPath {
-			println("decl", decl.Package.ImportPath, decl.StructName, decl.Path, decl.ParentPath)
+			println("decl", decl.Package.ImportPath, decl.StructName, decl.Path, decl.ParentPath, strings.Join(decl.Options, ","))
 			err := tree.LoadFromDecl(decl)
 			if err != nil {
 				return errors.Wrapf(err, "while loading from declarations for %s", decl.Path)
@@ -58,6 +58,10 @@ func Generate() error {
 				return errors.Wrapf(err, "while loading from extensions for %s", decl.Path)
 			}
 		}
+	}
+	err = tree.CascadeOptions()
+	if err != nil {
+		return errors.Wrap(err, "while cascading options")
 	}
 	err = tree.LoadPackages()
 	if err != nil {

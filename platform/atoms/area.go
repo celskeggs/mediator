@@ -6,7 +6,7 @@ import (
 	"github.com/celskeggs/mediator/util"
 )
 
-//mediator:declare AreaData /area /atom
+//mediator:declare AreaData /area /atom !singleton
 type AreaData struct{}
 
 func NewAreaData(src *types.Datum, _ ...types.Value) AreaData {

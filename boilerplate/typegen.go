@@ -42,11 +42,29 @@ import (
 
 type tree struct {}
 
+type treeSingletons struct {
+{{- range $path, $type := .Paths }}
+{{- if $type.Singleton }}
+	{{$type.Type}} *types.Datum
+{{- end }}
+{{- end }}
+}
+
 var Tree types.TypeTree = tree{}
+
+func (tree) PopulateRealm(realm *types.Realm) {
+    realm.TreePrivateState = &treeSingletons{
+{{- range $path, $type := .Paths }}
+{{- if $type.Singleton }}
+		{{$type.Type}}: New{{$type.Type}}(realm),
+{{- end }}
+{{- end }}
+	}
+}
 
 func (tree) Parent(path types.TypePath) types.TypePath {
 	switch path {
-{{- range $path, $type := .Paths }} 
+{{- range $path, $type := .Paths }}
 	case "{{$path}}":
 		return "{{if ne $type.Parent "/"}}{{$type.Parent}}{{ end }}"
 {{- end }}
@@ -57,9 +75,14 @@ func (tree) Parent(path types.TypePath) types.TypePath {
 
 func (tree) New(realm *types.Realm, path types.TypePath, params ...types.Value) *types.Datum {
 	switch path {
-{{- range $path, $type := .Paths }} 
+{{- range $path, $type := .Paths }}
+{{- if $type.Singleton }}
+	case "{{$path}}":
+		return realm.TreePrivateState.(*treeSingletons).{{$type.Type}}
+{{- else }}
 	case "{{$path}}":
 		return New{{$type.Type}}(realm, params...)
+{{- end }}
 {{- end }}
 	default:
 		panic("unknown type " + path.String())

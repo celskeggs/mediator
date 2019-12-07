@@ -38,8 +38,9 @@ type SourceInfo struct {
 }
 
 type TypeInfo struct {
-	Path   string
-	Parent string
+	Path      string
+	Parent    string
+	Singleton bool
 
 	Sources []*SourceInfo
 }

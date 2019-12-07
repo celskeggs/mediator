@@ -15,6 +15,7 @@ type Decl struct {
 	StructName string
 	Path       string
 	ParentPath string
+	Options    []string
 }
 
 func Unquote(name string) string {
@@ -51,18 +52,27 @@ func ScanDeclsInFile(filename string, pkg *build.Package) ([]Decl, error) {
 			if strings.HasPrefix(text, "mediator:") {
 				parts := strings.Split(text, " ")
 				if parts[0] == "mediator:declare" {
-					if len(parts) != 4 {
-						return nil, fmt.Errorf("mediator:declare does not have exactly three arguments in %q", text)
+					if len(parts) < 4 {
+						return nil, fmt.Errorf("mediator:declare does not have exactly four arguments in %q", text)
+					}
+					var options []string
+					for _, opt := range parts[4:] {
+						if strings.HasPrefix(opt, "!") {
+							options = append(options, opt)
+						} else {
+							return nil, fmt.Errorf("invalid option %q in mediator:declare block", opt)
+						}
 					}
 					decls = append(decls, Decl{
 						Package:    pkg,
 						StructName: parts[1],
 						Path:       parts[2],
 						ParentPath: parts[3],
+						Options:    options,
 					})
 				} else if parts[0] == "mediator:extend" {
 					if len(parts) != 3 {
-						return nil, fmt.Errorf("mediator:declare does not have exactly three arguments in %q", text)
+						return nil, fmt.Errorf("mediator:extend does not have exactly three arguments in %q", text)
 					}
 					decls = append(decls, Decl{
 						Package:    pkg,
