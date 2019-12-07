@@ -69,7 +69,7 @@ func (p playerAPI) Command(cmd webclient.Command) {
 const SpriteSize = 32
 
 func (p playerAPI) Render() sprite.SpriteView {
-	center, atoms := p.API.World.RenderClientViewAsAtoms(p.Client)
+	center, viewAtoms := p.API.World.RenderClientViewAsAtoms(p.Client)
 
 	util.FIXME("don't use hardcoded tile sizes here")
 	util.FIXME("add adjacent cell movement animations")
@@ -88,7 +88,7 @@ func (p playerAPI) Render() sprite.SpriteView {
 		shiftX, shiftY := (cX-viewDist)*SpriteSize, (cY-viewDist)*SpriteSize
 
 		layers := map[int][]sprite.GameSprite{}
-		for _, visibleAtom := range atoms {
+		for _, visibleAtom := range viewAtoms {
 			x, y := XY(visibleAtom)
 			found, layer, s := visibleAtom.Var("appearance").(atoms.Appearance).ToSprite(x*SpriteSize-shiftX, y*SpriteSize-shiftY, visibleAtom.Var("dir").(common.Direction))
 			if found {

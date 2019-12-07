@@ -171,3 +171,9 @@ func IsType(v Value, path TypePath) bool {
 	}
 	return false
 }
+
+func AssertType(v Value, path TypePath) {
+	if !IsType(v, path) {
+		panic("unexpected value " + v.String() + " when datum of type " + path.String() + " expected")
+	}
+}

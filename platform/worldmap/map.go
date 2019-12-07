@@ -2,34 +2,32 @@ package worldmap
 
 import (
 	"errors"
-	"fmt"
 	"github.com/celskeggs/mediator/parsemap"
-	"github.com/celskeggs/mediator/platform"
-	"github.com/celskeggs/mediator/platform/datum"
+	"github.com/celskeggs/mediator/platform/atoms"
 	"github.com/celskeggs/mediator/platform/types"
 	"github.com/celskeggs/mediator/util"
 	"io/ioutil"
 )
 
 type mapCell struct {
-	Area     platform.IArea
-	Turf     platform.ITurf
-	Contents []platform.IAtom
+	Area     *types.Datum
+	Turf     *types.Datum
+	Contents []*types.Datum
 }
 
-func (cell *mapCell) Add(atom platform.IAtom) error {
-	datum.AssertConsistent(atom)
-	if area, isarea := atom.(platform.IArea); isarea {
+func (cell *mapCell) Add(atom *types.Datum) error {
+	if types.IsType(atom, "/area") {
 		if cell.Area != nil {
 			return errors.New("more than one area in cell")
 		}
-		cell.Area = area
-	} else if turf, isturf := atom.(platform.ITurf); isturf {
+		cell.Area = atom
+	} else if types.IsType(atom, "/turf") {
 		if cell.Turf != nil {
 			return errors.New("more than one turf in cell")
 		}
-		cell.Turf = turf
+		cell.Turf = atom
 	} else {
+		types.AssertType(atom, "/atom")
 		cell.Contents = append(cell.Contents, atom)
 	}
 	return nil
@@ -38,14 +36,16 @@ func (cell *mapCell) Add(atom platform.IAtom) error {
 func (cell *mapCell) Stitch(x, y, z uint) {
 	util.FIXME("populate areas and turfs if not provided")
 	if cell.Turf != nil {
-		cell.Turf.AsTurf().SetXYZ(x, y, z)
+		cell.Turf.SetVar("x", types.Int(x))
+		cell.Turf.SetVar("y", types.Int(y))
+		cell.Turf.SetVar("z", types.Int(z))
 	}
 	if cell.Area != nil && cell.Turf != nil {
-		cell.Turf.SetLocation(cell.Area)
+		cell.Turf.SetVar("loc", cell.Area)
 	}
 	if cell.Turf != nil {
-		for _, atom := range cell.Contents {
-			atom.SetLocation(cell.Turf)
+		for _, item := range cell.Contents {
+			item.SetVar("loc", cell.Turf)
 		}
 	}
 }
@@ -53,7 +53,7 @@ func (cell *mapCell) Stitch(x, y, z uint) {
 type worldMap [][][]mapCell
 
 type loaderObserver struct {
-	world *platform.World
+	world atoms.World
 	m     worldMap
 }
 
@@ -71,13 +71,7 @@ func (lo *loaderObserver) SetSize(l parsemap.Location) {
 }
 
 func (lo *loaderObserver) AddAtom(l parsemap.Location, path string) error {
-	if !lo.world.Tree.Exists(types.TypePath(path)) {
-		return fmt.Errorf("no such type path: %s", path)
-	}
-	atom, ok := lo.world.Tree.New(types.TypePath(path)).(platform.IAtom)
-	if !ok {
-		panic("expected type path " + path + " specified in AddAtom to be an atom")
-	}
+	atom := lo.world.Realm().New(types.TypePath(path))
 	return lo.m[l.X][l.Y][l.Z].Add(atom)
 }
 
@@ -93,7 +87,7 @@ func (lo *loaderObserver) StitchMap() {
 	}
 }
 
-func LoadMap(world *platform.World, text string) error {
+func LoadMap(world atoms.World, text string) error {
 	l := loaderObserver{
 		world: world,
 	}
@@ -103,13 +97,11 @@ func LoadMap(world *platform.World, text string) error {
 	}
 	l.StitchMap()
 	util.NiceToHave("handle changing this both at compile time and at runtime")
-	world.MaxX = uint(len(l.m))
-	world.MaxY = uint(len(l.m[0]))
-	world.MaxZ = uint(len(l.m[0][0]))
+	world.SetMaxXYZ(uint(len(l.m)), uint(len(l.m[0])), uint(len(l.m[0][0])))
 	return nil
 }
 
-func LoadMapFromFile(world *platform.World, filename string) error {
+func LoadMapFromFile(world atoms.World, filename string) error {
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return err

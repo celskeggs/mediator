@@ -31,7 +31,14 @@ type World struct {
 var _ atoms.World = &World{}
 
 func (w World) MaxXYZ() (uint, uint, uint) {
-	panic("implement me")
+	return w.MaxX, w.MaxY, w.MaxZ
+}
+
+func (w *World) SetMaxXYZ(x, y, z uint) {
+	if w.MaxX != 0 || w.MaxY != 0 || w.MaxZ != 0 {
+		panic("world map's size was already populated")
+	}
+	w.MaxX, w.MaxY, w.MaxZ = x, y, z
 }
 
 func (w *World) Realm() *types.Realm {
