@@ -42,7 +42,7 @@ func MobDataChunk(v types.Value) (*MobData, bool) {
 	if !ok {
 		return nil, false
 	}
-	chunk := impl.Chunk("github.com/celskeggs/mediator/platform/atom.MobData")
+	chunk := impl.Chunk("github.com/celskeggs/mediator/platform/atoms.MobData")
 	if chunk == nil {
 		return nil, false
 	}
@@ -53,7 +53,7 @@ func MobSetClient(mobV types.Value, client types.Value) {
 	util.FIXME("make this publicly accessible?")
 	mob, ismob := MobDataChunk(mobV)
 	if !ismob {
-		panic("attempt to set client on not-a-mob")
+		panic("attempt to set client on not-a-mob: " + mobV.String())
 	}
 	if mob.client != nil {
 		panic("client already set!")

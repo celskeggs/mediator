@@ -86,7 +86,7 @@ func AtomDataChunk(v types.Value) (*AtomData, bool) {
 	if !ok {
 		return nil, false
 	}
-	chunk := impl.Chunk("github.com/celskeggs/mediator/platform/atom.AtomData")
+	chunk := impl.Chunk("github.com/celskeggs/mediator/platform/atoms.AtomData")
 	if chunk == nil {
 		return nil, false
 	}
@@ -109,7 +109,7 @@ func (d *AtomData) SetLoc(src *types.Datum, location types.Value) {
 	if location != nil {
 		newloc, ok := AtomDataChunk(location)
 		if !ok {
-			panic("attempt to move atom to non-atom location")
+			panic("attempt to move atom to non-atom location: " + location.String())
 		}
 		d.location = types.Reference(location)
 		if newloc.contents == nil {
