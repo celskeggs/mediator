@@ -88,6 +88,9 @@ func (d *ClientData) relMove(src *types.Datum, direction common.Direction) types
 		dx, dy := direction.XY()
 		turf = world.LocateXYZ(uint(int(x)+dx), uint(int(y)+dy), z)
 	}
+	if turf != nil {
+		types.AssertType(turf, "/turf")
+	}
 	return src.Invoke("Move", turf, direction)
 }
 

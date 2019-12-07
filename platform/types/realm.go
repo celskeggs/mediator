@@ -76,7 +76,7 @@ func (r *Realm) remove(d *Datum) {
 	}
 }
 
-func (r *Realm) FindAll(predicate func(*Datum) bool) (out []*Datum) {
+func (r *Realm) FindAll(predicate func(*Datum) bool) (out []Value) {
 	r.setBusy(true)
 	defer r.setBusy(false)
 	for datum := range r.datums {
@@ -88,7 +88,7 @@ func (r *Realm) FindAll(predicate func(*Datum) bool) (out []*Datum) {
 }
 
 // returns nil if not found
-func (r *Realm) FindOne(predicate func(*Datum) bool) *Datum {
+func (r *Realm) FindOne(predicate func(*Datum) bool) Value {
 	r.setBusy(true)
 	defer r.setBusy(false)
 	for datum := range r.datums {

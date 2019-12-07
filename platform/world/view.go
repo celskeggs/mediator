@@ -156,7 +156,7 @@ func (vir *viewInfoRegion) XYToOffset(xu, yu uint) (lx, ly uint) {
 	return uint(rx), uint(ry)
 }
 
-func (vir *viewInfoRegion) PopulateTurfs(input []*types.Datum) (maxDepthMax, sumDepthMax int) {
+func (vir *viewInfoRegion) PopulateTurfs(input []types.Value) (maxDepthMax, sumDepthMax int) {
 	for _, turf := range input {
 		tx, ty := XY(turf)
 		ox, oy := vir.XYToOffset(tx, ty)
@@ -168,7 +168,7 @@ func (vir *viewInfoRegion) PopulateTurfs(input []*types.Datum) (maxDepthMax, sum
 			Opaque:     types.Unbool(turf.Var("opacity")),
 			Luminosity: 0,
 			Lit:        true,
-			Turf:       turf,
+			Turf:       turf.(*types.Datum),
 			MaxXY:      int(MaxUint(dx, dy)),
 			SumXY:      int(dx + dy),
 			Vis:        0,
@@ -189,7 +189,7 @@ func (vir *viewInfoRegion) PopulateTurfs(input []*types.Datum) (maxDepthMax, sum
 }
 
 // this is an approximate reimplementation of the BYOND algorithm, based on http://www.byond.com/forum/post/2130277#comment20659267
-func limitViewers(distance uint, center *types.Datum, perspective *types.Datum, base []*types.Datum) []*types.Datum {
+func limitViewers(distance uint, center *types.Datum, perspective *types.Datum, base []types.Value) []*types.Datum {
 	centerX, centerY := XY(center)
 	perspectiveX, perspectiveY := XY(perspective)
 	vir := newViewInfoRegion(distance, centerX, centerY, perspectiveX, perspectiveY)

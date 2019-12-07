@@ -102,6 +102,9 @@ func (d *Datum) Type() TypePath {
 }
 
 func (d *Datum) Var(name string) Value {
+	if d == nil {
+		panic(fmt.Sprintf("attempt to access variable %s on null value", name))
+	}
 	v, ok := d.impl.Var(d, name)
 	if !ok {
 		panic(fmt.Sprintf("no such variable %s found on type %v during read", name, d.Type()))
@@ -167,6 +170,9 @@ func Param(params []Value, i int) Value {
 
 func IsType(v Value, path TypePath) bool {
 	if datum, ok := v.(*Datum); ok {
+		if datum == nil {
+			panic("found half-nil datum")
+		}
 		return datum.realm.IsSubType(datum.Type(), path)
 	}
 	return false

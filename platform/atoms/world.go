@@ -9,7 +9,7 @@ type World interface {
 	PlayerExists(client types.Value) bool
 	MaxXYZ() (uint, uint, uint)
 	SetMaxXYZ(x, y, z uint)
-	LocateXYZ(x, y, z uint) (turf *types.Datum)
+	LocateXYZ(x, y, z uint) (turf types.Value)
 	Realm() *types.Realm
 	Icon(name string) *icon.Icon
 }

@@ -47,25 +47,25 @@ func (w *World) Realm() *types.Realm {
 	return w.realm
 }
 
-func (w *World) FindAll(predicate func(*types.Datum) bool) []*types.Datum {
+func (w *World) FindAll(predicate func(*types.Datum) bool) []types.Value {
 	return w.Realm().FindAll(func(d *types.Datum) bool {
 		return types.IsType(d, "/atom") && (predicate == nil || predicate(d))
 	})
 }
 
-func (w *World) FindAllType(tp types.TypePath) []*types.Datum {
+func (w *World) FindAllType(tp types.TypePath) []types.Value {
 	return w.Realm().FindAll(func(datum *types.Datum) bool {
 		return types.IsType(datum, tp)
 	})
 }
 
-func (w *World) FindOne(predicate func(*types.Datum) bool) *types.Datum {
+func (w *World) FindOne(predicate func(*types.Datum) bool) types.Value {
 	return w.Realm().FindOne(func(datum *types.Datum) bool {
 		return types.IsType(datum, "/atom") && predicate(datum)
 	})
 }
 
-func (w *World) FindOneType(tp types.TypePath) *types.Datum {
+func (w *World) FindOneType(tp types.TypePath) types.Value {
 	return w.Realm().FindOne(func(datum *types.Datum) bool {
 		return types.IsType(datum, tp)
 	})
@@ -104,7 +104,7 @@ func (w *World) ServerAPI() websession.WorldAPI {
 	}
 }
 
-func (w *World) LocateXYZ(x, y, z uint) *types.Datum {
+func (w *World) LocateXYZ(x, y, z uint) types.Value {
 	util.FIXME("this can definitely be more efficient")
 	return w.FindOne(func(atom *types.Datum) bool {
 		if types.IsType(atom, "/turf") {
