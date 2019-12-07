@@ -13,6 +13,7 @@ type ListProvider interface {
 	Set(i int, v *types.Ref)
 	Append(v *types.Ref)
 	RemoveLast()
+	RemoveIndex(i int)
 }
 
 type List struct {
@@ -20,10 +21,6 @@ type List struct {
 }
 
 var _ types.Value = List{}
-
-func (l List) Reference() *types.Ref {
-	return &types.Ref{l}
-}
 
 func (l List) Var(name string) types.Value {
 	switch name {

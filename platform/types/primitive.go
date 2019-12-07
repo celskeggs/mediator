@@ -13,10 +13,6 @@ func Unstring(b Value) string {
 	return string(b.(String))
 }
 
-func (s String) Reference() *Ref {
-	return &Ref{s}
-}
-
 func (s String) Var(name string) Value {
 	panic("no variable " + name + " on string")
 }
@@ -41,8 +37,12 @@ func Unint(i Value) int {
 	return int(i.(Int))
 }
 
-func (i Int) Reference() *Ref {
-	return &Ref{i}
+func Unuint(i Value) uint {
+	iv := Unint(i)
+	if iv < 0 {
+		panic("attempt to types.Unuint negative number!")
+	}
+	return uint(iv)
 }
 
 func (i Int) Var(name string) Value {
@@ -67,10 +67,6 @@ var _ Value = Bool(false)
 
 func Unbool(b Value) bool {
 	return bool(b.(Bool))
-}
-
-func (b Bool) Reference() *Ref {
-	return &Ref{b}
 }
 
 func (b Bool) Var(name string) Value {
@@ -109,10 +105,6 @@ func (path TypePath) Validate() {
 	if !path.IsValid() {
 		panic("path is not valid: " + path)
 	}
-}
-
-func (path TypePath) Reference() *Ref {
-	return &Ref{v: path}
 }
 
 func (path TypePath) String() string {

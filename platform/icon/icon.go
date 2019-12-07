@@ -54,10 +54,6 @@ func (icon *Icon) Render(state string, dir common.Direction) (iconname string, s
 
 var _ types.Value = &Icon{}
 
-func (icon *Icon) Reference() *types.Ref {
-	return &types.Ref{icon}
-}
-
 func (icon *Icon) Var(name string) types.Value {
 	panic("no such var " + name + " on icon")
 }

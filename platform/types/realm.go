@@ -113,8 +113,14 @@ func (realm *Realm) WorldRef() interface{} {
 	return realm.worldRef
 }
 
-func (realm *Realm) New(path TypePath, params ...Value) Value {
+func (realm *Realm) NewPlain(path TypePath, params ...Value) *Datum {
 	return realm.typeTree.New(realm, path, params...)
+}
+
+func (realm *Realm) New(path TypePath, params ...Value) *Datum {
+	datum := realm.typeTree.New(realm, path, params...)
+	datum.Invoke("New", params...)
+	return datum
 }
 
 func (realm *Realm) NewDatum(impl DatumImpl) *Datum {

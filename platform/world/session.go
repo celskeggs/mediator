@@ -1,6 +1,9 @@
-package platform
+package world
 
 import (
+	"github.com/celskeggs/mediator/common"
+	"github.com/celskeggs/mediator/platform/atom"
+	"github.com/celskeggs/mediator/platform/types"
 	"github.com/celskeggs/mediator/util"
 	"github.com/celskeggs/mediator/webclient"
 	"github.com/celskeggs/mediator/webclient/sprite"
@@ -16,8 +19,8 @@ type worldAPI struct {
 func (w *worldAPI) AddPlayer() websession.PlayerAPI {
 	util.FIXME("get a key for this")
 	client := w.World.CreateNewPlayer("")
-	if client.AsClient().mob == nil {
-		panic("no mob??")
+	if !types.IsType(client.Var("mob"), "/mob") {
+		panic("nonexistent or invalid mob")
 	}
 	w.Update()
 	return playerAPI{
@@ -44,7 +47,7 @@ func (w *worldAPI) SubscribeToUpdates() <-chan struct{} {
 
 type playerAPI struct {
 	API    *worldAPI
-	Client IClient
+	Client *types.Datum
 }
 
 func (p playerAPI) Remove() {
@@ -58,7 +61,7 @@ func (p playerAPI) IsValid() bool {
 
 func (p playerAPI) Command(cmd webclient.Command) {
 	if cmd.Verb != "" {
-		p.Client.InvokeVerb(cmd.Verb)
+		InvokeVerb(p.Client, cmd.Verb)
 		p.API.Update()
 	}
 }
@@ -66,12 +69,12 @@ func (p playerAPI) Command(cmd webclient.Command) {
 const SpriteSize = 32
 
 func (p playerAPI) Render() sprite.SpriteView {
-	center, atoms := p.Client.RenderViewAsAtoms()
+	center, atoms := p.API.World.RenderClientViewAsAtoms(p.Client)
 
 	util.FIXME("don't use hardcoded tile sizes here")
 	util.FIXME("add adjacent cell movement animations")
 
-	viewDist := p.Client.AsClient().ViewDistance
+	viewDist := types.Unuint(p.Client.Var("view"))
 	sizeInCells := (viewDist * 2) + 1
 	viewportSize := sizeInCells * SpriteSize
 
@@ -81,13 +84,13 @@ func (p playerAPI) Render() sprite.SpriteView {
 	view.ViewPortHeight = viewportSize
 
 	if center != nil {
-		cX, cY, _ := center.XYZ()
+		cX, cY := XY(center)
 		shiftX, shiftY := (cX-viewDist)*SpriteSize, (cY-viewDist)*SpriteSize
 
 		layers := map[int][]sprite.GameSprite{}
-		for _, atom := range atoms {
-			x, y, _ := atom.XYZ()
-			found, layer, s := atom.AsAtom().Appearance.ToSprite(x*SpriteSize-shiftX, y*SpriteSize-shiftY, atom.AsAtom().Direction)
+		for _, visibleAtom := range atoms {
+			x, y := XY(visibleAtom)
+			found, layer, s := visibleAtom.Var("appearance").(atom.Appearance).ToSprite(x*SpriteSize-shiftX, y*SpriteSize-shiftY, visibleAtom.Var("dir").(common.Direction))
 			if found {
 				layers[layer] = append(layers[layer], s)
 			}
@@ -106,5 +109,5 @@ func (p playerAPI) Render() sprite.SpriteView {
 }
 
 func (p playerAPI) PullRequests() (lines []string, sounds []sprite.Sound) {
-	return p.Client.PullClientRequests()
+	return PullClientRequests(p.Client)
 }

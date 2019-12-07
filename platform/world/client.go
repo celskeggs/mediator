@@ -19,6 +19,10 @@ type ClientData struct {
 	soundBuffer []sprite.Sound
 }
 
+func NewClientData(_ *types.Datum, _ ...types.Value) ClientData {
+	return ClientData{}
+}
+
 func (d *ClientData) GetMob(src *types.Datum) types.Value {
 	return d.mob.Dereference()
 }
@@ -27,7 +31,7 @@ func (d *ClientData) SetMob(src *types.Datum, mob types.Value) {
 	if !types.IsType(mob, "/mob") {
 		panic("attempt to set client mob to not a /mob")
 	}
-	d.mob = mob.Reference()
+	d.mob = types.Reference(mob)
 	d.SetEye(src, mob)
 	atom.MobSetClient(mob, src)
 }
@@ -44,14 +48,14 @@ func (d *ClientData) SetEye(src *types.Datum, eye types.Value) {
 	if !types.IsType(eye, "/atom") {
 		panic("attempt to set client eye to not an /atom")
 	}
-	d.eye = eye.Reference()
+	d.eye = types.Reference(eye)
 }
 
 func (d *ClientData) GetVirtualEye(src *types.Datum) types.Value {
 	world := atom.WorldOf(src).(*World)
 	maxX, maxY, _ := world.MaxXYZ()
 	if world.setVirtualEye {
-		eyeZ := types.Unint(d.GetEye(src).Var("z"))
+		eyeZ := types.Unuint(d.GetEye(src).Var("z"))
 		turf := world.LocateXYZ((maxX+1)/2, (maxY+1)/2, eyeZ)
 		if turf != nil {
 			return turf
@@ -80,9 +84,9 @@ func (d *ClientData) relMove(src *types.Datum, direction common.Direction) types
 	mob := d.GetMob(src)
 	world := atom.WorldOf(src)
 	if mob != nil {
-		x, y, z := types.Unint(mob.Var("x")), types.Unint(mob.Var("y")), types.Unint(mob.Var("z"))
+		x, y, z := XYZ(mob)
 		dx, dy := direction.XY()
-		turf = world.LocateXYZ(x+dx, y+dy, z)
+		turf = world.LocateXYZ(uint(int(x)+dx), uint(int(y)+dy), z)
 	}
 	return src.Invoke("Move", turf, direction)
 }
@@ -135,7 +139,7 @@ func ClientDataChunk(v types.Value) (*ClientData, bool) {
 	return chunk.(*ClientData), true
 }
 
-func PullClientRequests(client types.Value) (textDisplay []string, sounds []sprite.Sound) {
+func PullClientRequests(client *types.Datum) (textDisplay []string, sounds []sprite.Sound) {
 	d, ok := ClientDataChunk(client)
 	if !ok {
 		panic("attempt to PullClientRequests on something that's not a /client")
@@ -146,16 +150,16 @@ func PullClientRequests(client types.Value) (textDisplay []string, sounds []spri
 	return textDisplay, sounds
 }
 
-func (w *World) RenderClientViewAsAtoms(client types.Value) (center types.Value, atoms []types.Value) {
+func (w *World) RenderClientViewAsAtoms(client types.Value) (center types.Value, atoms []*types.Datum) {
 	util.FIXME("actually do this correctly")
-	eye := client.Var("eye")
-	veye := client.Var("virtual_eye")
-	view := client.Var("view")
+	eye := client.Var("eye").(*types.Datum)
+	veye := client.Var("virtual_eye").(*types.Datum)
+	view := types.Unuint(client.Var("view"))
 	return veye, w.ViewX(view, veye, eye)
 }
 
 func (w *World) constructNewMob() types.Value {
-	mob := w.Realm().New(w.VarMob)
+	mob := w.Realm().New(w.Mob)
 	if !types.IsType(mob, "/mob") {
 		panic("constructed mob is not a /mob")
 	}
@@ -163,12 +167,11 @@ func (w *World) constructNewMob() types.Value {
 	return mob
 }
 
-func (w *World) findExistingMob(client types.Value) types.Value {
-	key := types.Unstring(client.Var("key"))
+func (w *World) findExistingMob(key string) types.Value {
 	if key == "" {
 		return nil
 	}
-	return w.FindOne(func(atom types.Value) bool {
+	return w.FindOne(func(atom *types.Datum) bool {
 		return types.IsType(atom, "/mob") && types.Unstring(atom.Var("key")) == key
 	})
 }

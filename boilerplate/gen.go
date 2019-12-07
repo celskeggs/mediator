@@ -96,12 +96,13 @@ type {{.Type}}Impl struct {
 {{- end}}
 }
 
-func New{{.Type}}(params ...types.Value) types.DatumImpl {
-	result := &{{.Type}}Impl{}
+func New{{.Type}}(realm *types.Realm, params ...types.Value) *types.Datum {
+	i := &{{.Type}}Impl{}
+	d := realm.NewDatum(i)
 {{- range .RevChunks}}
-	result.{{.StructName}} = {{.PackageShort}}.New{{.StructName}}(result, params...)
+	i.{{.StructName}} = {{.PackageShort}}.New{{.StructName}}(d, params...)
 {{- end}}
-	return result
+	return d
 }
 
 func (t *{{.Type}}Impl) Type() types.TypePath {

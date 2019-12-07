@@ -5,6 +5,7 @@ import (
 	"github.com/celskeggs/mediator/dmi"
 	"io/ioutil"
 	"math"
+	"path"
 	"sort"
 )
 

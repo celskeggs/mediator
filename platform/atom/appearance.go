@@ -44,10 +44,6 @@ func (a Appearance) ToSprite(x, y uint, dir common.Direction) (bool, int, sprite
 	}
 }
 
-func (a Appearance) Reference() *types.Ref {
-	return &types.Ref{a}
-}
-
 func (a Appearance) Var(name string) types.Value {
 	util.FIXME("support opacity (and other variables)")
 	switch name {

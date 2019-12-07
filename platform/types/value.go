@@ -12,6 +12,24 @@ type Ref struct {
 	v Value
 }
 
+func Reference(v Value) *Ref {
+	if v == nil {
+		return nil
+	}
+	if d, ok := v.(*Datum); ok {
+		if d.refCount == 0 {
+			d.realm.add(d)
+		}
+		// we're ignoring the possibility of overflow
+		d.refCount += 1
+		ref := &Ref{v: d}
+		runtime.SetFinalizer(ref, finalizeRef)
+		return ref
+	} else {
+		return &Ref{v}
+	}
+}
+
 func (d *Ref) Dereference() Value {
 	if d == nil {
 		return nil
@@ -33,7 +51,6 @@ func finalizeRef(r *Ref) {
 
 // a datum or a primitive. a nil Value means null.
 type Value interface {
-	Reference() *Ref
 	Var(name string) Value
 	SetVar(name string, value Value)
 	Invoke(name string, parameters ...Value) Value
@@ -84,20 +101,6 @@ func (d *Datum) Type() TypePath {
 	return d.impl.Type()
 }
 
-func (d *Datum) Reference() *Ref {
-	if d == nil {
-		return nil
-	}
-	if d.refCount == 0 {
-		d.realm.add(d)
-	}
-	// we're ignoring the possibility of overflow
-	d.refCount += 1
-	ref := &Ref{v: d}
-	runtime.SetFinalizer(ref, finalizeRef)
-	return ref
-}
-
 func (d *Datum) Var(name string) Value {
 	v, ok := d.impl.Var(d, name)
 	if !ok {
@@ -128,7 +131,7 @@ func (d *Datum) Invoke(name string, params ...Value) Value {
 
 func (d *Datum) Dump(o *debug.Output) {
 	util.FIXME("replace dump with code for new model")
-	debug.DumpReflect(d.Reference, o)
+	debug.DumpReflect(d, o)
 }
 
 func (d *Datum) Realm() *Realm {

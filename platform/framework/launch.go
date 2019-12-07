@@ -3,15 +3,15 @@ package framework
 import (
 	"flag"
 	"github.com/celskeggs/mediator/platform"
-	"github.com/celskeggs/mediator/platform/datum"
 	"github.com/celskeggs/mediator/platform/icon"
+	"github.com/celskeggs/mediator/platform/types"
 	"github.com/celskeggs/mediator/platform/worldmap"
 	"github.com/celskeggs/mediator/websession"
 )
 
 type Game interface {
 	Definer() platform.TreeDefiner
-	ElaborateTree(*datum.TypeTree, *icon.IconCache)
+	ElaborateTree(*types.TypeTree, *icon.IconCache)
 	BeforeMap(world *platform.World)
 }
 

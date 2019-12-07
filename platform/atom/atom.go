@@ -111,14 +111,14 @@ func (d *AtomData) SetLoc(src *types.Datum, location types.Value) {
 		if !ok {
 			panic("attempt to move atom to non-atom location")
 		}
-		d.location = location.Reference()
+		d.location = types.Reference(location)
 		if newloc.contents == nil {
 			newloc.contents = map[*types.Datum]*types.Ref{}
 		}
 		if _, found := newloc.contents[src]; found {
 			panic("should not have found self in new location's contents")
 		}
-		newloc.contents[src] = src.Reference()
+		newloc.contents[src] = types.Reference(src)
 	}
 }
 

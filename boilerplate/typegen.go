@@ -55,11 +55,11 @@ func (Tree) Parent(path types.TypePath) types.TypePath {
 	}
 }
 
-func (Tree) New(realm *types.Realm, path types.TypePath, params ...types.Value) types.Value {
+func (Tree) New(realm *types.Realm, path types.TypePath, params ...types.Value) *types.Datum {
 	switch path {
 {{- range $path, $type := .Paths }} 
 	case "{{$path}}":
-		return realm.NewDatum(New{{$type.Type}}(params...))
+		return New{{$type.Type}}(params...)
 {{- end }}
 	default:
 		panic("unknown type " + path.String())

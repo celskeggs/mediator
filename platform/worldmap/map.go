@@ -6,6 +6,7 @@ import (
 	"github.com/celskeggs/mediator/parsemap"
 	"github.com/celskeggs/mediator/platform"
 	"github.com/celskeggs/mediator/platform/datum"
+	"github.com/celskeggs/mediator/platform/types"
 	"github.com/celskeggs/mediator/util"
 	"io/ioutil"
 )
@@ -70,10 +71,10 @@ func (lo *loaderObserver) SetSize(l parsemap.Location) {
 }
 
 func (lo *loaderObserver) AddAtom(l parsemap.Location, path string) error {
-	if !lo.world.Tree.Exists(datum.TypePath(path)) {
+	if !lo.world.Tree.Exists(types.TypePath(path)) {
 		return fmt.Errorf("no such type path: %s", path)
 	}
-	atom, ok := lo.world.Tree.New(datum.TypePath(path)).(platform.IAtom)
+	atom, ok := lo.world.Tree.New(types.TypePath(path)).(platform.IAtom)
 	if !ok {
 		panic("expected type path " + path + " specified in AddAtom to be an atom")
 	}

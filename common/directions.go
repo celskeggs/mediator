@@ -112,10 +112,6 @@ var FourDirections = []Direction{
 
 var _ types.Value = North
 
-func (d Direction) Reference() *types.Ref {
-	return &types.Ref{d}
-}
-
 func (d Direction) Var(name string) types.Value {
 	panic("no field " + name + " on direction")
 }

@@ -1,4 +1,4 @@
-package platform
+package procs
 
 import (
 	"github.com/celskeggs/mediator/webclient/sprite"

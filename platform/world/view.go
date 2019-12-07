@@ -1,8 +1,9 @@
-package platform
+package world
 
 import (
 	"github.com/celskeggs/mediator/common"
 	"github.com/celskeggs/mediator/platform/datum"
+	"github.com/celskeggs/mediator/platform/types"
 	"github.com/celskeggs/mediator/util"
 )
 
@@ -22,72 +23,76 @@ func AbsDiff(a uint, b uint) uint {
 	}
 }
 
-func ManhattanDistance(a, b IAtom) uint {
-	ax, ay, _ := a.XYZ()
-	bx, by, _ := b.XYZ()
+func XY(atom types.Value) (uint, uint) {
+	return types.Unuint(atom.Var("x")), types.Unuint(atom.Var("y"))
+}
+
+func XYZ(atom types.Value) (uint, uint, uint) {
+	return types.Unuint(atom.Var("x")), types.Unuint(atom.Var("y")), types.Unuint(atom.Var("z"))
+}
+
+func ManhattanDistance(a, b types.Value) uint {
+	ax, ay := XY(a)
+	bx, by := XY(b)
 	return MaxUint(AbsDiff(ax, bx), AbsDiff(ay, by))
 }
 
-func (w *World) View1(center datum.IDatum) []IAtom {
-	return w.View(w.ViewDistance, center)
+func (w *World) View1(center *types.Datum) []*types.Datum {
+	return w.View(w.VarView, center)
 }
 
-func expandWithContents(atoms []IAtom) (out []IAtom) {
-	out = append([]IAtom{}, atoms...)
+func expandWithContents(atoms []*types.Datum) (out []*types.Datum) {
+	out = append([]*types.Datum{}, atoms...)
 	for _, atom := range atoms {
-		out = append(out, atom.Contents()...)
+		out = append(out, datum.ElementsDatums(atom.Var("contents"))...)
 	}
 	return out
 }
 
 // note: this does not handle the "centerD = nil" case the same as DreamMaker
-func (w *World) View(distance uint, centerD datum.IDatum) []IAtom {
-	client, isclient := centerD.(IClient)
-	var center IAtom
-	if isclient {
-		center = client.Eye()
+func (w *World) View(distance uint, centerD *types.Datum) []*types.Datum {
+	var center *types.Datum
+	if types.IsType(centerD, "/client") {
+		center = centerD.Var("eye").(*types.Datum)
 	} else if centerD != nil {
-		center = centerD.(IAtom)
+		if !types.IsType(centerD, "/atom") {
+			panic("view center is not an /atom")
+		}
+		center = centerD
 	}
 	return w.ViewX(distance, center, center)
 }
 
-func (w *World) ViewX(distance uint, center IAtom, perspective IAtom) []IAtom {
+func (w *World) ViewX(distance uint, center *types.Datum, perspective *types.Datum) []*types.Datum {
 	if center == nil || perspective == nil {
 		return nil
 	}
 
 	util.FIXME("include areas")
 
-	location := perspective.Location()
-	turfloc, isturf := location.(ITurf)
-	if isturf {
-		_, _, tz := turfloc.XYZ()
-		atoms := w.FindAll(func(atom IAtom) bool {
-			turf, isturf := atom.(ITurf)
-			if isturf {
-				_, _, t2z := turf.XYZ()
+	location := perspective.Var("loc")
+	if types.IsType(location, "/turf") {
+		tz := types.Unuint(location.Var("z"))
+		turfs := w.FindAll(func(turf *types.Datum) bool {
+			if types.IsType(turf, "/turf") {
+				t2z := types.Unuint(turf.Var("z"))
 				return t2z == tz && ManhattanDistance(turf, center) <= distance
 			}
 			return false
 		})
-		turfs := make([]ITurf, len(atoms))
-		for i, turf := range atoms {
-			turfs[i] = turf.(ITurf)
-		}
 		nturfs := limitViewers(distance, center, perspective, turfs)
-		atomsAgain := make([]IAtom, len(nturfs)+1)
+		atomsAgain := make([]*types.Datum, len(nturfs)+1)
 		for i, turf := range nturfs {
 			atomsAgain[i] = turf
 		}
 		atomsAgain[len(nturfs)] = perspective
 		return expandWithContents(atomsAgain)
 	} else if location != nil {
-		return expandWithContents([]IAtom{
-			location, perspective,
+		return expandWithContents([]*types.Datum{
+			location.(*types.Datum), perspective,
 		})
 	} else {
-		return expandWithContents([]IAtom{
+		return expandWithContents([]*types.Datum{
 			perspective,
 		})
 	}
@@ -97,7 +102,7 @@ type viewInfo struct {
 	Opaque     bool
 	Luminosity uint
 	Lit        bool
-	Turf       ITurf
+	Turf       *types.Datum
 	MaxXY      int
 	SumXY      int
 	Vis        int
@@ -151,16 +156,16 @@ func (vir *viewInfoRegion) XYToOffset(xu, yu uint) (lx, ly uint) {
 	return uint(rx), uint(ry)
 }
 
-func (vir *viewInfoRegion) PopulateTurfs(input []ITurf) (maxDepthMax, sumDepthMax int) {
+func (vir *viewInfoRegion) PopulateTurfs(input []*types.Datum) (maxDepthMax, sumDepthMax int) {
 	for _, turf := range input {
-		tx, ty, _ := turf.XYZ()
+		tx, ty := XY(turf)
 		ox, oy := vir.XYToOffset(tx, ty)
 		if vir.Info[ox][oy] != nil {
 			panic("duplicate turfs for position")
 		}
 		dx, dy := AbsDiff(vir.PerspectiveX, tx), AbsDiff(vir.PerspectiveY, ty)
 		vi := &viewInfo{
-			Opaque:     turf.AsAtom().Opacity,
+			Opaque:     types.Unbool(turf.Var("opacity")),
 			Luminosity: 0,
 			Lit:        true,
 			Turf:       turf,
@@ -184,9 +189,9 @@ func (vir *viewInfoRegion) PopulateTurfs(input []ITurf) (maxDepthMax, sumDepthMa
 }
 
 // this is an approximate reimplementation of the BYOND algorithm, based on http://www.byond.com/forum/post/2130277#comment20659267
-func limitViewers(distance uint, center IAtom, perspective IAtom, base []ITurf) []ITurf {
-	centerX, centerY, _ := center.XYZ()
-	perspectiveX, perspectiveY, _ := perspective.XYZ()
+func limitViewers(distance uint, center *types.Datum, perspective *types.Datum, base []*types.Datum) []*types.Datum {
+	centerX, centerY := XY(center)
+	perspectiveX, perspectiveY := XY(perspective)
 	vir := newViewInfoRegion(distance, centerX, centerY, perspectiveX, perspectiveY)
 	maxDepthMax, sumDepthMax := vir.PopulateTurfs(base)
 
@@ -200,7 +205,7 @@ func limitViewers(distance uint, center IAtom, perspective IAtom, base []ITurf) 
 				if info == nil {
 					continue
 				}
-				tx, ty, _ := info.Turf.XYZ()
+				tx, ty := XY(info.Turf)
 				if info.MaxXY == d+1 {
 					for _, neighborDir := range common.EightDirections {
 						dx, dy := neighborDir.XY()
@@ -226,7 +231,7 @@ func limitViewers(distance uint, center IAtom, perspective IAtom, base []ITurf) 
 				if info == nil {
 					continue
 				}
-				tx, ty, _ := info.Turf.XYZ()
+				tx, ty := XY(info.Turf)
 				if info.SumXY == d+1 {
 					for _, neighborDir := range common.EightDirections {
 						dx, dy := neighborDir.XY()
@@ -255,7 +260,7 @@ func limitViewers(distance uint, center IAtom, perspective IAtom, base []ITurf) 
 				if info == nil || info.Luminosity == 0 {
 					continue
 				}
-				tx, ty, _ := info.Turf.XYZ()
+				tx, ty := XY(info.Turf)
 				for _, neighborDir := range common.EightDirections {
 					dx, dy := neighborDir.XY()
 					neighbor := vir.InfoAt(int(tx)+dx, int(ty)+dy)
@@ -295,7 +300,7 @@ func limitViewers(distance uint, center IAtom, perspective IAtom, base []ITurf) 
 			if info.Vis == 0 && info.Opaque {
 				makeANote := false
 
-				txu, tyu, _ := info.Turf.XYZ()
+				txu, tyu := XY(info.Turf)
 				tx, ty := int(txu), int(tyu)
 				east, west := vir.InfoAt(tx+1, ty), vir.InfoAt(tx-1, ty)
 				north, south := vir.InfoAt(tx, ty+1), vir.InfoAt(tx, ty-1)
@@ -336,7 +341,7 @@ func limitViewers(distance uint, center IAtom, perspective IAtom, base []ITurf) 
 
 	// at this point, if vis2 != 0, then we have line of sight visibility but not necessarily anything else
 
-	var finalTurfs []ITurf
+	var finalTurfs []*types.Datum
 
 	for _, infos := range vir.Info {
 		for _, info := range infos {

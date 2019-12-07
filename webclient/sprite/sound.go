@@ -15,10 +15,6 @@ type Sound struct {
 
 var _ types.Value = &Sound{}
 
-func (s Sound) Reference() *types.Ref {
-	return &types.Ref{s}
-}
-
 func (s Sound) Var(name string) types.Value {
 	switch name {
 	case "file":
