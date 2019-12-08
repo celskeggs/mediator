@@ -168,6 +168,20 @@ func Param(params []Value, i int) Value {
 	return params[i]
 }
 
+func KWParam(params []Value, i int, kwparams map[string]Value, kw string) Value {
+	kwv, haskw := kwparams[kw]
+	if i >= len(params) {
+		if haskw {
+			return kwv
+		}
+		return nil
+	}
+	if haskw {
+		panic("parameter " + kw + " specified both as positional and named argument")
+	}
+	return params[i]
+}
+
 func IsType(v Value, path TypePath) bool {
 	if datum, ok := v.(*Datum); ok {
 		if datum == nil {

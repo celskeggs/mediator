@@ -1,23 +1,24 @@
 package gen
 
 import (
+	"bytes"
 	"fmt"
-	"github.com/celskeggs/mediator/autocoder/gotype"
+	"github.com/celskeggs/mediator/autocoder/dtype"
 	"github.com/celskeggs/mediator/autocoder/predefs"
 	"github.com/celskeggs/mediator/dream/path"
 	"github.com/celskeggs/mediator/dream/tokenizer"
 	"github.com/celskeggs/mediator/util"
+	"github.com/hashicorp/go-multierror"
+	"go/format"
 	"io"
-	"os"
+	"io/ioutil"
 	"sort"
-	"strings"
 	"text/template"
-	"unicode"
 )
 
 type DefinedField struct {
 	Name string
-	Type gotype.GoType
+	Type dtype.DType
 }
 
 func (d DefinedField) LongName() string {
@@ -25,36 +26,15 @@ func (d DefinedField) LongName() string {
 }
 
 type DefinedInit struct {
-	ShortName string
+	Name      string
 	Value     string
 	SourceLoc tokenizer.SourceLocation
-
-	definingStruct string
-	longName       string
-	isOverride     bool
-}
-
-func (d DefinedInit) IsOverride() bool {
-	return d.isOverride
-}
-
-func (d DefinedInit) DefiningStruct() string {
-	return d.definingStruct
-}
-
-func (d DefinedInit) LongName() string {
-	return d.longName
-}
-
-type DefinedParam struct {
-	Name string
-	Type string
 }
 
 type DefinedFunc struct {
 	Name   string
 	This   string
-	Params []DefinedParam
+	Params []string
 	Body   string
 }
 
@@ -73,61 +53,31 @@ type DefinedType struct {
 func (d DefinedType) addContext(dt *DefinedTree) (DefinedType, error) {
 	dPtr := &d
 	dPtr.context = dt
-	origInits := dPtr.Inits
-	dPtr.Inits = make([]DefinedInit, len(origInits))
-	copy(dPtr.Inits, origInits)
-	for i, orig := range origInits {
+	for _, orig := range dPtr.Inits {
 		var found bool
-		dPtr.Inits[i].definingStruct, dPtr.Inits[i].longName, _, found = dt.ResolveField(d.TypePath, orig.ShortName)
+		_, found = dt.ResolveField(d.TypePath, orig.Name)
 		if !found {
-			return DefinedType{}, fmt.Errorf("no such field %s on %s at %v", orig.ShortName, d.TypePath, orig.SourceLoc)
+			return DefinedType{}, fmt.Errorf("no such field %s on %s at %v", orig.Name, d.TypePath, orig.SourceLoc)
 		}
-		oType := dt.GetType(dPtr.Inits[i].definingStruct)
-		dPtr.Inits[i].isOverride = oType != nil && oType.IsOverride()
 	}
 	return d, nil
 }
 
 func (d *DefinedType) IsDefined() bool {
-	return len(d.Fields) > 0 || len(d.Funcs) > 0 || d.IsOverride()
+	// defined unless it's a null override
+	return !d.IsOverride() || len(d.Inits) > 0 || len(d.Fields) > 0 || len(d.Funcs) > 0
 }
 
 func (d *DefinedType) IsOverride() bool {
 	return d.TypePath.Equals(d.ParentPath())
 }
 
-func (d *DefinedType) StructName() string {
-	result := predefs.PathToStructName(d.TypePath)
+func (d *DefinedType) DataStructName() string {
 	if d.IsOverride() {
-		result = "Custom" + result
+		return "Ext" + predefs.PathToDataStructName(d.TypePath)
+	} else {
+		return predefs.PathToDataStructName(d.TypePath)
 	}
-	return result
-}
-
-func (d *DefinedType) InterfaceName() string {
-	return "I" + d.StructName()
-}
-
-func (d *DefinedType) ParentBase() string {
-	name := d.ParentName()
-	if name[0] != 'I' || !unicode.IsUpper(([]rune)(name)[1]) {
-		panic("invalid parent name; not an interface")
-	}
-	return name[1:]
-}
-
-func (d *DefinedType) ParentName() string {
-	parts := strings.Split(d.ParentRef(), ".")
-	return parts[len(parts)-1]
-}
-
-func (d *DefinedType) ParentRef() string {
-	return d.context.Ref(d.ParentPath(), true)
-}
-
-func (d *DefinedType) RealParentRef() string {
-	realParent := d.context.ParentOf(d.TypePath)
-	return d.context.Ref(realParent, true)
 }
 
 func (d *DefinedType) ParentPath() path.TypePath {
@@ -188,30 +138,14 @@ func (t *DefinedTree) ParentOf(path path.TypePath) path.TypePath {
 	return t.GetTypeByPath(path).ParentPath()
 }
 
-func (t *DefinedTree) Ref(path path.TypePath, skipOverrides bool) (ref string) {
-	if predefs.PlatformDefiner.Exists(path) {
-		ref = predefs.PlatformDefiner.Ref(path, skipOverrides)
-	}
-	if ref == "" || !skipOverrides {
-		defType := t.GetTypeByPath(path)
-		if defType != nil {
-			ref = defType.InterfaceName()
-		}
-	}
-	if ref == "" {
-		panic("could not find ref: " + path.String())
-	}
-	return ref
-}
-
-func (t *DefinedTree) ResolveField(typePath path.TypePath, shortName string) (definingStruct string, longName string, goType gotype.GoType, found bool) {
+func (t *DefinedTree) ResolveField(typePath path.TypePath, shortName string) (dtype dtype.DType, found bool) {
 	defType := t.GetTypeByPath(typePath)
 	if defType == nil {
 		return predefs.PlatformDefiner.ResolveField(typePath, shortName)
 	}
 	for _, field := range defType.Fields {
 		if field.Name == shortName {
-			return defType.StructName(), field.LongName(), field.Type, true
+			return field.Type, true
 		}
 	}
 	return t.ResolveField(t.ParentOf(typePath), shortName)
@@ -226,23 +160,14 @@ func (t DefinedTree) ResolveProcedure(typePath path.TypePath, shortName string) 
 	return t.ResolveProcedure(t.ParentOf(typePath), shortName)
 }
 
-func (t DefinedTree) ResolveGlobalProcedure(name string) (predefs.GlobalProcedureInfo, bool) {
-	return predefs.PlatformDefiner.ResolveGlobalProcedure(name)
+func (t DefinedTree) GlobalProcedureExists(name string) bool {
+	return predefs.PlatformDefiner.GlobalProcedureExists(name)
 }
 
 func (t *DefinedTree) GetTypeByPath(path path.TypePath) *DefinedType {
 	for i, dType := range t.Types {
 		if dType.TypePath.Equals(path) {
 			return &t.Types[i]
-		}
-	}
-	return nil
-}
-
-func (t *DefinedTree) GetType(name string) *DefinedType {
-	for _, dType := range t.Types {
-		if dType.StructName() == name {
-			return &dType
 		}
 	}
 	return nil
@@ -268,9 +193,8 @@ func containsStr(needle string, haystack []string) bool {
 }
 
 var necessaryImports = []string{
-	"github.com/celskeggs/mediator/platform",
-	"github.com/celskeggs/mediator/platform/datum",
-	"github.com/celskeggs/mediator/platform/icon",
+	"github.com/celskeggs/mediator/platform/world",
+	"github.com/celskeggs/mediator/platform/types",
 }
 
 func (d *DefinedTree) AllImports() (imports []string) {
@@ -305,22 +229,26 @@ func Generate(tree *DefinedTree, out io.Writer) error {
 }
 
 func GenerateTo(tree *DefinedTree, outPath string) (err error) {
-	target, err := os.OpenFile(outPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0755)
+	buf := bytes.NewBuffer(nil)
+	err = Generate(tree, buf)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		err2 := target.Close()
-		if err2 != nil && err == nil {
-			err = err2
-		}
-	}()
-	err = Generate(tree, target)
-	return err
+	formatted, err := format.Source(buf.Bytes())
+	if err != nil {
+		// make sure we've written *something* for the sake of debugging
+		err2 := ioutil.WriteFile(outPath, buf.Bytes(), 0755)
+		return multierror.Append(err, err2)
+	}
+	err = ioutil.WriteFile(outPath, formatted, 0755)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 var templateText = `// Code generated by mediator autocoder; DO NOT EDIT.
-package main
+package world
 
 import (
 {{- range .AllImports}}
@@ -328,119 +256,44 @@ import (
 {{- end}}
 )
 
-type DefinedWorld struct {
-	platform.BaseTreeDefiner
-}
+{{- range .Types}}
+{{- if .IsDefined}}
+{{- $type := .}}
 
-{{range .Types -}}
-{{- if .IsDefined -}}
-{{- $type := . -}}
-///// ***** {{.StructName}}
-
-type {{.InterfaceName}} interface {
-	{{.ParentRef}}
-	As{{.StructName}}() *{{.StructName}}
-}
-
-type {{.StructName}} struct {
-	{{.ParentRef}}
+{{if .IsOverride -}}
+//mediator:extend {{.DataStructName}} {{.TypePath}}
+type {{.DataStructName}} struct {
 	{{- range .Fields}}
-	{{.LongName}} {{.Type}}
+	Var{{.LongName}} types.Value
+	{{- end}}
+}
+{{- else -}}
+//mediator:declare {{.DataStructName}} {{.TypePath}} {{.ParentPath}}
+type {{.DataStructName}} struct {
+	{{- range .Fields}}
+	Var{{.LongName}} types.Value
+	{{- end}}
+}
+{{- end}}
+
+func New{{.DataStructName}}(src *types.Datum, _ *{{.DataStructName}}, _ ...types.Value) {
+	{{- range .Inits}}
+	src.SetVar("{{.Name}}", {{.Value}})
 	{{- end}}
 }
 
-var _ {{.InterfaceName}} = &{{.StructName}}{}
-
-func (d {{.StructName}}) RawClone() datum.IDatum {
-	d.{{.ParentName}} = d.{{.ParentName}}.RawClone().({{.ParentRef}})
-	return &d
-}
-
-func (d *{{.StructName}}) As{{.StructName}}() *{{.StructName}} {
-	return d
-}
-
-{{if .IsOverride -}}
-func (d *{{.StructName}}) NextOverride() (this datum.IDatum, next datum.IDatum) {
-	return d, d.{{.ParentName}}
-}
-
-func Cast{{.StructName}}(base {{.ParentRef}}) {{.InterfaceName}} {
-	datum.AssertConsistent(base)
-
-	var iter datum.IDatum = base
-	for {
-		cur, next := iter.NextOverride()
-		if ca, ok := cur.({{.InterfaceName}}); ok {
-			return ca
-		}
-		iter = next
-		if iter == nil {
-			panic("type does not implement {{.StructName}}")
-		}
-	}
-}
-
-func (d DefinedWorld) {{.ParentBase}}Template(parent {{.RealParentRef}}) {{.ParentRef}} {
-	base := d.BaseTreeDefiner.{{.ParentBase}}Template(parent)
-	return &{{.StructName}}{
-		{{.ParentName}}: base,
-		{{- range .Inits}}
-		{{.LongName}}: {{.Value}},
-		{{- end}}
-	}
-}
-
-{{end -}}
-
-{{- range .Funcs -}}
-func ({{.This}} *{{$type.StructName}}) {{.Name}}({{range $index, $element := .Params}}{{if ne $index 0}}, {{end}}{{.Name}} {{.Type}}{{end}}) {
+{{range .Funcs -}}
+func (*{{$type.DataStructName}}) Proc{{.Name}}({{.This}} *types.Datum{{range .Params}}, {{.}} types.Value{{end}}) types.Value {
 {{.Body}}
 }
 
 {{end -}}
 
 {{- end -}}
-{{- end -}}
-
-func (DefinedWorld) ElaborateTree(tree *datum.TypeTree, icons *icon.IconCache) {
-	{{- range .Types -}}
-	{{- if not .IsOverride -}}
-	{{- $type := . -}}
-
-	{{- if .IsDefined}}
-	prototype{{.StructName}} := &{{.StructName}}{
-		{{.ParentName}}: tree.DeriveNew("{{.ParentPath}}").({{.ParentRef}}),
-		{{- range .Fields}}
-		{{.LongName}}: {{.Default}},
-		{{- end}}
-	}
-	{{- else}}
-	prototype{{.StructName}} := tree.Derive("{{.ParentPath}}", "{{.TypePath}}").({{.ParentRef}})
-	{{- end}}
-
-	{{- range .Inits -}}
-	{{- if .IsOverride}}
-	Cast{{.DefiningStruct}}(prototype{{$type.StructName}}).As{{.DefiningStruct}}().{{.LongName}} = {{.Value}}
-	{{- else}}
-	prototype{{$type.StructName}}.As{{.DefiningStruct}}().{{.LongName}} = {{.Value}}
-	{{- end -}}
-	{{- else}}
-	_ = prototype{{$type.StructName}}
-	{{- end -}}
-{{if .IsDefined}}
-	tree.RegisterStruct("{{.TypePath}}", prototype{{.StructName}})
 {{- end}}
-{{end -}}
-{{- end -}}
-}
 
-func (DefinedWorld) BeforeMap(world *platform.World) {
+func BeforeMap(world *world.World) {
 	world.Name = "{{.WorldName}}"
 	world.Mob = "{{.WorldMob}}"
-}
-
-func (d DefinedWorld) Definer() platform.TreeDefiner {
-	return d
 }
 `

@@ -2,14 +2,13 @@ package convert
 
 import (
 	"fmt"
+	"github.com/celskeggs/mediator/autocoder/dtype"
 	"github.com/celskeggs/mediator/autocoder/gen"
-	"github.com/celskeggs/mediator/autocoder/gotype"
 	"github.com/celskeggs/mediator/dream/parser"
 	"github.com/celskeggs/mediator/dream/path"
 	"github.com/celskeggs/mediator/dream/tokenizer"
 	"github.com/celskeggs/mediator/util"
 	"github.com/pkg/errors"
-	"strconv"
 	"strings"
 )
 
@@ -52,12 +51,6 @@ func ConstantPath(expr parser.DreamMakerExpression) path.TypePath {
 	}
 }
 
-func EscapeString(str string) string {
-	str = strings.Replace(str, "\\", "\\\\", -1)
-	str = strings.Replace(str, "\"", "\\\"", -1)
-	return "\"" + str + "\""
-}
-
 type CodeGenContext struct {
 	Tree    *gen.DefinedTree
 	SrcType path.TypePath
@@ -83,144 +76,98 @@ func ResourceTypeByName(name string) ResourceType {
 
 const LocalVariablePrefix = "var"
 
-// Typechecking is done on input; all ExprToGo paths should check that they can provide targetType. Callers do not need to validate goType.
-func ExprToGo(expr parser.DreamMakerExpression, targetType gotype.GoType, ctx CodeGenContext) (exprString string, goType gotype.GoType, err error) {
+// expressions should always produce a types.Value
+func ExprToGo(expr parser.DreamMakerExpression, ctx CodeGenContext) (exprString string, etype dtype.DType, err error) {
 	switch expr.Type {
 	case parser.ExprTypeResourceLiteral:
 		switch ResourceTypeByName(expr.Str) {
 		case ResourceTypeIcon:
-			if targetType.IsExternal("*icon.Icon") || targetType.IsInterfaceAny() {
-				return "icons.LoadOrPanic(" + EscapeString(expr.Str) + ")", gotype.External("*icons.Icon"), nil
-			}
+			util.FIXME("make this load work in more cases")
+			ctx.Tree.AddImport("github.com/celskeggs/mediator/platform/atoms")
+			return fmt.Sprintf("atoms.WorldOf(src).Icon(%q)", expr.Str), dtype.ConstPath("/icon"), nil
 		case ResourceTypeAudio:
-			if targetType.IsExternal("sprite.Sound") || targetType.IsInterfaceAny() {
-				return "platform.NewSound(" + EscapeString(expr.Str) + ")", gotype.External("sprite.Sound"), nil
-			}
+			ctx.Tree.AddImport("github.com/celskeggs/mediator/platform/procs")
+			return fmt.Sprintf("procs.NewSound(%q)", expr.Str), dtype.ConstPath("/sound"), nil
+		default:
+			return "", dtype.None(), fmt.Errorf("cannot interpret resource name %q", expr.Str)
 		}
 	case parser.ExprTypeIntegerLiteral:
-		if targetType.IsBool() {
-			return strconv.FormatBool(expr.Integer != 0), gotype.Bool(), nil
-		} else if targetType.IsInteger() || targetType.IsInterfaceAny() {
-			return strconv.FormatInt(expr.Integer, 10), gotype.Int(), nil
-		}
+		return fmt.Sprintf("types.Int(%d)", expr.Integer), dtype.Integer(), nil
 	case parser.ExprTypeStringLiteral:
-		if targetType.IsString() || targetType.IsInterfaceAny() {
-			return fmt.Sprintf("%q", expr.Str), gotype.String(), nil
-		}
+		return fmt.Sprintf("types.String(%q)", expr.Str), dtype.String(), nil
 	case parser.ExprTypeBooleanNot:
-		if targetType.IsBool() || targetType.IsInterfaceAny() {
-			innerString, _, err := ExprToGo(expr.Children[0], gotype.Bool(), ctx)
-			if err != nil {
-				return "", gotype.None(), err
-			}
-			return fmt.Sprintf("!(%s)", innerString), gotype.Bool(), nil
+		innerString, _, err := ExprToGo(expr.Children[0], ctx)
+		if err != nil {
+			return "", dtype.None(), err
 		}
+		return fmt.Sprintf("procs.Invoke(\"!\", %s)", innerString), dtype.Integer(), nil
 	case parser.ExprTypeCall:
 		target := expr.Children[0]
 		args := expr.Children[1:]
-		targetString, concrete, err := ExprToGo(target, gotype.FuncAbstractParams([]gotype.GoType{targetType}), ctx)
-		if err != nil {
-			return "", gotype.None(), err
-		}
-		if !concrete.IsFuncConcrete() {
-			return "", gotype.None(), fmt.Errorf("concrete func required, but found %v", concrete)
-		}
-		if len(concrete.Results) != 1 {
-			return "", gotype.None(), fmt.Errorf("can only handle funcs with exactly 1 result, but found %v", concrete)
-		}
-		filledArgs := make([]string, len(concrete.Params))
 
-		// fill keyword args first
-		for ni, name := range expr.Names {
-			if name != "" {
-				found := false
-				for ai, ak := range concrete.KeywordNames {
-					if name == ak {
-						if filledArgs[ai] != "" {
-							return "", gotype.None(), fmt.Errorf("duplicate keyword argument: %s", name)
-						}
-						argString, _, err := ExprToGo(args[ni], concrete.Params[ai], ctx)
-						if err != nil {
-							return "", gotype.None(), err
-						}
-						filledArgs[ai] = argString
-						found = true
-						break
-					}
+		if target.Type != parser.ExprTypeGetNonLocal {
+			return "", dtype.None(), fmt.Errorf("calling non-global functions is not yet implemented")
+		}
+
+		found := ctx.Tree.GlobalProcedureExists(target.Str)
+		if !found {
+			return "", dtype.None(), fmt.Errorf("no such global function %s", target.Str)
+		}
+
+		kwargs := make(map[string]string)
+
+		var convArgs []string
+		for i, arg := range args {
+			ce, _, err := ExprToGo(arg, ctx)
+			if err != nil {
+				return "", dtype.None(), err
+			}
+			kname := expr.Names[i]
+			if kname != "" {
+				if _, found := kwargs[kname]; found {
+					return "", dtype.None(), fmt.Errorf("duplicate keyword argument %q", kname)
 				}
-				if !found {
-					return "", gotype.None(), fmt.Errorf("no such keyword argument: %s", name)
-				}
+				kwargs[expr.Names[i]] = ce
+			} else {
+				convArgs = append(convArgs, ", "+ce)
 			}
 		}
-		// fill positional arguments second
-		for ai, arg := range args {
-			if expr.Names[ai] == "" {
-				found := false
-				for fi, fill := range filledArgs {
-					if fill == "" {
-						argString, _, err := ExprToGo(arg, concrete.Params[fi], ctx)
-						if err != nil {
-							return "", gotype.None(), err
-						}
-						filledArgs[fi] = argString
-						found = true
-						break
-					}
-				}
-				if !found {
-					return "", gotype.None(), fmt.Errorf("too many positional arguments when trying to use argument %d", ai)
-				}
-			}
-		}
-		// fill default arguments third
-		for i, expr := range concrete.DefaultExprs {
-			if filledArgs[i] == "" {
-				if expr != "" {
-					filledArgs[i] = expr
+
+		if len(kwargs) != 0 {
+			kwargStr := "map[string]types.Value{"
+			first := true
+			for name, arg := range kwargs {
+				if first {
+					first = false
 				} else {
-					return "", gotype.None(), fmt.Errorf("too few parameters; no expression for argument %d", i)
+					kwargStr += ", "
 				}
+				kwargStr += fmt.Sprintf("%q: %s", name, arg)
 			}
+			kwargStr += "}"
+			return fmt.Sprintf("procs.KWInvoke(%q, %s%s)", target.Str, kwargStr, strings.Join(convArgs, "")), dtype.Any(), nil
+		} else {
+			return fmt.Sprintf("procs.Invoke(%q%s)", target.Str, strings.Join(convArgs, "")), dtype.Any(), nil
 		}
-
-		return fmt.Sprintf("(%s)(%s)", targetString, strings.Join(filledArgs, ", ")), concrete.Results[0], nil
 	case parser.ExprTypeGetNonLocal:
 		util.FIXME("resolve more types of nonlocals")
 		// look for local fields
 		if !ctx.SrcType.IsEmpty() {
-			definingStruct, longName, goType, found := ctx.Tree.ResolveField(ctx.SrcType, expr.Str)
+			ftype, found := ctx.Tree.ResolveField(ctx.SrcType, expr.Str)
 			if found {
-				if !targetType.IsInterfaceAny() && !targetType.Equals(goType) {
-					return "", gotype.None(), fmt.Errorf("type mismatch: needed %v but src.%s was %v at %v", targetType, expr.Str, goType, expr.SourceLoc)
-				}
-				if definingStruct == ctx.Tree.GetTypeByPath(ctx.SrcType).StructName() {
-					return LocalVariablePrefix + "src." + longName, goType, nil
-				} else {
-					return LocalVariablePrefix + "src.As" + definingStruct + "()." + longName, goType, nil
-				}
+				return LocalVariablePrefix + fmt.Sprintf("src.Var(%q)", expr.Str), ftype, nil
 			}
 		}
-		// look for global procedures
-		if targetType.IsFunc() || targetType.IsInterfaceAny() {
-			record, found := ctx.Tree.ResolveGlobalProcedure(expr.Str)
-			if found {
-				if !record.GoType.IsFuncConcrete() {
-					return "", gotype.None(), fmt.Errorf("discovered global func for %s must be of a concrete type, not %v", expr.Str, record.GoType)
-				}
-				return record.GoRef, record.GoType, nil
-			}
-		}
-		return "", gotype.None(), fmt.Errorf("cannot find nonlocal %s at %v", expr.Str, expr.SourceLoc)
+		return "", dtype.None(), fmt.Errorf("cannot find nonlocal %s at %v", expr.Str, expr.SourceLoc)
 	case parser.ExprTypeGetLocal:
-		util.FIXME("type checking for locals")
-		return LocalVariablePrefix + expr.Str, gotype.InterfaceAny(), nil
+		util.FIXME("types for locals")
+		return LocalVariablePrefix + expr.Str, dtype.Any(), nil
 	case parser.ExprTypeStringConcat:
 		var terms []string
 		for _, term := range expr.Children {
-			termString, actualType, err := ExprToGo(term, gotype.InterfaceAny(), ctx)
+			termString, actualType, err := ExprToGo(term, ctx)
 			if err != nil {
-				return "", gotype.None(), err
+				return "", dtype.None(), err
 			}
 			if actualType.IsString() {
 				terms = append(terms, "("+termString+")")
@@ -230,9 +177,10 @@ func ExprToGo(expr parser.DreamMakerExpression, targetType gotype.GoType, ctx Co
 				terms = append(terms, "format.FormatAtom("+termString+")")
 			}
 		}
-		return strings.Join(terms, " + "), gotype.String(), nil
+		return strings.Join(terms, " + "), dtype.String(), nil
+	default:
+		return "", dtype.None(), fmt.Errorf("unimplemented evaluation of expr %v at %v", expr, expr.SourceLoc)
 	}
-	return "", gotype.None(), fmt.Errorf("cannot convert expr %v to type %v at %v", expr, targetType, expr.SourceLoc)
 }
 
 func DefineVar(dt *gen.DefinedTree, path path.TypePath, variable string, loc tokenizer.SourceLocation) error {
@@ -244,14 +192,14 @@ func DefineVar(dt *gen.DefinedTree, path path.TypePath, variable string, loc tok
 		panic("expected non-nil type " + path.String())
 	}
 
-	_, _, _, found := dt.ResolveField(path, variable)
+	_, found := dt.ResolveField(path, variable)
 	if found {
 		return fmt.Errorf("field %s already defined on %v at %v", variable, path, loc)
 	}
 
 	defType.Fields = append(defType.Fields, gen.DefinedField{
 		Name: variable,
-		Type: gotype.InterfaceAny(),
+		Type: dtype.Any(),
 	})
 	return nil
 }
@@ -274,20 +222,20 @@ func AssignPath(dt *gen.DefinedTree, path path.TypePath, variable string, expr p
 		if !dt.Exists(path) {
 			return fmt.Errorf("no such path %v for assignment of variable %v", path, variable)
 		}
-		_, _, goType, found := dt.ResolveField(path, variable)
+		util.FIXME("some sort of typechecking for field assignments?")
+		_, found := dt.ResolveField(path, variable)
 		if !found {
 			return fmt.Errorf("no such field %s on %v at %v", variable, path, loc)
 		}
-		// CHECK: is this broken by assigning to a pointer grabbed from a slice?
 		defType := dt.GetTypeByPath(path)
-		expr, _, err := ExprToGo(expr, goType, CodeGenContext{
+		expr, _, err := ExprToGo(expr, CodeGenContext{
 			Tree: dt,
 		})
 		if err != nil {
 			return err
 		}
 		defType.Inits = append(defType.Inits, gen.DefinedInit{
-			ShortName: variable,
+			Name:      variable,
 			Value:     expr,
 			SourceLoc: loc,
 		})
@@ -298,11 +246,11 @@ func AssignPath(dt *gen.DefinedTree, path path.TypePath, variable string, expr p
 func StatementToGo(statement parser.DreamMakerStatement, ctx CodeGenContext) (lines []string, err error) {
 	switch statement.Type {
 	case parser.StatementTypeIf:
-		condition, _, err := ExprToGo(statement.From, gotype.Bool(), ctx)
+		condition, _, err := ExprToGo(statement.From, ctx)
 		if err != nil {
 			return nil, err
 		}
-		lines = append(lines, fmt.Sprintf("if (%v) {", condition))
+		lines = append(lines, fmt.Sprintf("if (types.AsBool(%v)) {", condition))
 		for _, bodyStatement := range statement.Body {
 			extraLines, err := StatementToGo(bodyStatement, ctx)
 			if err != nil {
@@ -313,29 +261,21 @@ func StatementToGo(statement parser.DreamMakerStatement, ctx CodeGenContext) (li
 		lines = append(lines, "}")
 		return lines, nil
 	case parser.StatementTypeWrite:
-		target, _, err := ExprToGo(statement.To, gotype.External("platform.IMob"), ctx)
+		target, _, err := ExprToGo(statement.To, ctx)
 		if err != nil {
 			return nil, err
 		}
-		value, valueType, err := ExprToGo(statement.From, gotype.InterfaceAny(), ctx)
+		value, _, err := ExprToGo(statement.From, ctx)
 		if err != nil {
 			return nil, err
 		}
-		if valueType.IsString() {
-			return []string{
-				fmt.Sprintf("(%s).OutputString(%s)", target, value),
-			}, nil
-		} else if valueType.IsExternal("sprite.Sound") {
-			return []string{
-				fmt.Sprintf("(%s).OutputSound(%s)", target, value),
-			}, nil
-		} else {
-			return nil, fmt.Errorf("write operator with unknown variant not implemented at %v", statement.SourceLoc)
-		}
+		return []string{
+			fmt.Sprintf("(%s).Invoke(\"<<\", %s)", target, value),
+		}, nil
 	case parser.StatementTypeReturn:
 		util.FIXME("support returning values")
 		return []string{
-			"return",
+			"return nil",
 		}, nil
 	}
 	return nil, fmt.Errorf("cannot convert statement %v to Go at %v", statement, statement.SourceLoc)
@@ -357,8 +297,7 @@ func FuncBodyToGo(body []parser.DreamMakerStatement, ctx CodeGenContext) (lines 
 		}
 	}
 	if !hadReturn {
-		// not strictly necessary YET, but it will be at some point
-		lines = append(lines, "return")
+		lines = append(lines, "return nil")
 	}
 	return lines, nil
 }
@@ -393,37 +332,14 @@ func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string,
 		panic("expected non-nil type " + path.String())
 	}
 
-	proc, found := dt.ResolveProcedure(path, function)
+	_, found := dt.ResolveProcedure(path, function)
 	if !found {
 		return fmt.Errorf("no such function %s to implement on %v at %v", function, path, loc)
 	}
-	if !proc.GoType.IsFuncConcrete() {
-		panic("resolved procedures should always have a concrete type")
-	}
-	if len(proc.GoType.Results) > 0 {
-		return fmt.Errorf("unsupported: function with results at %v", tokenizer.SourceHere())
-	}
 
-	var params []gen.DefinedParam
+	var params []string
 	for _, a := range arguments {
-		util.FIXME("check argument type compatibility")
-		params = append(params,
-			gen.DefinedParam{
-				Name: LocalVariablePrefix + a.Name,
-				Type: dt.Ref(a.Type, true),
-			},
-		)
-	}
-	if len(params) > len(proc.GoType.Params) {
-		return fmt.Errorf("attempt to define function with more parameters (%v) than overridden function (%v)", len(params), len(proc.GoType.Params))
-	}
-	for i := len(params); i < len(proc.GoType.Params); i++ {
-		params = append(params,
-			gen.DefinedParam{
-				Name: "_",
-				Type: proc.GoType.Params[i].String(),
-			},
-		)
+		params = append(params, LocalVariablePrefix+a.Name)
 	}
 
 	lines, err := FuncBodyToGo(body, CodeGenContext{
@@ -489,7 +405,7 @@ func Convert(dmf *parser.DreamMakerFile) (*gen.DefinedTree, error) {
 		if dt.Extends(t.TypePath, path.ConstTypePath("/atom")) && !t.IsOverride() {
 			specifiesName := false
 			for _, init := range t.Inits {
-				if init.ShortName == "name" {
+				if init.Name == "name" {
 					specifiesName = true
 				}
 			}
@@ -499,8 +415,8 @@ func Convert(dmf *parser.DreamMakerFile) (*gen.DefinedTree, error) {
 					return nil, err
 				}
 				t.Inits = append(t.Inits, gen.DefinedInit{
-					ShortName: "name",
-					Value:     EscapeString(lastComponent),
+					Name:      "name",
+					Value:     fmt.Sprintf("types.String(%q)", lastComponent),
 					SourceLoc: tokenizer.SourceHere(),
 				})
 				dt.Types[i] = t

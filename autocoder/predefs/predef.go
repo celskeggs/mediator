@@ -1,7 +1,7 @@
 package predefs
 
 import (
-	"github.com/celskeggs/mediator/autocoder/gotype"
+	"github.com/celskeggs/mediator/autocoder/dtype"
 	"github.com/celskeggs/mediator/dream/path"
 	"strings"
 )
@@ -13,7 +13,7 @@ func ToTitle(name string) string {
 	return strings.ToUpper(name[0:1]) + name[1:]
 }
 
-func PathToStructName(path path.TypePath) string {
+func PathToDataStructName(path path.TypePath) string {
 	if path.IsEmpty() {
 		panic("cannot convert empty path to string")
 	}
@@ -24,27 +24,20 @@ func PathToStructName(path path.TypePath) string {
 	for _, part := range path.Segments {
 		title = append(title, ToTitle(part))
 	}
+	title = append(title, "Data")
 	return strings.Join(title, "")
 }
 
 type ProcedureInfo struct {
 	Name    string
 	DefPath path.TypePath
-	GoType  gotype.GoType
-}
-
-type GlobalProcedureInfo struct {
-	Name   string
-	GoRef  string
-	GoType gotype.GoType
 }
 
 type TypeDefiner interface {
 	Exists(typePath path.TypePath) bool
 	ParentOf(typePath path.TypePath) path.TypePath
-	Ref(typePath path.TypePath, skipOverrides bool) string
-	ResolveField(typePath path.TypePath, shortName string) (definingStruct string, longName string, goType gotype.GoType, found bool)
-	ResolveGlobalProcedure(name string) (GlobalProcedureInfo, bool)
+	ResolveField(typePath path.TypePath, name string) (dtype dtype.DType, found bool)
+	GlobalProcedureExists(name string) bool
 	ResolveProcedure(typePath path.TypePath, shortName string) (ProcedureInfo, bool)
 }
 
@@ -54,19 +47,10 @@ type TypeInfo struct {
 	Parent  string
 }
 
-func (ti TypeInfo) StructName() string {
-	return PathToStructName(path.ConstTypePath(ti.Path))
-}
-
-func (ti TypeInfo) Ref() string {
-	return ti.Package + ".I" + ti.StructName()
-}
-
 type FieldInfo struct {
-	ShortName string
-	LongName  string
-	DefPath   string
-	GoType    gotype.GoType
+	Name    string
+	DefPath string
+	Type    dtype.DType
 }
 
 var platformDefs = []TypeInfo{
@@ -82,78 +66,21 @@ var platformDefs = []TypeInfo{
 }
 
 var platformFields = []FieldInfo{
-	{"name", "Appearance.Name", "/atom", gotype.String()},
-	{"icon", "Appearance.Icon", "/atom", gotype.External("*icon.Icon")},
-	{"desc", "Appearance.Desc", "/atom", gotype.String()},
-	{"density", "Density", "/atom", gotype.Bool()},
-	{"opacity", "Opacity", "/atom", gotype.Bool()},
+	{"name", "/atom", dtype.String()},
+	{"icon", "/atom", dtype.ConstPath("/icon")},
+	{"desc", "/atom", dtype.String()},
+	{"density", "/atom", dtype.Integer()},
+	{"opacity", "/atom", dtype.Integer()},
 }
 
 var platformProcs = []ProcedureInfo{
-	{"Entered", path.ConstTypePath("/atom"),
-		gotype.Func(
-			[]gotype.GoType{
-				gotype.External("platform.IAtomMovable"),
-				gotype.External("platform.IAtom"),
-			},
-			nil,
-			[]string{
-				"",
-				"nil",
-			},
-			[]string{
-				"Obj",
-				"OldLoc",
-			})},
-	{"Bump", path.ConstTypePath("/atom/movable"),
-		gotype.Func(
-			[]gotype.GoType{
-				gotype.External("platform.IAtom"),
-			},
-			nil,
-			[]string{
-				"",
-			},
-			[]string{
-				"Obstacle",
-			})},
+	{"Entered", path.ConstTypePath("/atom")},
+	{"Bump", path.ConstTypePath("/atom/movable")},
 }
 
-var platformGlobalProcs = []GlobalProcedureInfo{
-	{"ismob", "platform.IsMob",
-		gotype.Func(
-			[]gotype.GoType{
-				gotype.External("platform.IAtom"),
-			}, []gotype.GoType{
-				gotype.Bool(),
-			}, []string{
-				"",
-			}, []string{
-				"",
-			})},
-	{"sound", "platform.NewSoundFull",
-		gotype.Func(
-			[]gotype.GoType{
-				gotype.String(),
-				gotype.Bool(),
-				gotype.Bool(),
-				gotype.Uint(),
-				gotype.Uint(),
-			}, []gotype.GoType{
-				gotype.External("sprite.Sound"),
-			}, []string{
-				"",
-				"false",
-				"false",
-				"0",
-				"100",
-			}, []string{
-				"",
-				"repeat",
-				"wait",
-				"channel",
-				"volume",
-			})},
+var platformGlobalProcs = []string{
+	"ismob",
+	"sound",
 }
 
 type platformDefiner struct {
@@ -178,25 +105,17 @@ func (p platformDefiner) ParentOf(typePath path.TypePath) path.TypePath {
 	return path.ConstTypePath(p.GetTypeInfo(typePath).Parent)
 }
 
-func (p platformDefiner) Ref(typePath path.TypePath, skipOverrides bool) string {
-	return p.GetTypeInfo(typePath).Ref()
-}
-
-func (p platformDefiner) StructName(typePath path.TypePath) string {
-	return p.GetTypeInfo(typePath).StructName()
-}
-
-func (p platformDefiner) ResolveField(typePath path.TypePath, shortName string) (definingStruct string, longName string, goType gotype.GoType, found bool) {
+func (p platformDefiner) ResolveField(typePath path.TypePath, name string) (dType dtype.DType, found bool) {
 	for _, field := range platformFields {
-		if field.DefPath == typePath.String() && shortName == field.ShortName {
-			return p.StructName(typePath), field.LongName, field.GoType, true
+		if field.DefPath == typePath.String() && name == field.Name {
+			return field.Type, true
 		}
 	}
 	parentPath := p.ParentOf(typePath)
 	if parentPath.IsEmpty() {
-		return "", "", gotype.None(), false
+		return dtype.None(), false
 	}
-	return p.ResolveField(parentPath, shortName)
+	return p.ResolveField(parentPath, name)
 }
 
 func (p platformDefiner) ResolveProcedure(typePath path.TypePath, shortName string) (ProcedureInfo, bool) {
@@ -208,11 +127,11 @@ func (p platformDefiner) ResolveProcedure(typePath path.TypePath, shortName stri
 	return ProcedureInfo{}, false
 }
 
-func (p platformDefiner) ResolveGlobalProcedure(name string) (GlobalProcedureInfo, bool) {
+func (p platformDefiner) GlobalProcedureExists(name string) bool {
 	for _, proc := range platformGlobalProcs {
-		if proc.Name == name {
-			return proc, true
+		if proc == name {
+			return true
 		}
 	}
-	return GlobalProcedureInfo{}, false
+	return false
 }

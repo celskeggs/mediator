@@ -122,6 +122,7 @@ func (d *ClientData) OperatorWrite(src *types.Datum, output types.Value) types.V
 	if text, ok := output.(types.String); ok {
 		d.textBuffer = append(d.textBuffer, string(text))
 	} else if sound, ok := output.(sprite.Sound); ok {
+		sound = sound.FixMID()
 		d.soundBuffer = append(d.soundBuffer, sound)
 	} else {
 		panic("not sure how to send output " + output.String() + " to client")
