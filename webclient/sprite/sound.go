@@ -20,9 +20,9 @@ func (s Sound) Var(name string) types.Value {
 	case "file":
 		return types.String(s.File)
 	case "repeat":
-		return types.Bool(s.Repeat)
+		return types.FromBool(s.Repeat)
 	case "wait":
-		return types.Bool(s.Wait)
+		return types.FromBool(s.Wait)
 	case "channel":
 		return types.Int(s.Channel)
 	case "volume":
@@ -37,9 +37,9 @@ func (s Sound) SetVar(name string, value types.Value) {
 	case "file":
 		s.File = types.Unstring(value)
 	case "repeat":
-		s.Repeat = types.Unbool(value)
+		s.Repeat = types.AsBool(value)
 	case "wait":
-		s.Wait = types.Unbool(value)
+		s.Wait = types.AsBool(value)
 	case "channel":
 		s.Channel = uint(types.Unint(value))
 	case "volume":

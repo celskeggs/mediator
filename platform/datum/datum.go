@@ -8,8 +8,7 @@ import (
 //mediator:declare DatumData /datum /
 type DatumData struct{}
 
-func NewDatumData(src *types.Datum, _ ...types.Value) DatumData {
-	return DatumData{}
+func NewDatumData(src *types.Datum, _ *DatumData, _ ...types.Value) {
 }
 
 func (d *DatumData) ProcNew(src *types.Datum) types.Value {

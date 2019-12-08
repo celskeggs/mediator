@@ -165,7 +165,7 @@ func (vir *viewInfoRegion) PopulateTurfs(input []types.Value) (maxDepthMax, sumD
 		}
 		dx, dy := AbsDiff(vir.PerspectiveX, tx), AbsDiff(vir.PerspectiveY, ty)
 		vi := &viewInfo{
-			Opaque:     types.Unbool(turf.Var("opacity")),
+			Opaque:     types.AsBool(turf.Var("opacity")),
 			Luminosity: 0,
 			Lit:        true,
 			Turf:       turf.(*types.Datum),

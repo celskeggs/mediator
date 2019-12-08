@@ -19,8 +19,7 @@ type ClientData struct {
 	soundBuffer []sprite.Sound
 }
 
-func NewClientData(_ *types.Datum, _ ...types.Value) ClientData {
-	return ClientData{}
+func NewClientData(_ *types.Datum, _ *ClientData, _ ...types.Value) {
 }
 
 func (d *ClientData) GetMob(src *types.Datum) types.Value {
@@ -116,7 +115,7 @@ func (d *ClientData) ProcMove(src *types.Datum, loc types.Value, dir types.Value
 	if mob != nil {
 		return mob.Invoke("Move", loc, dir)
 	}
-	return types.Bool(false)
+	return types.Int(0)
 }
 
 func (d *ClientData) OperatorWrite(src *types.Datum, output types.Value) types.Value {

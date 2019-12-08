@@ -9,11 +9,10 @@ import (
 //mediator:declare AreaData /area /atom !singleton
 type AreaData struct{}
 
-func NewAreaData(src *types.Datum, _ ...types.Value) AreaData {
+func NewAreaData(src *types.Datum, _ *AreaData, _ ...types.Value) {
 	util.FIXME("handle area.X, .Y, .Z correctly")
 	src.SetVar("name", types.String("area"))
 	src.SetVar("layer", types.Int(AreaLayer))
-	return AreaData{}
 }
 
 func TurfsInArea(area types.Value) (turfs []types.Value) {

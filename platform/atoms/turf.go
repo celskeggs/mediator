@@ -13,10 +13,9 @@ type TurfData struct {
 	Z uint
 }
 
-func NewTurfData(src *types.Datum, _ ...types.Value) TurfData {
+func NewTurfData(src *types.Datum, _ *TurfData, _ ...types.Value) {
 	src.SetVar("name", types.String("turf"))
 	src.SetVar("layer", types.Int(TurfLayer))
-	return TurfData{}
 }
 
 func (t *TurfData) GetX(src *types.Datum) types.Value {
@@ -47,25 +46,25 @@ func (t *TurfData) SetZ(src *types.Datum, z types.Value) {
 
 func (t *TurfData) ProcExit(src *types.Datum, atom types.Value, newloc types.Value) types.Value {
 	util.NiceToHave("call Uncross here")
-	return types.Bool(true)
+	return types.Int(1)
 }
 
 func (t *TurfData) ProcEnter(src *types.Datum, atom types.Value, oldloc types.Value) types.Value {
 	util.NiceToHave("call Cross here")
-	if types.Unbool(atom.Var("density")) {
-		if types.Unbool(src.Var("density")) {
+	if types.AsBool(atom.Var("density")) {
+		if types.AsBool(src.Var("density")) {
 			atom.Invoke("Bump", src)
-			return types.Bool(false)
+			return types.Int(0)
 		}
 		util.NiceToHave("something about only atoms that take up the full tile?")
 		for _, existingAtom := range datum.Elements(src.Var("contents")) {
-			if types.Unbool(existingAtom.Var("density")) {
+			if types.AsBool(existingAtom.Var("density")) {
 				atom.Invoke("Bump", existingAtom)
-				return types.Bool(false)
+				return types.Int(0)
 			}
 		}
 	}
-	return types.Bool(true)
+	return types.Int(1)
 }
 
 func (t *TurfData) ProcExited(src *types.Datum, atom types.Value, newloc types.Value) types.Value {

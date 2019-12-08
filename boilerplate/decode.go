@@ -116,22 +116,25 @@ func (source *SourceInfo) LoadNewFunc(fset *token.FileSet, structName string, de
 	if decl.Recv != nil && len(decl.Recv.List) > 0 {
 		return fmt.Errorf("constructor for %s must be global", structName)
 	}
-	if len(decl.Type.Results.List) != 1 {
-		return fmt.Errorf("constructor for %s must return exactly one value", structName)
+	if decl.Type.Results != nil && len(decl.Type.Results.List) != 0 {
+		return fmt.Errorf("constructor for %s must return exactly zero values", structName)
 	}
-	resultType := decl.Type.Results.List[0].Type
-	ident, ok := resultType.(*ast.Ident)
-	if !ok || ident.Name != structName {
-		return fmt.Errorf("constructor for %s must return plain structure result", structName)
-	}
-	if len(decl.Type.Params.List) != 2 {
-		return fmt.Errorf("constructor for %s must accept exactly two parameters", structName)
+	if decl.Type.Params == nil || len(decl.Type.Params.List) != 3 {
+		return fmt.Errorf("constructor for %s must accept exactly three parameters", structName)
 	}
 	if !IsDatumType(decl.Type.Params.List[0].Type) {
 		return fmt.Errorf("constructor for %s must accept a datum parameter", structName)
 	}
-	paramType2 := decl.Type.Params.List[1].Type
-	elt, ok := paramType2.(*ast.Ellipsis)
+	selfType, ok := decl.Type.Params.List[1].Type.(*ast.StarExpr)
+	if !ok {
+		return fmt.Errorf("constructor for %s must accept an output pointer", structName)
+	}
+	ident, ok := selfType.X.(*ast.Ident)
+	if !ok || ident.Name != structName {
+		return fmt.Errorf("constructor for %s must accept a plain structure output pointer", structName)
+	}
+	paramType3 := decl.Type.Params.List[2].Type
+	elt, ok := paramType3.(*ast.Ellipsis)
 	if !ok {
 		return fmt.Errorf("constructor for %s must accept a varargs parameter", structName)
 	}

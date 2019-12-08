@@ -11,20 +11,18 @@ import (
 //mediator:declare AtomData /atom /datum
 type AtomData struct {
 	VarAppearance Appearance
-	VarDensity    bool
-	VarOpacity    bool
+	VarDensity    int
+	VarOpacity    int
 	VarDir        common.Direction
 	location      *types.Ref
 	contents      map[*types.Datum]*types.Ref
 }
 
-func NewAtomData(src *types.Datum, _ ...types.Value) AtomData {
+func NewAtomData(_ *types.Datum, data *AtomData, _ ...types.Value) {
 	util.FIXME("handle location early per docs")
-	return AtomData{
-		VarDir: common.South,
-		VarAppearance: Appearance{
-			Name: "atom",
-		},
+	data.VarDir = common.South
+	data.VarAppearance = Appearance{
+		Name: "atom",
 	}
 }
 
@@ -149,12 +147,12 @@ func (d *AtomData) GetZ(src *types.Datum) types.Value {
 
 func (d *AtomData) ProcExit(src *types.Datum, atom types.Value, newloc types.Value) types.Value {
 	// always allow by default
-	return types.Bool(true)
+	return types.Int(1)
 }
 
 func (d *AtomData) ProcEnter(src *types.Datum, atom types.Value, oldloc types.Value) types.Value {
 	// always allow by default
-	return types.Bool(true)
+	return types.Int(1)
 }
 
 func (d *AtomData) ProcExited(src *types.Datum, atom types.Value, newloc types.Value) types.Value {

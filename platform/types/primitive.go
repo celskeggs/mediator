@@ -61,34 +61,6 @@ func (i Int) String() string {
 	return fmt.Sprintf("[int: %d]", int(i))
 }
 
-type Bool bool
-
-var _ Value = Bool(false)
-
-func Unbool(b Value) bool {
-	return bool(b.(Bool))
-}
-
-func (b Bool) Var(name string) Value {
-	panic("no variable " + name + " on bool")
-}
-
-func (b Bool) SetVar(name string, value Value) {
-	panic("no variable " + name + " on bool")
-}
-
-func (b Bool) Invoke(name string, parameters ...Value) Value {
-	panic("no proc " + name + " on bool")
-}
-
-func (b Bool) String() string {
-	if b {
-		return "[true]"
-	} else {
-		return "[false]"
-	}
-}
-
 type TypePath string
 
 var _ Value = TypePath("")
@@ -121,4 +93,24 @@ func (path TypePath) SetVar(name string, value Value) {
 
 func (path TypePath) Invoke(name string, parameters ...Value) Value {
 	panic("cannot invoke method on type path")
+}
+
+func AsBool(v Value) bool {
+	if v == nil {
+		return false
+	} else if i, ok := v.(Int); ok {
+		return int(i) != 0
+	} else if s, ok := v.(String); ok {
+		return string(s) != ""
+	} else {
+		return true
+	}
+}
+
+func FromBool(b bool) Int {
+	if b {
+		return 1
+	} else {
+		return 0
+	}
 }

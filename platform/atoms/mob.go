@@ -12,11 +12,10 @@ type MobData struct {
 	client types.Value // not a ref to avoid refcounting cycle
 }
 
-func NewMobData(src *types.Datum, _ ...types.Value) MobData {
+func NewMobData(src *types.Datum, _ *MobData, _ ...types.Value) {
 	src.SetVar("name", types.String("mob"))
 	src.SetVar("layer", types.Int(MobLayer))
-	src.SetVar("density", types.Bool(true))
-	return MobData{}
+	src.SetVar("density", types.Int(1))
 }
 
 func (m *MobData) OperatorWrite(src *types.Datum, output types.Value) types.Value {
@@ -78,8 +77,8 @@ func (m *MobData) ProcLogin(src *types.Datum) types.Value {
 		for y := uint(1); y <= my; y++ {
 			for x := uint(1); x <= mx; x++ {
 				turf := WorldOf(src).LocateXYZ(x, y, z)
-				if turf != nil && !types.Unbool(turf.Var("density")) {
-					if types.Unbool(src.Invoke("Move", turf, common.Direction(0))) {
+				if turf != nil && !types.AsBool(turf.Var("density")) {
+					if types.AsBool(src.Invoke("Move", turf, common.Direction(0))) {
 						return nil
 					}
 				}

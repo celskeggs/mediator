@@ -9,9 +9,8 @@ import (
 //mediator:declare AtomMovableData /atom/movable /atom
 type AtomMovableData struct{}
 
-func NewAtomMovableData(src *types.Datum, _ ...types.Value) AtomMovableData {
+func NewAtomMovableData(src *types.Datum, _ *AtomMovableData, _ ...types.Value) {
 	src.SetVar("name", types.String("movable"))
-	return AtomMovableData{}
 }
 
 func ContainingArea(atom types.Value) types.Value {
@@ -35,23 +34,23 @@ func (d *AtomData) ProcMove(src *types.Datum, newloc types.Value, direction type
 	if newloc != oldloc && newloc != nil {
 		newarea := ContainingArea(newloc)
 		if oldloc != nil {
-			if !types.Unbool(oldloc.Invoke("Exit", src, newloc)) {
-				return types.Bool(false)
+			if !types.AsBool(oldloc.Invoke("Exit", src, newloc)) {
+				return types.Int(0)
 			}
 			util.NiceToHave("handle Cross and Uncross and Crossed and Uncrossed")
 		}
 		if newarea != oldarea && oldarea != nil {
-			if !types.Unbool(oldarea.Invoke("Exit", src, newarea)) {
-				return types.Bool(false)
+			if !types.AsBool(oldarea.Invoke("Exit", src, newarea)) {
+				return types.Int(0)
 			}
 		}
-		if !types.Unbool(newloc.Invoke("Enter", src, oldloc)) {
+		if !types.AsBool(newloc.Invoke("Enter", src, oldloc)) {
 			util.FIXME("bump obstacles")
-			return types.Bool(false)
+			return types.Int(0)
 		}
 		if newarea != oldarea && newarea != nil {
-			if !types.Unbool(newarea.Invoke("Enter", src, oldarea)) {
-				return types.Bool(false)
+			if !types.AsBool(newarea.Invoke("Enter", src, oldarea)) {
+				return types.Int(0)
 			}
 		}
 		src.SetVar("loc", newloc)
@@ -66,7 +65,7 @@ func (d *AtomData) ProcMove(src *types.Datum, newloc types.Value, direction type
 			newarea.Invoke("Entered", src, oldarea)
 		}
 	}
-	return types.Bool(true)
+	return types.Int(1)
 }
 
 func (d *AtomData) ProcBump(src *types.Datum, obstacle types.Value) types.Value {

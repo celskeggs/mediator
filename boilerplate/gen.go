@@ -101,7 +101,7 @@ func New{{.Type}}(realm *types.Realm, params ...types.Value) *types.Datum {
 	i := &{{.Type}}Impl{}
 	d := realm.NewDatum(i)
 {{- range .RevChunks}}
-	i.{{.StructName}} = {{.PackageShort}}.New{{.StructName}}(d, params...)
+	{{.PackageShort}}.New{{.StructName}}(d, &i.{{.StructName}}, params...)
 {{- end}}
 	return d
 }
