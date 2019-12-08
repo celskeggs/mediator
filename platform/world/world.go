@@ -9,9 +9,9 @@ import (
 )
 
 type World struct {
-	Name    string
-	Mob     types.TypePath
-	VarView uint
+	Name     string
+	Mob      types.TypePath
+	ViewDist uint
 
 	defaultLazyEye uint
 
@@ -76,7 +76,7 @@ func (w *World) CreateNewPlayer(key string) *types.Datum {
 	client.SetVar("key", types.String(key))
 	if types.Unint(client.Var("view")) == 0 {
 		util.NiceToHave("handle the /client/view = 0 situation correctly")
-		client.SetVar("view", types.Int(w.VarView))
+		client.SetVar("view", types.Int(w.ViewDist))
 	}
 	w.clients[client] = types.Reference(client)
 	client.Invoke("New", w.findExistingMob(key))
@@ -120,7 +120,7 @@ func (w *World) LocateXYZ(x, y, z uint) types.Value {
 func (w *World) UpdateDefaultViewDistance() {
 	// if the map is <= 21x21, adjust view to fit the whole thing
 	if w.MaxX > 0 && w.MaxY > 0 && w.MaxX <= 21 && w.MaxY <= 21 {
-		w.VarView = MaxUint(w.MaxX, w.MaxY) / 2
+		w.ViewDist = MaxUint(w.MaxX, w.MaxY) / 2
 		// note: the documentation SAYS that we should turn on lazy_eye, but it actually doesn't get turned on.
 		w.setVirtualEye = true
 	}
@@ -134,7 +134,7 @@ func NewWorld(realm *types.Realm, cache *icon.IconCache) *World {
 	world := &World{
 		Name:          "Untitled",
 		Mob:           "/mob",
-		VarView:       5,
+		ViewDist:      5,
 		realm:         realm,
 		iconCache:     cache,
 		clients:       map[*types.Datum]*types.Ref{},

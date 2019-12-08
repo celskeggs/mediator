@@ -38,7 +38,7 @@ func ManhattanDistance(a, b types.Value) uint {
 }
 
 func (w *World) View1(center *types.Datum) []*types.Datum {
-	return w.View(w.VarView, center)
+	return w.View(w.ViewDist, center)
 }
 
 func expandWithContents(atoms []*types.Datum) (out []*types.Datum) {
