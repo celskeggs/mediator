@@ -7,16 +7,19 @@ import (
 	"os"
 )
 
+const DeclGoName = "gen_decl.go"
+const ResourcePackName = "resource_pack.tgz"
+
 func Autocode() error {
-	if len(os.Args) < 4 {
-		_, _ = fmt.Fprintf(os.Stderr, "usage: autocoder <input.dm> ... <input.dm> <output.go> <output.tgz>")
+	if len(os.Args) != 2 {
+		_, _ = fmt.Fprintf(os.Stderr, "usage: autocoder <project.dme>\n")
 		os.Exit(1)
 	}
 	pkg, err := build.Default.ImportDir(".", build.ImportComment)
 	if err != nil {
 		return err
 	}
-	err = convert.ConvertFiles(os.Args[1:len(os.Args)-2], os.Args[len(os.Args)-2], os.Args[len(os.Args)-1], pkg.Name)
+	err = convert.ConvertFiles([]string{os.Args[1]}, DeclGoName, ResourcePackName, pkg.Name)
 	if err != nil {
 		return err
 	}
