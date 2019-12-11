@@ -8,12 +8,14 @@ import (
 	"github.com/celskeggs/mediator/util"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
+	"go/build"
 	"io/ioutil"
 	"os"
 	"path"
 	"strings"
 )
 
+const CoreResourcesPath = "github.com/celskeggs/mediator/resources"
 const OutputSuffix = ".tgz"
 
 func IsResourceExtension(ext string) bool {
@@ -27,6 +29,12 @@ func IsResourceExtension(ext string) bool {
 	case ".ogg":
 		return true
 	case ".wav":
+		return true
+	case ".js":
+		return true
+	case ".html":
+		return true
+	case ".css":
 		return true
 	default:
 		return false
@@ -47,6 +55,14 @@ func ScanDirectory(dir string) (paths []string, _ error) {
 }
 
 func ScanResources(dmf *parser.DreamMakerFile) (paths []string, _ error) {
+	coreResources, err := build.Default.Import(CoreResourcesPath, "", build.FindOnly)
+	if err != nil {
+		return nil, errors.Wrapf(err, "while finding core resources at path %v", CoreResourcesPath)
+	}
+	paths, err = ScanDirectory(coreResources.Dir)
+	if err != nil {
+		return nil, err
+	}
 	for _, searchdir := range dmf.SearchPath {
 		resources, err := ScanDirectory(searchdir)
 		if err != nil {
