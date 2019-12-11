@@ -432,6 +432,7 @@ func ConvertFiles(inputFiles []string, outputFile string, packageName string) er
 	if err != nil {
 		return errors.Wrap(err, "while parsing input files")
 	}
+	util.FIXME("use search path")
 	tree, err := Convert(dmf, packageName)
 	if err != nil {
 		return errors.Wrap(err, "while building tree")

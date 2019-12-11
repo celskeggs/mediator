@@ -329,8 +329,10 @@ func DefImplement(path path.TypePath, function string, arguments []DreamMakerTyp
 
 type DreamMakerFile struct {
 	Definitions []DreamMakerDefinition
+	SearchPath  []string
 }
 
 func (dmf *DreamMakerFile) Extend(file *DreamMakerFile) {
 	dmf.Definitions = append(dmf.Definitions, file.Definitions...)
+	dmf.SearchPath = append(dmf.SearchPath, file.SearchPath...)
 }

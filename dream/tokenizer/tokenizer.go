@@ -299,6 +299,17 @@ func tokenizeInternal(s *scan, output chan<- Token, terminator rune) error {
 			} else {
 				output <- TokMinus.token(loc)
 			}
+		case ch == '#':
+			loc := s.Loc
+			sym := s.AllMatching(IsValidInIdentifier)
+			switch sym {
+			case "include":
+				output <- TokPreprocessorInclude.token(loc)
+			case "define":
+				output <- TokPreprocessorDefine.token(loc)
+			default:
+				return fmt.Errorf("unknown preprocessor declaration #%s at %v", sym, loc)
+			}
 		case isDigit(ch):
 			loc := s.Loc
 			s.Untake(ch)

@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"github.com/celskeggs/mediator/dream/preprocessor"
 	"github.com/celskeggs/mediator/dream/tokenizer"
 	"github.com/celskeggs/mediator/util"
 	"github.com/pkg/errors"
@@ -106,39 +107,61 @@ func ParseDM(tokens <-chan tokenizer.Token) (*DreamMakerFile, error) {
 	return parseFile(input)
 }
 
-func ParseFile(filename string) (*DreamMakerFile, error) {
+type ParseContext struct {
+	parallel *util.ParallelElements
+}
+
+func NewParseContext() *ParseContext {
+	return &ParseContext{
+		parallel: util.NewParallel(),
+	}
+}
+
+func (p *ParseContext) LoadTokens(filename string) <-chan tokenizer.Token {
 	runeCh := make(chan tokenizer.RuneLoc)
 	tokenCh := make(chan tokenizer.Token)
 	indentedCh := make(chan tokenizer.Token)
-	var dmf *DreamMakerFile
+	p.parallel.Add(func() error {
+		return errors.Wrapf(tokenizer.FileToRuneChannel(filename, runeCh), "while reading %q", filename)
+	})
+	p.parallel.Add(func() error {
+		return errors.Wrapf(tokenizer.Tokenize(runeCh, tokenCh), "while tokenizing %q", filename)
+	})
+	p.parallel.Add(func() error {
+		return errors.Wrapf(tokenizer.ProcessIndentation(tokenCh, indentedCh), "while deindenting %q", filename)
+	})
+	return indentedCh
+}
 
-	err := util.RunInParallel(
-		func() error {
-			return errors.Wrap(tokenizer.FileToRuneChannel(filename, runeCh), "while reading file")
-		},
-		func() error {
-			return errors.Wrap(tokenizer.Tokenize(runeCh, tokenCh), "while tokenizing file")
-		},
-		func() error {
-			return errors.Wrap(tokenizer.ProcessIndentation(tokenCh, indentedCh), "while deindenting file")
-		},
-		func() error {
-			parsed, err := ParseDM(indentedCh)
-			if err != nil {
-				return errors.Wrap(err, "while parsing DM code")
-			}
-			dmf = parsed
-			return nil
-		},
-	)
+func ParseFile(filename string) (dmf *DreamMakerFile, err error) {
+	context := NewParseContext()
+	tokenCh := make(chan tokenizer.Token)
+
+	var searchpath []string
+
+	context.parallel.Add(func() error {
+		sp, err := preprocessor.Preprocess(context.LoadTokens, filename, tokenCh)
+		searchpath = sp
+		return err
+	})
+	context.parallel.Add(func() error {
+		parsed, err := ParseDM(tokenCh)
+		if err != nil {
+			return errors.Wrap(err, "while parsing DM code")
+		}
+		dmf = parsed
+		return nil
+	})
+	err = context.parallel.Join()
 	if err != nil {
 		return nil, err
 	}
+	dmf.SearchPath = searchpath
 	return dmf, nil
 }
 
-func ParseFiles(filenames []string) (*DreamMakerFile, error) {
-	total := &DreamMakerFile{
+func ParseFiles(filenames []string) (total *DreamMakerFile, err error) {
+	total = &DreamMakerFile{
 		Definitions: nil,
 	}
 	for _, file := range filenames {

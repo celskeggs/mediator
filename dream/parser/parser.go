@@ -192,12 +192,10 @@ func parseStatement(i *input, variables []DreamMakerTypedName) (DreamMakerStatem
 		if err := i.Expect(tokenizer.TokParenClose); err != nil {
 			return StatementNone(), err
 		}
-		println("started parsing if block")
 		statements, err := parseStatementBlock(i, variables)
 		if err != nil {
 			return StatementNone(), err
 		}
-		println("finished parsing if block")
 		return StatementIf(condition, statements, loc), nil
 	} else if i.Accept(tokenizer.TokKeywordReturn) {
 		if err := i.Expect(tokenizer.TokNewline); err != nil {

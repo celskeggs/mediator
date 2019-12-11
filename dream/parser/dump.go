@@ -99,6 +99,12 @@ func (dmf *DreamMakerFile) Dump(output io.Writer) error {
 	if err != nil {
 		return err
 	}
+	for _, dir := range dmf.SearchPath {
+		_, err := fmt.Fprintf(output, "searchpath = %s\n", dir)
+		if err != nil {
+			return err
+		}
+	}
 	for _, def := range dmf.Definitions {
 		err := def.Dump(output)
 		if err != nil {
