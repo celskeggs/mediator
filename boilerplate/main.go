@@ -9,7 +9,7 @@ import (
 )
 
 func shouldRemove(name string) bool {
-	return name == "tree.go" || (strings.HasPrefix(name, GenFilenamePrefix) && strings.HasSuffix(name, GenFilenameSuffix))
+	return name == "gen_tree.go" || (strings.HasPrefix(name, GenFilenamePrefix) && strings.HasSuffix(name, GenFilenameSuffix))
 }
 
 func RemoveExisting() error {
@@ -77,9 +77,9 @@ func Generate() error {
 			return errors.Wrap(err, "while writing implementations")
 		}
 	}
-	err = WriteTree(tree, "tree.go")
+	err = WriteTree(tree, "gen_tree.go")
 	if err != nil {
-		return errors.Wrap(err, "while writing tree.go")
+		return errors.Wrap(err, "while writing gen_tree.go")
 	}
 	return nil
 }
