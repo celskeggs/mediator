@@ -100,7 +100,13 @@ func (dmf *DreamMakerFile) Dump(output io.Writer) error {
 		return err
 	}
 	for _, dir := range dmf.SearchPath {
-		_, err := fmt.Fprintf(output, "searchpath = %s\n", dir)
+		_, err := fmt.Fprintf(output, "searchpath = %q\n", dir)
+		if err != nil {
+			return err
+		}
+	}
+	for _, mapName := range dmf.Maps {
+		_, err := fmt.Fprintf(output, "map = %q\n", mapName)
 		if err != nil {
 			return err
 		}

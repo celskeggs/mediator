@@ -1,7 +1,6 @@
 package framework
 
 import (
-	"flag"
 	"github.com/celskeggs/mediator/platform/icon"
 	"github.com/celskeggs/mediator/platform/types"
 	"github.com/celskeggs/mediator/platform/world"
@@ -10,24 +9,10 @@ import (
 	"github.com/celskeggs/mediator/websession"
 )
 
-type ResourceDefaults struct {
-	MapPath          string
-	ResourcePackPath string
-}
+type SetupFunc func(*world.World) (mapNames []string)
 
-var mapPath = flag.String("map", "map.dmm", "the path to the game map")
-
-func BuildWorld(tree types.TypeTree, setup func(*world.World), defaults ResourceDefaults, parseFlags bool) (*world.World, *resourcepack.ResourcePack) {
-	*mapPath = defaults.MapPath
-
-	var packPath string
-	if parseFlags {
-		packPath = websession.FindResourcePack()
-	} else {
-		packPath = defaults.ResourcePackPath
-	}
-
-	pack, err := resourcepack.Load(packPath)
+func BuildWorld(tree types.TypeTree, setup SetupFunc) (*world.World, *resourcepack.ResourcePack) {
+	pack, err := websession.LoadResourcePack()
 	if err != nil {
 		panic("cannot load resource pack: " + err.Error())
 	}
@@ -37,19 +22,24 @@ func BuildWorld(tree types.TypeTree, setup func(*world.World), defaults Resource
 		panic("cannot load icon cache: " + err.Error())
 	}
 	gameworld := world.NewWorld(types.NewRealm(tree), cache)
-	setup(gameworld)
-
-	err = worldmap.LoadMapFromPack(gameworld, pack, *mapPath)
-	if err != nil {
-		panic("cannot load world: " + err.Error())
+	maps := setup(gameworld)
+	if len(maps) > 1 {
+		panic("unimplemented: more than one map")
 	}
-	gameworld.UpdateDefaultViewDistance()
+
+	if len(maps) > 0 {
+		err = worldmap.LoadMapFromPack(gameworld, pack, maps[0])
+		if err != nil {
+			panic("cannot load world: " + err.Error())
+		}
+		gameworld.UpdateDefaultViewDistance()
+	}
 
 	return gameworld, pack
 }
 
-func Launch(tree types.TypeTree, setup func(*world.World), defaults ResourceDefaults) {
-	gameworld, pack := BuildWorld(tree, setup, defaults, true)
+func Launch(tree types.TypeTree, setup SetupFunc) {
+	gameworld, pack := BuildWorld(tree, setup)
 
 	err := websession.LaunchServer(gameworld.ServerAPI(), pack)
 	if err != nil {

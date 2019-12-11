@@ -101,6 +101,7 @@ type DefinedTree struct {
 	WorldName string
 	WorldMob  path.TypePath
 	Imports   []string
+	Maps      []string
 }
 
 var _ predefs.TypeDefiner = &DefinedTree{}
@@ -194,8 +195,9 @@ func containsStr(needle string, haystack []string) bool {
 }
 
 var necessaryImports = []string{
-	"github.com/celskeggs/mediator/platform/world",
+	"github.com/celskeggs/mediator/platform/framework",
 	"github.com/celskeggs/mediator/platform/types",
+	"github.com/celskeggs/mediator/platform/world",
 }
 
 func (d *DefinedTree) AllImports() (imports []string) {
@@ -293,8 +295,24 @@ func (*{{$type.DataStructName}}) Proc{{.Name}}({{.This}} *types.Datum{{range .Pa
 {{- end -}}
 {{- end}}
 
-func BeforeMap(world *world.World) {
+func BeforeMap(world *world.World) []string {
 	world.Name = "{{.WorldName}}"
 	world.Mob = "{{.WorldMob}}"
+	return []string{
+{{range .Maps -}}
+		"{{.}}",
+{{end -}}
+	}
 }
+
+func BuildWorld() *world.World {
+	world, _ := framework.BuildWorld(Tree, BeforeMap)
+	return world
+}
+
+{{if eq .Package "main" -}}
+func main() {
+	framework.Launch(Tree, BeforeMap)
+}
+{{end -}}
 `

@@ -50,7 +50,7 @@ func constantString(c <-chan tokenizer.Token, statement string, after tokenizer.
 	return "", fmt.Errorf("expected string immediately after %s, not EOF after %v", statement, after)
 }
 
-func Preprocess(load FileLoader, filename string, output chan<- tokenizer.Token) (searchpath []string, err error) {
+func Preprocess(load FileLoader, filename string, output chan<- tokenizer.Token) (searchpath []string, maps []string, err error) {
 	channels := []<-chan tokenizer.Token{load(filename)}
 	defer func() {
 		close(output)
@@ -72,33 +72,33 @@ func Preprocess(load FileLoader, filename string, output chan<- tokenizer.Token)
 		case tokenizer.TokPreprocessorDefine:
 			keyword, ok := <-ch
 			if !ok {
-				return nil, fmt.Errorf("expected symbol immediately after #define, not EOF at %v", token.Loc)
+				return nil, nil, fmt.Errorf("expected symbol immediately after #define, not EOF at %v", token.Loc)
 			} else if keyword.TokenType != tokenizer.TokSymbol {
-				return nil, fmt.Errorf("expected symbol immediately after #define, not %v at %v", keyword, keyword.Loc)
+				return nil, nil, fmt.Errorf("expected symbol immediately after #define, not %v at %v", keyword, keyword.Loc)
 			}
 			if keyword.Str == SearchPathSymbol {
 				subfile, err := constantString(ch, "#define", token.Loc)
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 				searchpath = append(searchpath, subfile)
 			} else {
 				body, ok := tokensUntilEOL(ch)
 				if !ok {
-					return nil, fmt.Errorf("ran out of tokens while trying to find newline after #define at %v", token.Loc)
+					return nil, nil, fmt.Errorf("ran out of tokens while trying to find newline after #define at %v", token.Loc)
 				}
 				if _, exists := definitions[keyword.Str]; exists {
-					return nil, fmt.Errorf("attempt to re-#define symbol %q at %v", keyword.Str, token.Loc)
+					return nil, nil, fmt.Errorf("attempt to re-#define symbol %q at %v", keyword.Str, token.Loc)
 				}
 				definitions[keyword.Str] = body
 			}
 		case tokenizer.TokPreprocessorInclude:
 			subfile, err := constantString(ch, "#include", token.Loc)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			if strings.HasSuffix(subfile, ".dmm") {
-				util.FIXME("actually do something with maps")
+				maps = append(maps, subfile)
 			} else {
 				channels = append(channels, load(subfile))
 			}
@@ -115,5 +115,5 @@ func Preprocess(load FileLoader, filename string, output chan<- tokenizer.Token)
 			output <- token
 		}
 	}
-	return searchpath, nil
+	return searchpath, maps, nil
 }

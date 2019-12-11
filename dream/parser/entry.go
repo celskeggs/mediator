@@ -137,11 +137,12 @@ func ParseFile(filename string) (dmf *DreamMakerFile, err error) {
 	context := NewParseContext()
 	tokenCh := make(chan tokenizer.Token)
 
-	var searchpath []string
+	var searchpath, maps []string
 
 	context.parallel.Add(func() error {
-		sp, err := preprocessor.Preprocess(context.LoadTokens, filename, tokenCh)
+		sp, m, err := preprocessor.Preprocess(context.LoadTokens, filename, tokenCh)
 		searchpath = sp
+		maps = m
 		return err
 	})
 	context.parallel.Add(func() error {
@@ -157,6 +158,7 @@ func ParseFile(filename string) (dmf *DreamMakerFile, err error) {
 		return nil, err
 	}
 	dmf.SearchPath = searchpath
+	dmf.Maps = maps
 	return dmf, nil
 }
 

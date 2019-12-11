@@ -365,6 +365,7 @@ func Convert(dmf *parser.DreamMakerFile, packageName string) (*gen.DefinedTree, 
 		Package:   packageName,
 		WorldMob:  path.ConstTypePath("/mob"),
 		WorldName: "World",
+		Maps:      dmf.Maps,
 	}
 	// define all types
 	for _, def := range dmf.Definitions {
