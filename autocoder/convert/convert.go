@@ -359,8 +359,9 @@ func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string,
 	return nil
 }
 
-func Convert(dmf *parser.DreamMakerFile) (*gen.DefinedTree, error) {
+func Convert(dmf *parser.DreamMakerFile, packageName string) (*gen.DefinedTree, error) {
 	dt := &gen.DefinedTree{
+		Package:   packageName,
 		WorldMob:  path.ConstTypePath("/mob"),
 		WorldName: "World",
 	}
@@ -426,12 +427,12 @@ func Convert(dmf *parser.DreamMakerFile) (*gen.DefinedTree, error) {
 	return dt, nil
 }
 
-func ConvertFiles(inputFiles []string, outputFile string) error {
+func ConvertFiles(inputFiles []string, outputFile string, packageName string) error {
 	dmf, err := parser.ParseFiles(inputFiles)
 	if err != nil {
 		return errors.Wrap(err, "while parsing input files")
 	}
-	tree, err := Convert(dmf)
+	tree, err := Convert(dmf, packageName)
 	if err != nil {
 		return errors.Wrap(err, "while building tree")
 	}

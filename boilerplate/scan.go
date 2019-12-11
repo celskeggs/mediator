@@ -7,6 +7,7 @@ import (
 	"go/parser"
 	"go/token"
 	"path"
+	"path/filepath"
 	"strings"
 )
 
@@ -25,18 +26,55 @@ func Unquote(name string) string {
 	return name[1 : len(name)-1]
 }
 
-func EnumeratePackages(filename string) (packages []string, topPackage string, e error) {
+func ChopSrc(filepath string) (string, bool) {
+	if !path.IsAbs(filepath) {
+		panic("ChopSrc must receive an absolute path")
+	}
+	if filepath == "/" {
+		return "", false
+	}
+	dir, filename := path.Split(filepath)
+	if filename == "src" {
+		return "", true
+	} else {
+		chop, ok := ChopSrc(path.Clean(dir))
+		if !ok {
+			return "", false
+		}
+		return path.Join(chop, filename), true
+	}
+}
+
+func DetectImportPath(filename string) (string, error) {
+	abspath, err := filepath.Abs(filename)
+	if err != nil {
+		return "", err
+	}
+	packagedir, _ := path.Split(abspath)
+	importpath, ok := ChopSrc(packagedir)
+	if !ok {
+		return "", fmt.Errorf("cannot extract import path from %q (abs of %q)", abspath, filename)
+	}
+	return importpath, nil
+}
+
+func EnumeratePackages(filename string) (packages []string, topImport string, topPackage string, e error) {
 	fset := token.NewFileSet()
 	ast, err := parser.ParseFile(fset, filename, nil, parser.ImportsOnly)
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
 
 	var imports []string
+	headerImport, err := DetectImportPath(filename)
+	if err != nil {
+		return nil, "", "", err
+	}
+	imports = append(imports, headerImport)
 	for _, i := range ast.Imports {
 		imports = append(imports, Unquote(i.Path.Value))
 	}
-	return imports, ast.Name.Name, nil
+	return imports, headerImport, ast.Name.Name, nil
 }
 
 func ScanDeclsInFile(filename string, pkg *build.Package) ([]Decl, error) {
@@ -123,14 +161,14 @@ func ScanDecls(packages []string) ([]Decl, error) {
 	return allDecls, nil
 }
 
-func EnumerateDecls(filename string) (decls []Decl, topPackage string, err error) {
-	packages, topPackage, err := EnumeratePackages("header.go")
+func EnumerateDecls(filename string) (decls []Decl, topImport string, topPackage string, err error) {
+	packages, topImport, topPackage, err := EnumeratePackages("header.go")
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
 	decls, err = ScanDecls(packages)
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
-	return decls, topPackage, nil
+	return decls, topImport, topPackage, nil
 }

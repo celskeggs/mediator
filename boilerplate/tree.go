@@ -47,13 +47,15 @@ type TypeInfo struct {
 
 type TreeInfo struct {
 	ImplPackage string
+	ImplImport  string
 	Packages    []*build.Package
 	Paths       map[string]*TypeInfo
 	PkgNames    map[string]string
 }
 
-func NewTreeInfo(pkg string) *TreeInfo {
+func NewTreeInfo(pkgImport string, pkg string) *TreeInfo {
 	return &TreeInfo{
+		ImplImport:  pkgImport,
 		ImplPackage: pkg,
 		Paths:       map[string]*TypeInfo{},
 		PkgNames:    map[string]string{},

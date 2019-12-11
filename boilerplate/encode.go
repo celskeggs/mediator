@@ -145,6 +145,7 @@ func (t *TypeInfo) Imports(tree *TreeInfo) ([]string, error) {
 			}
 		}
 	}
+	delete(imports, tree.ImplImport)
 	var importList []string
 	for i, _ := range imports {
 		importList = append(importList, i)

@@ -16,6 +16,14 @@ type PreparedChunk struct {
 	Vars         []VarInfo
 }
 
+func (c PreparedChunk) PackageDot() string {
+	if c.PackageShort == "main" {
+		return ""
+	} else {
+		return c.PackageShort + "."
+	}
+}
+
 type PreparedVar struct {
 	VarInfo
 	StructName   string
@@ -93,7 +101,7 @@ import (
 
 type {{.Type}}Impl struct {
 {{- range .Chunks}}
-	{{.PackageShort}}.{{.StructName}}
+	{{.PackageDot}}{{.StructName}}
 {{- end}}
 }
 
@@ -101,7 +109,7 @@ func New{{.Type}}(realm *types.Realm, params ...types.Value) *types.Datum {
 	i := &{{.Type}}Impl{}
 	d := realm.NewDatum(i)
 {{- range .RevChunks}}
-	{{.PackageShort}}.New{{.StructName}}(d, &i.{{.StructName}}, params...)
+	{{.PackageDot}}New{{.StructName}}(d, &i.{{.StructName}}, params...)
 {{- end}}
 	return d
 }
