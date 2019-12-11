@@ -8,15 +8,15 @@ import (
 )
 
 func Autocode() error {
-	if len(os.Args) < 3 {
-		_, _ = fmt.Fprintf(os.Stderr, "usage: autocoder <input.dm> ... <input.dm> <output.go>")
+	if len(os.Args) < 4 {
+		_, _ = fmt.Fprintf(os.Stderr, "usage: autocoder <input.dm> ... <input.dm> <output.go> <output.tgz>")
 		os.Exit(1)
 	}
 	pkg, err := build.Default.ImportDir(".", build.ImportComment)
 	if err != nil {
 		return err
 	}
-	err = convert.ConvertFiles(os.Args[1:len(os.Args)-1], os.Args[len(os.Args)-1], pkg.Name)
+	err = convert.ConvertFiles(os.Args[1:len(os.Args)-2], os.Args[len(os.Args)-2], os.Args[len(os.Args)-1], pkg.Name)
 	if err != nil {
 		return err
 	}

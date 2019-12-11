@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/celskeggs/mediator/autocoder/dtype"
 	"github.com/celskeggs/mediator/autocoder/gen"
+	"github.com/celskeggs/mediator/autocoder/pack"
 	"github.com/celskeggs/mediator/dream/parser"
 	"github.com/celskeggs/mediator/dream/path"
 	"github.com/celskeggs/mediator/dream/tokenizer"
@@ -427,7 +428,7 @@ func Convert(dmf *parser.DreamMakerFile, packageName string) (*gen.DefinedTree, 
 	return dt, nil
 }
 
-func ConvertFiles(inputFiles []string, outputFile string, packageName string) error {
+func ConvertFiles(inputFiles []string, outputGo string, outputPack string, packageName string) error {
 	dmf, err := parser.ParseFiles(inputFiles)
 	if err != nil {
 		return errors.Wrap(err, "while parsing input files")
@@ -437,9 +438,13 @@ func ConvertFiles(inputFiles []string, outputFile string, packageName string) er
 	if err != nil {
 		return errors.Wrap(err, "while building tree")
 	}
-	err = gen.GenerateTo(tree, outputFile)
+	err = gen.GenerateTo(tree, outputGo)
 	if err != nil {
 		return errors.Wrap(err, "while generating output file")
+	}
+	err = pack.GenerateResourcePack(dmf, outputPack)
+	if err != nil {
+		return errors.Wrap(err, "while generating resource pack")
 	}
 	return nil
 }
