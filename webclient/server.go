@@ -3,25 +3,13 @@ package webclient
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/celskeggs/mediator/resourcepack"
+	"github.com/celskeggs/mediator/util"
 	"github.com/pkg/errors"
-	"io/ioutil"
 	"net/http"
-	"os"
 	"path"
 	"time"
 )
-
-func StaticHandlerFromFile(filename string) (http.Handler, error) {
-	content, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-	info, err := os.Stat(filename)
-	if err != nil {
-		return nil, err
-	}
-	return StaticHandler(info.ModTime(), filename, content), nil
-}
 
 func StaticHandler(modTime time.Time, nameForType string, data []byte) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -39,11 +27,8 @@ func ExactMatchChecker(path string, handler http.Handler) http.Handler {
 	})
 }
 
-func AttachFile(mux *http.ServeMux, path string, filename string) error {
-	handler, err := StaticHandlerFromFile(filename)
-	if err != nil {
-		return err
-	}
+func AttachResource(mux *http.ServeMux, path string, resource resourcepack.Resource) error {
+	handler := StaticHandler(resource.Modified, resource.Name, resource.Data)
 	if path == "/" {
 		handler = ExactMatchChecker("/", handler)
 	}
@@ -66,30 +51,28 @@ func AttachResources(mux *http.ServeMux, path string, resources []string) error 
 
 func CreateMux(api ServerAPI) (*http.ServeMux, error) {
 	mux := http.NewServeMux()
-	coreResources := api.CoreResourcePath()
-	err := AttachFile(mux, "/style.css", path.Join(coreResources, "style.css"))
+	pack := api.ResourcePack()
+	clientResource, err := pack.Resource("client.html")
 	if err != nil {
 		return nil, err
 	}
-	err = AttachFile(mux, "/client.js", path.Join(coreResources, "client.js"))
-	if err != nil {
+	if err := AttachResource(mux, "/", clientResource); err != nil {
 		return nil, err
 	}
-	err = AttachFile(mux, "/", path.Join(coreResources, "client.html"))
-	if err != nil {
-		return nil, err
-	}
-	resources, download, err := api.ListResources()
-	if err != nil {
-		return nil, errors.Wrap(err, "collecting resources")
-	}
-	for name, resource := range resources {
-		err = AttachFile(mux, "/resource/"+name, resource)
-		if err != nil {
-			return nil, errors.Wrap(err, "attaching resources")
+	for _, resource := range pack.Resources {
+		util.FIXME("clean up this resource handling code")
+		if resource.IsMap() {
+			continue
+		}
+		basepath := "/resource/"
+		if resource.IsWeb() {
+			basepath = "/"
+		}
+		if err := AttachResource(mux, path.Join(basepath, resource.Name), resource); err != nil {
+			return nil, err
 		}
 	}
-	err = AttachResources(mux, "/resources.js", download)
+	err = AttachResources(mux, "/resources.js", pack.Icons())
 	if err != nil {
 		return nil, err
 	}

@@ -2,57 +2,30 @@ package websession
 
 import (
 	"fmt"
-	"github.com/celskeggs/mediator/midi"
+	"github.com/celskeggs/mediator/resourcepack"
 	"github.com/celskeggs/mediator/util"
 	"github.com/celskeggs/mediator/webclient"
 	"github.com/celskeggs/mediator/webclient/sprite"
-	"io/ioutil"
-	"path"
-	"strings"
 	"time"
 )
 
 type worldServer struct {
-	World             WorldAPI
-	SingleThread      *util.SingleThread
-	Subscribers       map[chan struct{}]struct{}
-	CoreResourcesDir  string
-	ExtraResourcesDir string
-	ResourcesCacheDir string
+	World              WorldAPI
+	SingleThread       *util.SingleThread
+	Subscribers        map[chan struct{}]struct{}
+	LoadedResourcePack *resourcepack.ResourcePack
 }
 
-func (ws worldServer) CoreResourcePath() string {
-	return ws.CoreResourcesDir
-}
-
-func (ws worldServer) ListResources() (map[string]string, []string, error) {
-	contents, err := ioutil.ReadDir(ws.ExtraResourcesDir)
-	if err != nil {
-		return nil, nil, err
-	}
-	nameToPath := map[string]string{}
-	var icons []string
-	for _, info := range contents {
-		if !info.IsDir() {
-			sourceName := info.Name()
-			if strings.HasSuffix(sourceName, ".dmi") {
-				icons = append(icons, sourceName)
-			}
-
-			sourcePath := path.Join(ws.ExtraResourcesDir, sourceName)
-			nameToPath[sourceName] = sourcePath
-
-			if strings.HasSuffix(info.Name(), ".mid") {
-				convertedPath, err := midi.ConvertMIDICached(sourcePath, ws.ResourcesCacheDir)
-				if err != nil {
-					return nil, nil, err
-				}
-				nameToPath[sourceName[:len(sourceName)-len(".mid")]+".ogg"] = convertedPath
-			}
+func (ws worldServer) ResourcePack() *resourcepack.ResourcePack {
+	util.FIXME("readd .ogg conversion")
+	/*if strings.HasSuffix(info.Name(), ".mid") {
+		convertedPath, err := midi.ConvertMIDICached(sourcePath, ws.ResourcesCacheDir)
+		if err != nil {
+			return nil, nil, err
 		}
-	}
-
-	return nameToPath, icons, nil
+		nameToPath[sourceName[:len(sourceName)-len(".mid")]+".ogg"] = convertedPath
+	}*/
+	return ws.LoadedResourcePack
 }
 
 func (ws worldServer) Connect() webclient.ServerSession {
@@ -164,15 +137,13 @@ func consumeAnyOutstanding(c <-chan struct{}) {
 	}
 }
 
-func LaunchServer(world WorldAPI, CoreResourcesDir, ExtraResourcesDir, ResourcesCacheDir string) error {
+func LaunchServer(world WorldAPI, pack *resourcepack.ResourcePack) error {
 	// TODO: teardown for SingleThread and our subscriber?
 	ws := worldServer{
-		World:             world,
-		SingleThread:      util.NewSingleThread(),
-		Subscribers:       make(map[chan struct{}]struct{}),
-		CoreResourcesDir:  CoreResourcesDir,
-		ExtraResourcesDir: ExtraResourcesDir,
-		ResourcesCacheDir: ResourcesCacheDir,
+		World:              world,
+		SingleThread:       util.NewSingleThread(),
+		Subscribers:        make(map[chan struct{}]struct{}),
+		LoadedResourcePack: pack,
 	}
 	updates := world.SubscribeToUpdates()
 	if updates == nil {

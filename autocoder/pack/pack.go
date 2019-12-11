@@ -1,12 +1,10 @@
 package pack
 
 import (
-	"archive/tar"
-	"compress/gzip"
 	"fmt"
 	"github.com/celskeggs/mediator/dream/parser"
+	"github.com/celskeggs/mediator/resourcepack"
 	"github.com/celskeggs/mediator/util"
-	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"go/build"
 	"io/ioutil"
@@ -73,69 +71,6 @@ func ScanResources(dmf *parser.DreamMakerFile) (paths []string, _ error) {
 	return paths, nil
 }
 
-func BuildTarball(files map[string]string, output string) (e error) {
-	out, err := os.OpenFile(output, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o755)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		e2 := out.Close()
-		if e2 != nil {
-			e = multierror.Append(e, e2)
-		}
-		if e != nil {
-			// remove output so that there's less of a chance of having a malformed file
-			e3 := os.Remove(output)
-			e = multierror.Append(e, e3)
-		}
-	}()
-	zout, err := gzip.NewWriterLevel(out, gzip.BestCompression)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		e2 := zout.Close()
-		if e2 != nil {
-			e = multierror.Append(e, e2)
-		}
-	}()
-	tarw := tar.NewWriter(zout)
-	defer func() {
-		e2 := tarw.Close()
-		if e2 != nil {
-			e = multierror.Append(e, e2)
-		}
-	}()
-	for innerName, outerName := range files {
-		fi, err := os.Stat(outerName)
-		if err != nil {
-			return err
-		}
-		if !fi.Mode().IsRegular() {
-			return fmt.Errorf("expected file %q for insertion to be regular", outerName)
-		}
-		contents, err := ioutil.ReadFile(outerName)
-		if err != nil {
-			return err
-		}
-		err = tarw.WriteHeader(&tar.Header{
-			Typeflag:   tar.TypeReg,
-			Name:       innerName,
-			Size:       int64(len(contents)),
-			Mode:       0o644,
-			ModTime:    fi.ModTime(),
-		})
-		if err != nil {
-			return err
-		}
-		_, err = tarw.Write(contents)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func GenerateResourcePack(dmf *parser.DreamMakerFile, outputPack string) error {
 	if !strings.HasSuffix(outputPack, OutputSuffix) {
 		return fmt.Errorf("output resource pack name does not end in %s: %q", OutputSuffix, outputPack)
@@ -157,7 +92,7 @@ func GenerateResourcePack(dmf *parser.DreamMakerFile, outputPack string) error {
 		}
 		mapping[name] = resource
 	}
-	err = BuildTarball(mapping, outputPack)
+	err = resourcepack.Build(mapping, outputPack)
 	if err != nil {
 		return err
 	}

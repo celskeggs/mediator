@@ -1,6 +1,9 @@
 package webclient
 
-import "github.com/celskeggs/mediator/webclient/sprite"
+import (
+	"github.com/celskeggs/mediator/resourcepack"
+	"github.com/celskeggs/mediator/webclient/sprite"
+)
 
 type ServerSession interface {
 	Close()
@@ -11,6 +14,5 @@ type ServerSession interface {
 
 type ServerAPI interface {
 	Connect() ServerSession
-	CoreResourcePath() string
-	ListResources() (nameToPath map[string]string, download []string, err error)
+	ResourcePack() *resourcepack.ResourcePack
 }

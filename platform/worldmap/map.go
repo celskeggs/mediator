@@ -5,6 +5,7 @@ import (
 	"github.com/celskeggs/mediator/parsemap"
 	"github.com/celskeggs/mediator/platform/atoms"
 	"github.com/celskeggs/mediator/platform/types"
+	"github.com/celskeggs/mediator/resourcepack"
 	"github.com/celskeggs/mediator/util"
 	"io/ioutil"
 )
@@ -107,4 +108,12 @@ func LoadMapFromFile(world atoms.World, filename string) error {
 		return err
 	}
 	return LoadMap(world, string(content))
+}
+
+func LoadMapFromPack(world atoms.World, pack *resourcepack.ResourcePack, name string) error {
+	content, err := pack.Resource(name)
+	if err != nil {
+		return err
+	}
+	return LoadMap(world, string(content.Data))
 }

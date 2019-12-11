@@ -1,32 +1,32 @@
 package websession
 
-import "flag"
+import (
+	"flag"
+	"github.com/celskeggs/mediator/resourcepack"
+)
 
-var coreResources = flag.String("core", "resources", "the path to the core resources/ directory")
-var extraResources = flag.String("resources", "icons", "the path to the game-specific icons/ directory")
-var cacheResources = flag.String("cache", "cache", "the path to the cache/ directory")
+var resourcePack = flag.String("pack", "resource_pack.tgz", "the path to the game's resource pack")
 var parsed = false
 
-func SetDefaultFlags(coreResourcesDir, extraResourcesDir string) {
-	if parsed {
-		panic("already parsed flags")
-	}
-	*coreResources = coreResourcesDir
-	*extraResources = extraResourcesDir
-}
-
-func ParseFlags() (corePath, extraPath, cachePath string) {
+func FindResourcePack() string {
 	if !parsed {
 		flag.Parse()
 		parsed = true
 	}
-	return *coreResources, *extraResources, *cacheResources
+	return *resourcePack
+}
+
+func LoadResourcePack() (*resourcepack.ResourcePack, error) {
+	return resourcepack.Load(FindResourcePack())
 }
 
 // does not return
 func LaunchServerFromFlags(api WorldAPI) {
-	core, extra, cache := ParseFlags()
-	err := LaunchServer(api, core, extra, cache)
+	pack, err := LoadResourcePack()
+	if err != nil {
+		panic("error loading resource pack: " + err.Error())
+	}
+	err = LaunchServer(api, pack)
 	if err != nil {
 		panic("error in server: " + err.Error())
 	}

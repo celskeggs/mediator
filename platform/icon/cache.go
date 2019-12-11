@@ -3,9 +3,8 @@ package icon
 import (
 	"fmt"
 	"github.com/celskeggs/mediator/dmi"
-	"io/ioutil"
+	"github.com/celskeggs/mediator/resourcepack"
 	"math"
-	"path"
 	"sort"
 )
 
@@ -47,24 +46,27 @@ func precomputeStateIndexes(info *dmi.DMIInfo) (map[string]uint, uint, error) {
 }
 
 type IconCache struct {
-	cacheMap    map[string]*Icon
-	resourceDir string
+	icons map[string]*Icon
 }
 
-func NewIconCache(resourceDir string) *IconCache {
-	return &IconCache{
-		cacheMap:    map[string]*Icon{},
-		resourceDir: resourceDir,
+func NewIconCache(pack *resourcepack.ResourcePack) (*IconCache, error) {
+	ic := &IconCache{
+		icons: map[string]*Icon{},
 	}
+	for _, resource := range pack.Resources {
+		if resource.IsIcon() {
+			icon, err := loadInternal(resource)
+			if err != nil {
+				return nil, err
+			}
+			ic.icons[resource.Name] = icon
+		}
+	}
+	return ic, nil
 }
 
-func (i *IconCache) loadInternal(name string) (*Icon, error) {
-	filepath := path.Join(i.resourceDir, name)
-	png, err := ioutil.ReadFile(filepath)
-	if err != nil {
-		return nil, err
-	}
-	info, err := dmi.ParseDMI(png)
+func loadInternal(resource resourcepack.Resource) (*Icon, error) {
+	info, err := dmi.ParseDMI(resource.Data)
 	if err != nil {
 		return nil, err
 	}
@@ -73,32 +75,22 @@ func (i *IconCache) loadInternal(name string) (*Icon, error) {
 		return nil, err
 	}
 	return &Icon{
-		dmiPath:      name,
+		dmiPath:      resource.Name,
 		dmiInfo:      info,
 		stateIndexes: indexes,
 		stride:       stride,
 	}, nil
 }
 
-func (i *IconCache) Load(name string) (*Icon, error) {
-	if icon, found := i.cacheMap[name]; found {
-		return icon, nil
-	}
-	icon, err := i.loadInternal(name)
-	if err != nil {
-		return nil, err
-	}
-	i.cacheMap[name] = icon
-	return icon, nil
+func (i *IconCache) Load(name string) (*Icon, bool) {
+	icon, found := i.icons[name]
+	return icon, found
 }
 
 func (i *IconCache) LoadOrPanic(name string) *Icon {
-	icon, err := i.Load(name)
-	if err != nil {
-		panic("while loading icon " + name + ": " + err.Error())
-	}
-	if icon == nil {
-		panic("icon should not be nil")
+	icon, ok := i.Load(name)
+	if !ok {
+		panic(fmt.Sprintf("no such icon %q found in resource pack", name))
 	}
 	return icon
 }
