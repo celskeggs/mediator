@@ -45,7 +45,6 @@ func (d *AtomData) ProcMove(src *types.Datum, newloc types.Value, direction type
 			}
 		}
 		if !types.AsBool(newloc.Invoke("Enter", src, oldloc)) {
-			util.FIXME("bump obstacles")
 			return types.Int(0)
 		}
 		if newarea != oldarea && newarea != nil {
