@@ -327,6 +327,18 @@ func tokenizeInternal(s *scan, output chan<- Token, terminator rune) error {
 				output <- TokKeywordIf.token(loc)
 			case "return":
 				output <- TokKeywordReturn.token(loc)
+			case "set":
+				output <- TokKeywordSet.token(loc)
+			case "in":
+				output <- TokKeywordIn.token(loc)
+			case "new":
+				output <- TokKeywordNew.token(loc)
+			case "del":
+				output <- TokKeywordDel.token(loc)
+			case "for":
+				output <- TokKeywordFor.token(loc)
+			case "as":
+				output <- TokKeywordAs.token(loc)
 			default:
 				output <- TokSymbol.tokenStr(sym, loc)
 			}

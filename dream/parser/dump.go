@@ -15,6 +15,18 @@ func (dms DreamMakerStatement) Dump(output io.Writer, indent int) error {
 	if err != nil {
 		return err
 	}
+	if dms.Name != "" {
+		_, err := fmt.Fprintf(output, "%sname = %q\n", makeIndent(indent+1), dms.Name)
+		if err != nil {
+			return err
+		}
+	}
+	if !dms.Path.IsEmpty() {
+		_, err := fmt.Fprintf(output, "%spath = %v\n", makeIndent(indent+1), dms.Path)
+		if err != nil {
+			return err
+		}
+	}
 	if !dms.From.IsNone() {
 		_, err := fmt.Fprintf(output, "%sfrom = %v\n", makeIndent(indent+1), dms.From)
 		if err != nil {

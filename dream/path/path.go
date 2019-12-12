@@ -65,6 +65,16 @@ func (t TypePath) SplitLast() (TypePath, string, error) {
 	}, t.Segments[len(t.Segments)-1], nil
 }
 
+func (t TypePath) SplitFirst() (string, TypePath, error) {
+	if len(t.Segments) < 1 {
+		return "", Empty(), errors.New("type path not long enough")
+	}
+	return t.Segments[len(t.Segments)-1], TypePath{
+		IsAbsolute: t.IsAbsolute,
+		Segments:   t.Segments[1:],
+	}, nil
+}
+
 func (t TypePath) IndexOf(segment string) int {
 	for i, s := range t.Segments {
 		if s == segment {
@@ -72,6 +82,18 @@ func (t TypePath) IndexOf(segment string) int {
 		}
 	}
 	return -1
+}
+
+func (t TypePath) StartsWith(segment ...string) bool {
+	if len(t.Segments) < len(segment) {
+		return false
+	}
+	for i, seg := range segment {
+		if t.Segments[i] != seg {
+			return false
+		}
+	}
+	return true
 }
 
 func (t TypePath) EndsWith(segment ...string) bool {

@@ -61,6 +61,16 @@ func parseExpression0(i *input, variables []DreamMakerTypedName) (DreamMakerExpr
 		} else {
 			return ExprStringConcat(subexpressions, loc), nil
 		}
+	} else if ok := i.Accept(tokenizer.TokKeywordNew); ok {
+		typepath, err := parsePath(i)
+		if err != nil {
+			return ExprNone(), err
+		}
+		keywords, exprs, err := parseExpressionArguments(i, variables)
+		if err != nil {
+			return ExprNone(), err
+		}
+		return ExprNew(typepath, keywords, exprs, loc), nil
 	} else if tok, ok := i.AcceptParam(tokenizer.TokInteger); ok {
 		return ExprIntegerLiteral(tok.Int, loc), nil
 	} else if tok, ok := i.AcceptParam(tokenizer.TokResource); ok {
@@ -86,6 +96,9 @@ func parseExpression0(i *input, variables []DreamMakerTypedName) (DreamMakerExpr
 func parseExpressionArguments(i *input, variables []DreamMakerTypedName) (keywords []string, expressions []DreamMakerExpression, err error) {
 	if err := i.Expect(tokenizer.TokParenOpen); err != nil {
 		return nil, nil, err
+	}
+	if i.Accept(tokenizer.TokParenClose) {
+		return nil, nil, nil
 	}
 	for {
 		var keyword string
@@ -120,15 +133,24 @@ func parseExpression1(i *input, variables []DreamMakerTypedName) (DreamMakerExpr
 	if err != nil {
 		return ExprNone(), err
 	}
-	loc := i.Peek().Loc
-	if i.Peek().TokenType == tokenizer.TokParenOpen {
-		keywords, exprs, err := parseExpressionArguments(i, variables)
-		if err != nil {
-			return ExprNone(), err
+	for {
+		loc := i.Peek().Loc
+		if i.Peek().TokenType == tokenizer.TokParenOpen {
+			keywords, exprs, err := parseExpressionArguments(i, variables)
+			if err != nil {
+				return ExprNone(), err
+			}
+			expr = ExprCall(expr, keywords, exprs, loc)
+		} else if i.Accept(tokenizer.TokDot) {
+			field, err := i.ExpectParam(tokenizer.TokSymbol)
+			if err != nil {
+				return ExprNone(), err
+			}
+			expr = ExprGetField(expr, field.Str, loc)
+		} else {
+			return expr, nil
 		}
-		return ExprCall(expr, keywords, exprs, loc), nil
 	}
-	return expr, nil
 }
 
 func parseExpression(i *input, variables []DreamMakerTypedName) (DreamMakerExpression, error) {
@@ -197,30 +219,117 @@ func parseStatement(i *input, variables []DreamMakerTypedName) (DreamMakerStatem
 			return StatementNone(), err
 		}
 		return StatementIf(condition, statements, loc), nil
+	} else if i.Accept(tokenizer.TokKeywordFor) {
+		if err := i.Expect(tokenizer.TokParenOpen); err != nil {
+			return StatementNone(), err
+		}
+		loc2 := i.Peek().Loc
+		typepath, err := parsePath(i)
+		if err != nil {
+			return StatementNone(), err
+		}
+		if typepath.IsAbsolute {
+			return StatementNone(), fmt.Errorf("unexpected absolute path at %v", loc2)
+		}
+		if !typepath.StartsWith("var") {
+			return StatementNone(), fmt.Errorf("unexpected non-var path at %v", loc2)
+		}
+		_, rest, err := typepath.SplitFirst()
+		if err != nil {
+			return StatementNone(), err
+		}
+		typepath, varname, err := rest.SplitLast()
+		if err != nil {
+			return StatementNone(), err
+		}
+		if i.Peek().TokenType == tokenizer.TokKeywordAs {
+			return StatementNone(), fmt.Errorf("unsupported: keyword as in for loop at %v", i.Peek().Loc)
+		}
+		var inExpr DreamMakerExpression
+		if i.Accept(tokenizer.TokKeywordIn) {
+			if inExpr, err = parseExpression(i, variables); err != nil {
+				return StatementNone(), err
+			}
+		}
+		if err := i.Expect(tokenizer.TokParenClose); err != nil {
+			return StatementNone(), err
+		}
+		body, err := parseStatementBlock(i, variables)
+		if err != nil {
+			return StatementNone(), err
+		}
+		return StatementForList(typepath, varname, inExpr, body, loc), nil
 	} else if i.Accept(tokenizer.TokKeywordReturn) {
 		if err := i.Expect(tokenizer.TokNewline); err != nil {
 			return StatementNone(), err
 		}
 		util.FIXME("support returning values")
 		return StatementReturn(loc), nil
-	} else {
-		leftHand, err := parseExpression(i, variables)
+	} else if i.Accept(tokenizer.TokKeywordSet) {
+		sym, err := i.ExpectParam(tokenizer.TokSymbol)
 		if err != nil {
 			return StatementNone(), err
 		}
-		loc := i.Peek().Loc
-		err = i.Expect(tokenizer.TokLeftShift)
-		if err != nil {
-			return StatementNone(), err
+		setIn := i.Accept(tokenizer.TokKeywordIn)
+		if !setIn {
+			err = i.Expect(tokenizer.TokSetEqual)
+			if err != nil {
+				return StatementNone(), err
+			}
 		}
-		rightHand, err := parseExpression(i, variables)
+		expr, err := parseExpression(i, variables)
 		if err != nil {
 			return StatementNone(), err
 		}
 		if err := i.Expect(tokenizer.TokNewline); err != nil {
 			return StatementNone(), err
 		}
-		return StatementWrite(leftHand, rightHand, loc), nil
+		if setIn {
+			return StatementSetIn(sym.Str, expr, loc), nil
+		} else {
+			return StatementSetTo(sym.Str, expr, loc), nil
+		}
+	} else if i.Accept(tokenizer.TokKeywordDel) {
+		expr, err := parseExpression(i, variables)
+		if err != nil {
+			return StatementNone(), err
+		}
+		if err := i.Expect(tokenizer.TokNewline); err != nil {
+			return StatementNone(), err
+		}
+		return StatementDel(expr, loc), nil
+	} else {
+		leftHand, err := parseExpression(i, variables)
+		if err != nil {
+			return StatementNone(), err
+		}
+		loc2 := i.Peek().Loc
+		if i.Accept(tokenizer.TokNewline) {
+			if leftHand.Type != ExprTypeCall && leftHand.Type != ExprTypeNew {
+				return StatementNone(), fmt.Errorf("single-expression statement %v instead of call at %v", leftHand, loc)
+			}
+			return StatementEvaluate(leftHand, loc), nil
+		} else if i.Accept(tokenizer.TokLeftShift) {
+			rightHand, err := parseExpression(i, variables)
+			if err != nil {
+				return StatementNone(), err
+			}
+			if err := i.Expect(tokenizer.TokNewline); err != nil {
+				return StatementNone(), err
+			}
+			return StatementWrite(leftHand, rightHand, loc2), nil
+		} else if i.Accept(tokenizer.TokSetEqual) {
+			rightHand, err := parseExpression(i, variables)
+			if err != nil {
+				return StatementNone(), err
+			}
+			if err := i.Expect(tokenizer.TokNewline); err != nil {
+				return StatementNone(), err
+			}
+			return StatementAssign(leftHand, rightHand, loc2), nil
+		} else {
+			return StatementNone(), fmt.Errorf("expected top-level operator at %v but got token %v (next afterwards is %v)", loc2, i.Peek(), i.LookAhead(1))
+		}
 	}
 }
 
@@ -251,7 +360,12 @@ func parseFunctionBody(i *input, srcType path.TypePath, arguments []DreamMakerTy
 		DreamMakerTypedName{
 			Type: srcType,
 			Name: "src",
-		})
+		},
+		DreamMakerTypedName{
+			Type: path.ConstTypePath("/mob"),
+			Name: "usr",
+		},
+	)
 	return parseStatementBlock(i, variables)
 }
 

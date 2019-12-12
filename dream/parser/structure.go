@@ -18,8 +18,10 @@ const (
 	ExprTypeStringConcat
 	ExprTypeGetLocal
 	ExprTypeGetNonLocal
+	ExprTypeGetField
 	ExprTypeBooleanNot
 	ExprTypeCall
+	ExprTypeNew
 )
 
 func (et ExprType) String() string {
@@ -40,10 +42,14 @@ func (et ExprType) String() string {
 		return "GetLocal"
 	case ExprTypeGetNonLocal:
 		return "GetNonLocal"
+	case ExprTypeGetField:
+		return "GetField"
 	case ExprTypeBooleanNot:
 		return "BooleanNot"
 	case ExprTypeCall:
 		return "Call"
+	case ExprTypeNew:
+		return "New"
 	default:
 		panic(fmt.Sprintf("unrecognized expression type: %d", et))
 	}
@@ -121,6 +127,15 @@ func ExprGetNonLocal(name string, loc tokenizer.SourceLocation) DreamMakerExpres
 	}
 }
 
+func ExprGetField(expr DreamMakerExpression, field string, loc tokenizer.SourceLocation) DreamMakerExpression {
+	return DreamMakerExpression{
+		Type:      ExprTypeGetField,
+		Str:       field,
+		Children:  []DreamMakerExpression{expr},
+		SourceLoc: loc,
+	}
+}
+
 func ExprBooleanNot(expr DreamMakerExpression, loc tokenizer.SourceLocation) DreamMakerExpression {
 	return DreamMakerExpression{
 		Type:      ExprTypeBooleanNot,
@@ -136,6 +151,16 @@ func ExprCall(expr DreamMakerExpression, keywords []string, arguments []DreamMak
 		Type:      ExprTypeCall,
 		Names:     keywords,
 		Children:  children,
+		SourceLoc: loc,
+	}
+}
+
+func ExprNew(typepath path.TypePath, keywords []string, arguments []DreamMakerExpression, loc tokenizer.SourceLocation) DreamMakerExpression {
+	return DreamMakerExpression{
+		Type:      ExprTypeNew,
+		Names:     keywords,
+		Path:      typepath,
+		Children:  arguments,
 		SourceLoc: loc,
 	}
 }
@@ -171,6 +196,12 @@ const (
 	StatementTypeWrite
 	StatementTypeIf
 	StatementTypeReturn
+	StatementTypeSetIn
+	StatementTypeSetTo
+	StatementTypeEvaluate
+	StatementTypeAssign
+	StatementTypeDel
+	StatementTypeForList
 )
 
 func (et StatementType) String() string {
@@ -183,6 +214,18 @@ func (et StatementType) String() string {
 		return "If"
 	case StatementTypeReturn:
 		return "Return"
+	case StatementTypeSetIn:
+		return "SetIn"
+	case StatementTypeSetTo:
+		return "SetTo"
+	case StatementTypeEvaluate:
+		return "Evaluate"
+	case StatementTypeAssign:
+		return "Assign"
+	case StatementTypeDel:
+		return "Del"
+	case StatementTypeForList:
+		return "ForList"
 	default:
 		panic(fmt.Sprintf("unrecognized statement type: %d", et))
 	}
@@ -190,6 +233,8 @@ func (et StatementType) String() string {
 
 type DreamMakerStatement struct {
 	Type      StatementType
+	Path      path.TypePath
+	Name      string
 	From      DreamMakerExpression
 	To        DreamMakerExpression
 	Body      []DreamMakerStatement
@@ -227,6 +272,60 @@ func StatementReturn(loc tokenizer.SourceLocation) DreamMakerStatement {
 	}
 }
 
+func StatementSetTo(field string, expr DreamMakerExpression, loc tokenizer.SourceLocation) DreamMakerStatement {
+	return DreamMakerStatement{
+		Type:      StatementTypeSetTo,
+		Name:      field,
+		To:        expr,
+		SourceLoc: loc,
+	}
+}
+
+func StatementSetIn(field string, expr DreamMakerExpression, loc tokenizer.SourceLocation) DreamMakerStatement {
+	return DreamMakerStatement{
+		Type:      StatementTypeSetIn,
+		Name:      field,
+		To:        expr,
+		SourceLoc: loc,
+	}
+}
+
+func StatementEvaluate(expr DreamMakerExpression, loc tokenizer.SourceLocation) DreamMakerStatement {
+	return DreamMakerStatement{
+		Type:      StatementTypeEvaluate,
+		To:        expr,
+		SourceLoc: loc,
+	}
+}
+
+func StatementAssign(destination DreamMakerExpression, value DreamMakerExpression, loc tokenizer.SourceLocation) DreamMakerStatement {
+	return DreamMakerStatement{
+		Type:      StatementTypeAssign,
+		From:      value,
+		To:        destination,
+		SourceLoc: loc,
+	}
+}
+
+func StatementDel(expr DreamMakerExpression, loc tokenizer.SourceLocation) DreamMakerStatement {
+	return DreamMakerStatement{
+		Type:      StatementTypeDel,
+		From:      expr,
+		SourceLoc: loc,
+	}
+}
+
+func StatementForList(vartype path.TypePath, varname string, inExpr DreamMakerExpression, body []DreamMakerStatement, loc tokenizer.SourceLocation) DreamMakerStatement {
+	return DreamMakerStatement{
+		Type:      StatementTypeForList,
+		Path:      vartype,
+		Name:      varname,
+		From:      inExpr,
+		Body:      body,
+		SourceLoc: loc,
+	}
+}
+
 func (dms DreamMakerStatement) IsNone() bool {
 	return dms.Type == StatementTypeNone
 }
@@ -238,6 +337,12 @@ func (dms DreamMakerStatement) String() string {
 	}
 	if !dms.To.IsNone() {
 		params = append(params, fmt.Sprintf("to=%v", dms.To))
+	}
+	if !dms.Path.IsEmpty() {
+		params = append(params, fmt.Sprintf("path=%v", dms.Path))
+	}
+	if dms.Name != "" {
+		params = append(params, fmt.Sprintf("name=%q", dms.Name))
 	}
 	if len(dms.Body) > 0 {
 		for _, statement := range dms.Body {
