@@ -339,6 +339,12 @@ func tokenizeInternal(s *scan, output chan<- Token, terminator rune) error {
 				output <- TokKeywordFor.token(loc)
 			case "as":
 				output <- TokKeywordAs.token(loc)
+			case "var":
+				output <- TokKeywordVar.token(loc)
+			case "proc":
+				output <- TokKeywordProc.token(loc)
+			case "verb":
+				output <- TokKeywordVerb.token(loc)
 			default:
 				output <- TokSymbol.tokenStr(sym, loc)
 			}

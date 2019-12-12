@@ -41,6 +41,9 @@ const (
 	TokKeywordDel
 	TokKeywordFor
 	TokKeywordAs
+	TokKeywordVar
+	TokKeywordProc
+	TokKeywordVerb
 	TokPreprocessorDefine
 	TokPreprocessorInclude
 
@@ -175,6 +178,12 @@ func (t TokenType) String() string {
 		return "TokKeywordFor"
 	case TokKeywordAs:
 		return "TokKeywordAs"
+	case TokKeywordVar:
+		return "TokKeywordVar"
+	case TokKeywordProc:
+		return "TokKeywordProc"
+	case TokKeywordVerb:
+		return "TokKeywordVerb"
 	case TokPreprocessorDefine:
 		return "TokPreprocessorDefine"
 	case TokPreprocessorInclude:

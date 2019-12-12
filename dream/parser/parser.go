@@ -2,32 +2,71 @@ package parser
 
 import (
 	"fmt"
+	"github.com/celskeggs/mediator/dream/declpath"
 	"github.com/celskeggs/mediator/dream/path"
 	"github.com/celskeggs/mediator/dream/tokenizer"
 	"github.com/celskeggs/mediator/util"
 )
 
 func parsePath(i *input) (path.TypePath, error) {
-	tpath := path.Empty()
+	loc := i.Peek().Loc
+	decl, err := parseDeclPath(i)
+	if err != nil {
+		return path.Empty(), err
+	}
+	if !decl.IsPlain() {
+		return path.Empty(), fmt.Errorf("expected type path, not decl path %v, at %v", decl, loc)
+	}
+	return decl.Unwrap(), nil
+}
+
+func convertDeclSegment(tok tokenizer.TokenType) declpath.DeclType {
+	switch tok {
+	case tokenizer.TokSymbol:
+		return declpath.DeclPlain
+	case tokenizer.TokKeywordVar:
+		return declpath.DeclVar
+	case tokenizer.TokKeywordProc:
+		return declpath.DeclProc
+	case tokenizer.TokKeywordVerb:
+		return declpath.DeclVerb
+	default:
+		return declpath.DeclInvalid
+	}
+}
+
+func parseDeclPath(i *input) (declpath.DeclPath, error) {
+	tpath := declpath.Empty()
 	i.AcceptAll(tokenizer.TokNewline)
 	if i.Accept(tokenizer.TokSlash) {
-		tpath = path.Root()
+		tpath = declpath.Root()
 	}
-	if i.Peek().TokenType != tokenizer.TokSymbol {
-		return path.Empty(), i.ErrorExpect(tokenizer.TokSymbol)
+	if convertDeclSegment(i.Peek().TokenType) == declpath.DeclInvalid {
+		return declpath.Empty(), fmt.Errorf("invalid token %v when looking for path at %v", i.Peek(), i.Peek().Loc)
 	}
 	for {
-		tok, ok := i.AcceptParam(tokenizer.TokSymbol)
-		if !ok {
+		declType := convertDeclSegment(i.Peek().TokenType)
+		if declType == declpath.DeclInvalid {
 			break
+		} else if declType == declpath.DeclPlain {
+			tok := i.Take()
+			if !tpath.CanAdd() {
+				return declpath.Empty(), fmt.Errorf("path %v is already complete and cannot be extended at %v", tpath, tok.Loc)
+			}
+			tpath = tpath.Add(tok.Str)
+		} else {
+			tok := i.Take()
+			if !tpath.CanAddDecl() {
+				return declpath.Empty(), fmt.Errorf("path %v is already complete and cannot be extended at %v", tpath, tok.Loc)
+			}
+			tpath = tpath.AddDecl(declType)
 		}
-		tpath = tpath.Add(tok.Str)
 		if !i.Accept(tokenizer.TokSlash) {
 			break
 		}
 	}
 	if tpath.IsEmpty() {
-		return path.Empty(), fmt.Errorf("expected a path at %v", i.Peek().Loc)
+		return declpath.Empty(), fmt.Errorf("expected a path at %v", i.Peek().Loc)
 	}
 	return tpath, nil
 }
@@ -369,22 +408,21 @@ func parseFunctionBody(i *input, srcType path.TypePath, arguments []DreamMakerTy
 	return parseStatementBlock(i, variables)
 }
 
-func parseBlock(i *input, basePath path.TypePath) ([]DreamMakerDefinition, error) {
+func parseBlock(i *input, basePath declpath.DeclPath) ([]DreamMakerDefinition, error) {
 	if i.Accept(tokenizer.TokNewline) {
 		return nil, nil
 	}
 	loc := i.Peek().Loc
-	relPath, err := parsePath(i)
+	relPath, err := parseDeclPath(i)
 	if err != nil {
 		return nil, err
 	}
-	fullPath := basePath.Join(relPath)
-	err = fullPath.CheckKeywords()
-	if err != nil {
-		return nil, err
+	fullPath, ok := basePath.Join(relPath)
+	if !ok {
+		return nil, fmt.Errorf("cannot join paths %v and %v at %v", basePath, relPath, loc)
 	}
 	if fullPath.IsVarDef() {
-		varTarget, varName := fullPath.SplitVarDef()
+		varTarget, varName := fullPath.SplitDef()
 		if i.Accept(tokenizer.TokSetEqual) {
 			// no variables because there's no function context during initializations
 			expr, err := parseExpression(i, nil)
@@ -402,7 +440,12 @@ func parseBlock(i *input, basePath path.TypePath) ([]DreamMakerDefinition, error
 		} else {
 			return nil, fmt.Errorf("expected valid start-var token, not %s at %v", i.Peek().String(), i.Peek().Loc)
 		}
-	} else if fullPath.EndsWith("var") {
+	} else if fullPath.IsProcDef() {
+		return nil, fmt.Errorf("unimplemented: proc declaration at %v", tokenizer.SourceHere())
+	} else if fullPath.IsVerbDef() {
+		return nil, fmt.Errorf("unimplemented: verb declaration at %v", tokenizer.SourceHere())
+	} else if !fullPath.IsPlain() {
+		// incomplete definition, because we're not a plain path but not a full decl, so we need to get one more entry
 		if i.Accept(tokenizer.TokNewline) {
 			// nothing to define
 			return nil, nil
@@ -420,13 +463,15 @@ func parseBlock(i *input, basePath path.TypePath) ([]DreamMakerDefinition, error
 			return nil, fmt.Errorf("expected valid start-of-var-block token, not %s at %v", i.Peek().String(), i.Peek().Loc)
 		}
 	}
+	// in this case, we just have a plain path, so we can accept a lot of things
+	plainPath := fullPath.Unwrap()
 	if i.Accept(tokenizer.TokSetEqual) {
 		// no variables because there's no function context during initializations
 		expr, err := parseExpression(i, nil)
 		if err != nil {
 			return nil, err
 		}
-		typePath, variable, err := fullPath.SplitLast()
+		typePath, variable, err := plainPath.SplitLast()
 		if err != nil {
 			return nil, err
 		}
@@ -441,7 +486,7 @@ func parseBlock(i *input, basePath path.TypePath) ([]DreamMakerDefinition, error
 		if err != nil {
 			return nil, err
 		}
-		typePath, function, err := fullPath.SplitLast()
+		typePath, function, err := plainPath.SplitLast()
 		if err != nil {
 			return nil, err
 		}
@@ -457,11 +502,11 @@ func parseBlock(i *input, basePath path.TypePath) ([]DreamMakerDefinition, error
 		}, nil
 	} else if i.Accept(tokenizer.TokNewline) {
 		return []DreamMakerDefinition{
-			DefDefine(fullPath, loc),
+			DefDefine(plainPath, loc),
 		}, nil
 	} else if i.Accept(tokenizer.TokIndent) {
 		defs := []DreamMakerDefinition{
-			DefDefine(fullPath, loc),
+			DefDefine(plainPath, loc),
 		}
 		for !i.Accept(tokenizer.TokUnindent) {
 			block, err := parseBlock(i, fullPath)
@@ -479,7 +524,7 @@ func parseBlock(i *input, basePath path.TypePath) ([]DreamMakerDefinition, error
 func parseFile(i *input) (*DreamMakerFile, error) {
 	var allDefs []DreamMakerDefinition
 	for i.HasNext() {
-		defs, err := parseBlock(i, path.Root())
+		defs, err := parseBlock(i, declpath.Root())
 		if err != nil {
 			return nil, err
 		}

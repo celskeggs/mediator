@@ -108,28 +108,6 @@ func (t TypePath) EndsWith(segment ...string) bool {
 	return true
 }
 
-func (t TypePath) IsVarDef() bool {
-	return len(t.Segments) >= 3 && t.Segments[len(t.Segments)-2] == "var"
-}
-
-func (t TypePath) SplitVarDef() (TypePath, string) {
-	if !t.IsVarDef() {
-		panic("not a variable definition")
-	}
-	return TypePath{
-		IsAbsolute: t.IsAbsolute,
-		Segments:   t.Segments[:len(t.Segments)-2],
-	}, t.Segments[len(t.Segments)-1]
-}
-
-func (t TypePath) CheckKeywords() error {
-	varIndex := t.IndexOf("var")
-	if varIndex >= 0 && varIndex < len(t.Segments)-2 || t.EndsWith("var", "var") {
-		return fmt.Errorf("invalid path %v: var not expected", t)
-	}
-	return nil
-}
-
 func (t TypePath) String() string {
 	if t.IsAbsolute {
 		return "/" + strings.Join(t.Segments, "/")
