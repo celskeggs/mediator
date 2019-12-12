@@ -1,12 +1,22 @@
 package util
 
+import (
+	"fmt"
+	"runtime"
+)
+
 var displayedFixmes = map[string]bool{}
 
 // mark things to be done in a way that won't get forgotten
 func FIXME(msg string) {
 	if !displayedFixmes[msg] {
 		displayedFixmes[msg] = true
-		println("*** FIXME:", msg)
+		_, file, line, ok := runtime.Caller(1)
+		if ok {
+			println("*** FIXME:", msg, fmt.Sprintf("at %s:%d", file, line))
+		} else {
+			println("*** FIXME:", msg)
+		}
 	}
 }
 
