@@ -17,14 +17,6 @@ type worldServer struct {
 }
 
 func (ws worldServer) ResourcePack() *resourcepack.ResourcePack {
-	util.FIXME("readd .ogg conversion")
-	/*if strings.HasSuffix(info.Name(), ".mid") {
-		convertedPath, err := midi.ConvertMIDICached(sourcePath, ws.ResourcesCacheDir)
-		if err != nil {
-			return nil, nil, err
-		}
-		nameToPath[sourceName[:len(sourceName)-len(".mid")]+".ogg"] = convertedPath
-	}*/
 	return ws.LoadedResourcePack
 }
 

@@ -3,8 +3,8 @@ package pack
 import (
 	"fmt"
 	"github.com/celskeggs/mediator/dream/parser"
+	"github.com/celskeggs/mediator/midi"
 	"github.com/celskeggs/mediator/resourcepack"
-	"github.com/celskeggs/mediator/util"
 	"github.com/pkg/errors"
 	"go/build"
 	"io/ioutil"
@@ -79,11 +79,11 @@ func GenerateResourcePack(dmf *parser.DreamMakerFile, outputPack string) error {
 	if err != nil && !os.IsNotExist(err) {
 		return errors.Wrap(err, "while deleting existing output pack")
 	}
-	util.FIXME("do .mid -> .ogg conversion in here somewhere")
 	resources, err := ScanResources(dmf)
 	if err != nil {
 		return err
 	}
+	oggcache := path.Join(path.Dir(outputPack), "ogg-cache")
 	mapping := map[string]string{}
 	for _, resource := range resources {
 		name := path.Base(resource)
@@ -91,10 +91,18 @@ func GenerateResourcePack(dmf *parser.DreamMakerFile, outputPack string) error {
 			return fmt.Errorf("duplicate resource %q found at both %q and %q", name, prev, resource)
 		}
 		mapping[name] = resource
+		if strings.HasSuffix(name, ".mid") {
+			oggpath, err := midi.ConvertMIDICached(resource, oggcache)
+			if err != nil {
+				return err
+			}
+			mapping[name[:len(name)-len(".mid")]+".ogg"] = oggpath
+		}
 	}
 	err = resourcepack.Build(mapping, outputPack)
 	if err != nil {
 		return err
 	}
+	fmt.Printf("finished building resource pack\n")
 	return nil
 }
