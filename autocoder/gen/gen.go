@@ -31,11 +31,16 @@ type DefinedInit struct {
 	SourceLoc tokenizer.SourceLocation
 }
 
-type DefinedFunc struct {
+type DefinedImpl struct {
 	Name   string
 	This   string
 	Params []string
 	Body   string
+}
+
+type DefinedProc struct {
+	Name   string
+	IsVerb bool
 }
 
 type DefinedType struct {
@@ -43,7 +48,8 @@ type DefinedType struct {
 	BasePath path.TypePath
 
 	Fields []DefinedField
-	Funcs  []DefinedFunc
+	Procs  []DefinedProc
+	Impls  []DefinedImpl
 	Inits  []DefinedInit
 
 	context *DefinedTree
@@ -65,7 +71,7 @@ func (d DefinedType) addContext(dt *DefinedTree) (DefinedType, error) {
 
 func (d *DefinedType) IsDefined() bool {
 	// defined unless it's a null override
-	return !d.IsOverride() || len(d.Inits) > 0 || len(d.Fields) > 0 || len(d.Funcs) > 0
+	return !d.IsOverride() || len(d.Inits) > 0 || len(d.Fields) > 0 || len(d.Impls) > 0
 }
 
 func (d *DefinedType) IsOverride() bool {
@@ -140,26 +146,34 @@ func (t *DefinedTree) ParentOf(path path.TypePath) path.TypePath {
 	return t.GetTypeByPath(path).ParentPath()
 }
 
-func (t *DefinedTree) ResolveField(typePath path.TypePath, shortName string) (dtype dtype.DType, found bool) {
+func (t *DefinedTree) ResolveField(typePath path.TypePath, name string) (dtype dtype.DType, found bool) {
 	defType := t.GetTypeByPath(typePath)
 	if defType == nil {
-		return predefs.PlatformDefiner.ResolveField(typePath, shortName)
+		return predefs.PlatformDefiner.ResolveField(typePath, name)
 	}
 	for _, field := range defType.Fields {
-		if field.Name == shortName {
+		if field.Name == name {
 			return field.Type, true
 		}
 	}
-	return t.ResolveField(t.ParentOf(typePath), shortName)
+	return t.ResolveField(t.ParentOf(typePath), name)
 }
 
-func (t DefinedTree) ResolveProcedure(typePath path.TypePath, shortName string) (predefs.ProcedureInfo, bool) {
+func (t DefinedTree) ResolveProcedure(typePath path.TypePath, name string) (predefs.ProcedureInfo, bool) {
 	defType := t.GetTypeByPath(typePath)
 	if defType == nil {
-		return predefs.PlatformDefiner.ResolveProcedure(typePath, shortName)
+		return predefs.PlatformDefiner.ResolveProcedure(typePath, name)
 	}
-	util.FIXME("when we actually have proc declarations, and not just implementations, search them here")
-	return t.ResolveProcedure(t.ParentOf(typePath), shortName)
+	for _, proc := range defType.Procs {
+		if proc.Name == name {
+			return predefs.ProcedureInfo{
+				Name:    proc.Name,
+				DefPath: defType.TypePath,
+				IsVerb:  proc.IsVerb,
+			}, true
+		}
+	}
+	return t.ResolveProcedure(t.ParentOf(typePath), name)
 }
 
 func (t DefinedTree) GlobalProcedureExists(name string) bool {
@@ -285,7 +299,7 @@ func New{{.DataStructName}}(src *types.Datum, _ *{{.DataStructName}}, _ ...types
 	{{- end}}
 }
 
-{{range .Funcs -}}
+{{range .Impls -}}
 func (*{{$type.DataStructName}}) Proc{{.Name}}({{.This}} *types.Datum{{range .Params}}, {{.}} types.Value{{end}}) types.Value {
 {{.Body}}
 }

@@ -184,13 +184,16 @@ func ExprToGo(expr parser.DreamMakerExpression, ctx CodeGenContext) (exprString 
 	}
 }
 
-func DefineVar(dt *gen.DefinedTree, path path.TypePath, variable string, loc tokenizer.SourceLocation) error {
+func DefineVar(dt *gen.DefinedTree, path path.TypePath, varType path.TypePath, variable string, loc tokenizer.SourceLocation) error {
 	if !dt.Exists(path) {
 		return fmt.Errorf("no such path %v for declaration of variable %v at %v", path, variable, loc)
 	}
 	defType := dt.GetTypeByPath(path)
 	if defType == nil {
 		panic("expected non-nil type " + path.String())
+	}
+	if !varType.IsEmpty() {
+		return fmt.Errorf("unimplemented: variable type %v at %v", varType, loc)
 	}
 
 	_, found := dt.ResolveField(path, variable)
@@ -201,6 +204,27 @@ func DefineVar(dt *gen.DefinedTree, path path.TypePath, variable string, loc tok
 	defType.Fields = append(defType.Fields, gen.DefinedField{
 		Name: variable,
 		Type: dtype.Any(),
+	})
+	return nil
+}
+
+func DefineProc(dt *gen.DefinedTree, path path.TypePath, isVerb bool, variable string, loc tokenizer.SourceLocation) error {
+	if !dt.Exists(path) {
+		return fmt.Errorf("no such path %v for declaration of proc/verb %v at %v", path, variable, loc)
+	}
+	defType := dt.GetTypeByPath(path)
+	if defType == nil {
+		panic("expected non-nil type " + path.String())
+	}
+
+	_, found := dt.ResolveProcedure(path, variable)
+	if found {
+		return fmt.Errorf("proc/verb %s already defined on %v at %v", variable, path, loc)
+	}
+
+	defType.Procs = append(defType.Procs, gen.DefinedProc{
+		Name:   variable,
+		IsVerb: isVerb,
 	})
 	return nil
 }
@@ -351,7 +375,7 @@ func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string,
 		return err
 	}
 
-	defType.Funcs = append(defType.Funcs, gen.DefinedFunc{
+	defType.Impls = append(defType.Impls, gen.DefinedImpl{
 		Name:   function,
 		This:   LocalVariablePrefix + "src",
 		Params: params,
@@ -376,13 +400,18 @@ func Convert(dmf *parser.DreamMakerFile, packageName string) (*gen.DefinedTree, 
 			}
 		}
 	}
-	// declare all variables
+	// declare all variables, procedures, and verbs
 	for _, def := range dmf.Definitions {
+		var err error
 		if def.Type == parser.DefTypeVarDef {
-			err := DefineVar(dt, def.Path, def.Variable, def.SourceLoc)
-			if err != nil {
-				return nil, err
-			}
+			err = DefineVar(dt, def.Path, def.VarType, def.Variable, def.SourceLoc)
+		} else if def.Type == parser.DefTypeProcDecl {
+			err = DefineProc(dt, def.Path, false, def.Variable, def.SourceLoc)
+		} else if def.Type == parser.DefTypeVerbDecl {
+			err = DefineProc(dt, def.Path, true, def.Variable, def.SourceLoc)
+		}
+		if err != nil {
+			return nil, err
 		}
 	}
 	// assign all values
