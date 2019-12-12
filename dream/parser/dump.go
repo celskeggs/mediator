@@ -73,6 +73,12 @@ func (dmd DreamMakerDefinition) Dump(output io.Writer) error {
 			return err
 		}
 	}
+	if !dmd.VarType.IsEmpty() {
+		_, err := fmt.Fprintf(output, "\tvartype = %v\n", dmd.VarType)
+		if err != nil {
+			return err
+		}
+	}
 	if dmd.Variable != "" {
 		_, err := fmt.Fprintf(output, "\tvariable = %s\n", dmd.Variable)
 		if err != nil {

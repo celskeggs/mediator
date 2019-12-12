@@ -364,6 +364,8 @@ const (
 	DefTypeDefine
 	DefTypeAssign
 	DefTypeVarDef
+	DefTypeProcDecl
+	DefTypeVerbDecl
 	DefTypeImplement
 )
 
@@ -377,6 +379,10 @@ func (t DreamMakerDefType) String() string {
 		return "Assign"
 	case DefTypeVarDef:
 		return "VarDef"
+	case DefTypeProcDecl:
+		return "ProcDecl"
+	case DefTypeVerbDecl:
+		return "VerbDecl"
 	case DefTypeImplement:
 		return "Implement"
 	default:
@@ -387,6 +393,7 @@ func (t DreamMakerDefType) String() string {
 type DreamMakerDefinition struct {
 	Type       DreamMakerDefType
 	Path       path.TypePath
+	VarType    path.TypePath
 	Variable   string
 	Expression DreamMakerExpression
 	Arguments  []DreamMakerTypedName
@@ -412,9 +419,28 @@ func DefAssign(path path.TypePath, variable string, value DreamMakerExpression, 
 	}
 }
 
-func DefVarDef(path path.TypePath, variable string, location tokenizer.SourceLocation) DreamMakerDefinition {
+func DefVarDef(path path.TypePath, varType path.TypePath, variable string, location tokenizer.SourceLocation) DreamMakerDefinition {
 	return DreamMakerDefinition{
 		Type:      DefTypeVarDef,
+		Path:      path,
+		VarType:   varType,
+		Variable:  variable,
+		SourceLoc: location,
+	}
+}
+
+func DefProcDecl(path path.TypePath, variable string, location tokenizer.SourceLocation) DreamMakerDefinition {
+	return DreamMakerDefinition{
+		Type:      DefTypeProcDecl,
+		Path:      path,
+		Variable:  variable,
+		SourceLoc: location,
+	}
+}
+
+func DefVerbDecl(path path.TypePath, variable string, location tokenizer.SourceLocation) DreamMakerDefinition {
+	return DreamMakerDefinition{
+		Type:      DefTypeVerbDecl,
 		Path:      path,
 		Variable:  variable,
 		SourceLoc: location,

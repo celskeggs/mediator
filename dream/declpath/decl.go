@@ -1,7 +1,6 @@
 package declpath
 
 import (
-	"fmt"
 	"github.com/celskeggs/mediator/dream/path"
 )
 
@@ -35,7 +34,7 @@ func (t DeclType) String() string {
 type DeclPath struct {
 	Type   DeclType
 	Prefix path.TypePath
-	Suffix string // only valid when Type != DeclPlain
+	Suffix path.TypePath // only valid when Type != DeclPlain; may never be absolute
 }
 
 func Empty() DeclPath {
@@ -53,14 +52,15 @@ func Root() DeclPath {
 }
 
 func (d DeclPath) CanAdd() bool {
-	return d.Type == DeclPlain || d.Suffix == ""
+	return d.Type == DeclPlain || d.Type == DeclVar || d.Suffix.IsEmpty()
 }
 
 func (d DeclPath) Add(segment string) DeclPath {
 	if d.Type == DeclPlain {
 		d.Prefix = d.Prefix.Add(segment)
-	} else if d.Suffix == "" {
-		d.Suffix = segment
+	} else if d.Type == DeclVar || d.Suffix.IsEmpty() {
+		// vars can have multiple segments for the sake of specifying a type
+		d.Suffix = d.Suffix.Add(segment)
 	} else {
 		panic("attempt to Add when all segments were already populated!")
 	}
@@ -99,7 +99,7 @@ func (d DeclPath) Unwrap() path.TypePath {
 	if !d.IsPlain() {
 		panic("attempt to unwrap non-plain type")
 	}
-	if d.Suffix != "" {
+	if !d.Suffix.IsEmpty() {
 		panic("suffix should never be populated on plain type")
 	}
 	return d.Prefix
@@ -113,49 +113,48 @@ func (d DeclPath) Join(o DeclPath) (DeclPath, bool) {
 		return o, true
 	} else if !o.IsPlain() {
 		return Empty(), false
-	} else if o.IsEmpty() {
-		return d, true
-	} else if len(o.Prefix.Segments) != 1 || d.Suffix != "" {
-		return Empty(), false
 	} else {
-		d.Suffix = o.Prefix.Segments[0]
+		for _, segment := range o.Prefix.Segments {
+			if !d.CanAdd() {
+				return Empty(), false
+			}
+			d = d.Add(segment)
+		}
 		return d, true
 	}
 }
 
 func (t DeclPath) IsVarDef() bool {
-	return t.Type == DeclVar && t.Suffix != ""
+	return t.Type == DeclVar && !t.Suffix.IsEmpty()
 }
 
 func (t DeclPath) IsProcDef() bool {
-	return t.Type == DeclProc && t.Suffix != ""
+	return t.Type == DeclProc && !t.Suffix.IsEmpty()
 }
 
 func (t DeclPath) IsVerbDef() bool {
-	return t.Type == DeclVerb && t.Suffix != ""
+	return t.Type == DeclVerb && !t.Suffix.IsEmpty()
 }
 
-func (t DeclPath) SplitDef() (path.TypePath, string) {
-	if t.IsPlain() || t.Suffix == "" {
+func (t DeclPath) SplitDef() (target path.TypePath, typePath path.TypePath, name string) {
+	if t.IsPlain() || t.Suffix.IsEmpty() {
 		panic("not a declaration in SplitDef")
 	}
-	return t.Prefix, t.Suffix
+	typePath, name, err := t.Suffix.SplitLast()
+	if err != nil {
+		panic("unexpected internal error: " + err.Error())
+	}
+	if !typePath.IsEmpty() && t.Type != DeclVar {
+		panic("unexpected state mismatch: non-var must not have non-empty type path")
+	}
+	return t.Prefix, typePath, name
 }
 
 func (d DeclPath) String() string {
-	if d.IsPlain() {
-		return d.Prefix.String()
-	} else if len(d.Prefix.Segments) == 0 {
-		if d.Suffix == "" {
-			return fmt.Sprintf("%v%v", d.Prefix, d.Type)
-		} else {
-			return fmt.Sprintf("%v%v/%v", d.Prefix, d.Type, d.Suffix)
-		}
-	} else {
-		if d.Suffix == "" {
-			return fmt.Sprintf("%v/%v", d.Prefix, d.Type)
-		} else {
-			return fmt.Sprintf("%v/%v/%s", d.Prefix, d.Type, d.Suffix)
-		}
+	tmp := d.Prefix
+	if d.Type != DeclPlain {
+		tmp = tmp.Add(d.Type.String())
+		tmp = tmp.Join(d.Suffix)
 	}
+	return tmp.String()
 }

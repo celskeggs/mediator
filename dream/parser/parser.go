@@ -205,6 +205,9 @@ func parseExpression(i *input, variables []DreamMakerTypedName) (DreamMakerExpre
 }
 
 func parseFunctionArguments(i *input) ([]DreamMakerTypedName, error) {
+	if err := i.Expect(tokenizer.TokParenOpen); err != nil {
+		return nil, err
+	}
 	if i.Accept(tokenizer.TokParenClose) {
 		return nil, nil
 	}
@@ -263,23 +266,16 @@ func parseStatement(i *input, variables []DreamMakerTypedName) (DreamMakerStatem
 			return StatementNone(), err
 		}
 		loc2 := i.Peek().Loc
-		typepath, err := parsePath(i)
+		varpath, err := parseDeclPath(i)
 		if err != nil {
 			return StatementNone(), err
 		}
-		if typepath.IsAbsolute {
-			return StatementNone(), fmt.Errorf("unexpected absolute path at %v", loc2)
+		if !varpath.IsVarDef() {
+			return StatementNone(), fmt.Errorf("path %v is not a variable definition at %v", varpath, loc2)
 		}
-		if !typepath.StartsWith("var") {
-			return StatementNone(), fmt.Errorf("unexpected non-var path at %v", loc2)
-		}
-		_, rest, err := typepath.SplitFirst()
-		if err != nil {
-			return StatementNone(), err
-		}
-		typepath, varname, err := rest.SplitLast()
-		if err != nil {
-			return StatementNone(), err
+		varTarget, varType, varName := varpath.SplitDef()
+		if !varTarget.IsEmpty() {
+			return StatementNone(), fmt.Errorf("invalid prefix for 'var' in path %v at %v", varpath, loc2)
 		}
 		if i.Peek().TokenType == tokenizer.TokKeywordAs {
 			return StatementNone(), fmt.Errorf("unsupported: keyword as in for loop at %v", i.Peek().Loc)
@@ -297,7 +293,7 @@ func parseStatement(i *input, variables []DreamMakerTypedName) (DreamMakerStatem
 		if err != nil {
 			return StatementNone(), err
 		}
-		return StatementForList(typepath, varname, inExpr, body, loc), nil
+		return StatementForList(varType, varName, inExpr, body, loc), nil
 	} else if i.Accept(tokenizer.TokKeywordReturn) {
 		if err := i.Expect(tokenizer.TokNewline); err != nil {
 			return StatementNone(), err
@@ -422,7 +418,7 @@ func parseBlock(i *input, basePath declpath.DeclPath) ([]DreamMakerDefinition, e
 		return nil, fmt.Errorf("cannot join paths %v and %v at %v", basePath, relPath, loc)
 	}
 	if fullPath.IsVarDef() {
-		varTarget, varName := fullPath.SplitDef()
+		varTarget, varType, varName := fullPath.SplitDef()
 		if i.Accept(tokenizer.TokSetEqual) {
 			// no variables because there's no function context during initializations
 			expr, err := parseExpression(i, nil)
@@ -430,20 +426,40 @@ func parseBlock(i *input, basePath declpath.DeclPath) ([]DreamMakerDefinition, e
 				return nil, err
 			}
 			return []DreamMakerDefinition{
-				DefVarDef(varTarget, varName, loc),
+				DefVarDef(varTarget, varType, varName, loc),
 				DefAssign(varTarget, varName, expr, loc),
 			}, nil
 		} else if i.Accept(tokenizer.TokNewline) {
 			return []DreamMakerDefinition{
-				DefVarDef(varTarget, varName, loc),
+				DefVarDef(varTarget, varType, varName, loc),
 			}, nil
 		} else {
 			return nil, fmt.Errorf("expected valid start-var token, not %s at %v", i.Peek().String(), i.Peek().Loc)
 		}
-	} else if fullPath.IsProcDef() {
-		return nil, fmt.Errorf("unimplemented: proc declaration at %v", tokenizer.SourceHere())
-	} else if fullPath.IsVerbDef() {
-		return nil, fmt.Errorf("unimplemented: verb declaration at %v", tokenizer.SourceHere())
+	} else if fullPath.IsProcDef() || fullPath.IsVerbDef() {
+		procTarget, _, procName := fullPath.SplitDef()
+		args, err := parseFunctionArguments(i)
+		if err != nil {
+			return nil, err
+		}
+		body, err := parseFunctionBody(i, procTarget, args)
+		if err != nil {
+			return nil, err
+		}
+		if len(procTarget.Segments) == 0 {
+			return nil, fmt.Errorf("cannot declare function on root at %v", loc)
+		}
+		if fullPath.IsVerbDef() {
+			return []DreamMakerDefinition{
+				DefVerbDecl(procTarget, procName, loc),
+				DefImplement(procTarget, procName, args, body, loc),
+			}, nil
+		} else {
+			return []DreamMakerDefinition{
+				DefProcDecl(procTarget, procName, loc),
+				DefImplement(procTarget, procName, args, body, loc),
+			}, nil
+		}
 	} else if !fullPath.IsPlain() {
 		// incomplete definition, because we're not a plain path but not a full decl, so we need to get one more entry
 		if i.Accept(tokenizer.TokNewline) {
@@ -481,7 +497,7 @@ func parseBlock(i *input, basePath declpath.DeclPath) ([]DreamMakerDefinition, e
 		return []DreamMakerDefinition{
 			DefAssign(typePath, variable, expr, loc),
 		}, nil
-	} else if i.Accept(tokenizer.TokParenOpen) {
+	} else if i.Peek().TokenType == tokenizer.TokParenOpen {
 		args, err := parseFunctionArguments(i)
 		if err != nil {
 			return nil, err
