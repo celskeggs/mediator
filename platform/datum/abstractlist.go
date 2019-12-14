@@ -47,7 +47,22 @@ func (l List) SetVar(name string, value types.Value) {
 }
 
 func (l List) Invoke(name string, parameters ...types.Value) types.Value {
-	panic("unimplemented: list procs")
+	switch name {
+	case "+":
+		value := types.Param(parameters, 0)
+		if otherList, ok := value.(List); ok {
+			// concatenate
+			refsA := ElementsAsRefs(l)
+			refsB := ElementsAsRefs(otherList)
+			return NewListFromRefs(append(refsA, refsB...)...)
+		} else {
+			// append
+			refsA := ElementsAsRefs(l)
+			return NewListFromRefs(append(refsA, types.Reference(value))...)
+		}
+	default:
+		panic(fmt.Sprintf("unimplemented: list proc %q", name))
+	}
 }
 
 func (l List) String() string {

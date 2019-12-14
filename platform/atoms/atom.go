@@ -14,6 +14,7 @@ type AtomData struct {
 	VarDensity    int
 	VarOpacity    int
 	VarDir        common.Direction
+	VarVerbs      []Verb
 	location      *types.Ref
 	contents      map[*types.Datum]*types.Ref
 }
@@ -72,7 +73,7 @@ func (d *AtomData) GetContents(src *types.Datum) types.Value {
 	for _, ref := range d.contents {
 		contents = append(contents, ref)
 	}
-	return datum.NewList(contents...)
+	return datum.NewListFromRefs(contents...)
 }
 
 func (d *AtomData) GetLoc(src *types.Datum) types.Value {

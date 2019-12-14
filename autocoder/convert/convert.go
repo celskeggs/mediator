@@ -57,23 +57,28 @@ func DefineVar(dt *gen.DefinedTree, path path.TypePath, varType path.TypePath, v
 	return nil
 }
 
-func DefineProc(dt *gen.DefinedTree, path path.TypePath, isVerb bool, variable string, loc tokenizer.SourceLocation) error {
-	if !dt.Exists(path) {
-		return fmt.Errorf("no such path %v for declaration of proc/verb %v at %v", path, variable, loc)
+func DefineProc(dt *gen.DefinedTree, typePath path.TypePath, isVerb bool, variable string, loc tokenizer.SourceLocation) error {
+	if !dt.Exists(typePath) {
+		return fmt.Errorf("no such path %v for declaration of proc/verb %v at %v", typePath, variable, loc)
 	}
-	defType := dt.GetTypeByPath(path)
+	defType := dt.GetTypeByPath(typePath)
 	if defType == nil {
-		panic("expected non-nil type " + path.String())
+		panic("expected non-nil type " + typePath.String())
+	}
+	if isVerb {
+		if !dt.Extends(typePath, path.ConstTypePath("/atom")) {
+			return fmt.Errorf("attempt to declare verb %v on non-atom %v at %v", variable, typePath, loc)
+		}
+		defType.Verbs = append(defType.Verbs, variable)
 	}
 
-	_, found := dt.ResolveProcedure(path, variable)
+	_, found := dt.ResolveProcedure(typePath, variable)
 	if found {
-		return fmt.Errorf("proc/verb %s already defined on %v at %v", variable, path, loc)
+		return fmt.Errorf("proc/verb %s already defined on %v at %v", variable, typePath, loc)
 	}
 
 	defType.Procs = append(defType.Procs, gen.DefinedProc{
-		Name:   variable,
-		IsVerb: isVerb,
+		Name: variable,
 	})
 	return nil
 }
@@ -101,6 +106,7 @@ func AssignPath(dt *gen.DefinedTree, path path.TypePath, variable string, expr p
 		if !found {
 			return fmt.Errorf("no such field %s on %v at %v", variable, path, loc)
 		}
+		util.FIXME("make sure that users can't initialize 'verbs' field without making that work out")
 		defType := dt.GetTypeByPath(path)
 		expr, _, err := ExprToGo(expr, CodeGenContext{
 			Tree: dt,

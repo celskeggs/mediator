@@ -39,11 +39,30 @@ func (t *PreparedVar) ConvertTo() []string {
 			return []string{"types.Int(", ")"}
 		}
 	}
+	if at, ok := t.Type.(*ast.ArrayType); ok && at.Len == nil {
+		return []string{"datum.NewListFromSlice(", ")"}
+	}
 	return []string{"", ""}
 }
 
+func getTypeRef(t ast.Expr, packageShort string) (ref string, ok bool) {
+	if ident, ok := t.(*ast.Ident); ok {
+		if len(ident.Name) >= 1 && unicode.IsUpper(rune(ident.Name[0])) {
+			// local custom type
+			return fmt.Sprintf("%s.%s", packageShort, ident.Name), true
+		}
+	} else if sel, ok := t.(*ast.SelectorExpr); ok {
+		if ident, ok := sel.X.(*ast.Ident); ok {
+			return fmt.Sprintf("%s.%s", ident.Name, sel.Sel.Name), true
+		}
+	}
+	return "", false
+}
+
 func (t *PreparedVar) ConvertFrom() []string {
-	if ident, ok := t.Type.(*ast.Ident); ok {
+	if ref, ok := getTypeRef(t.Type, t.PackageShort); ok {
+		return []string{"", ".(" + ref + ")"}
+	} else if ident, ok := t.Type.(*ast.Ident); ok {
 		switch ident.Name {
 		case "bool":
 			return []string{"types.Unbool(", ")"}
@@ -53,15 +72,13 @@ func (t *PreparedVar) ConvertFrom() []string {
 			return []string{"types.Unint(", ")"}
 		case "uint":
 			return []string{"types.Unuint(", ")"}
-		default:
-			if len(ident.Name) >= 1 && unicode.IsUpper(rune(ident.Name[0])) {
-				// local custom type
-				return []string{"", fmt.Sprintf(".(%s.%s)", t.PackageShort, ident.Name)}
-			}
 		}
-	} else if sel, ok := t.Type.(*ast.SelectorExpr); ok {
-		if ident, ok := sel.X.(*ast.Ident); ok {
-			return []string{"", fmt.Sprintf(".(%s.%s)", ident.Name, sel.Sel.Name)}
+	} else if at, ok := t.Type.(*ast.ArrayType); ok && at.Len == nil {
+		if ref, ok := getTypeRef(at.Elt, t.PackageShort); ok {
+			return []string{
+				fmt.Sprintf("datum.ElementsAsType([]%s{}, ", ref),
+				fmt.Sprintf(").([]%s)", ref),
+			}
 		}
 	}
 	return []string{"", ""}

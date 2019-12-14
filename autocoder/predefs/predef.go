@@ -31,7 +31,6 @@ func PathToDataStructName(path path.TypePath) string {
 type ProcedureInfo struct {
 	Name    string
 	DefPath path.TypePath
-	IsVerb  bool
 }
 
 type TypeDefiner interface {
@@ -75,8 +74,8 @@ var platformFields = []FieldInfo{
 }
 
 var platformProcs = []ProcedureInfo{
-	{"Entered", path.ConstTypePath("/atom"), false},
-	{"Bump", path.ConstTypePath("/atom/movable"), false},
+	{"Entered", path.ConstTypePath("/atom")},
+	{"Bump", path.ConstTypePath("/atom/movable")},
 }
 
 var platformGlobalProcs = []string{

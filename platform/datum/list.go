@@ -1,6 +1,10 @@
 package datum
 
-import "github.com/celskeggs/mediator/platform/types"
+import (
+	"github.com/celskeggs/mediator/platform/types"
+	"github.com/celskeggs/mediator/util"
+	"reflect"
+)
 
 type ConcreteList struct {
 	Contents []*types.Ref
@@ -33,8 +37,35 @@ func (c *ConcreteList) RemoveIndex(i int) {
 	c.Contents = c.Contents[:len(c.Contents)-1]
 }
 
-func NewList(initial ...*types.Ref) types.Value {
+func NewListFromRefs(initial ...*types.Ref) types.Value {
 	return List{&ConcreteList{Contents: initial}}
+}
+
+func NewList(initial ...types.Value) types.Value {
+	refs := make([]*types.Ref, len(initial))
+	for i, init := range initial {
+		refs[i] = types.Reference(init)
+	}
+	return NewListFromRefs(refs...)
+}
+
+// converts from []<value> to []types.Value
+func ToValueSlice(initial interface{}) []types.Value {
+	util.FIXME("avoid needing reflection in this codebase")
+	val := reflect.ValueOf(initial)
+	if val.Kind() != reflect.Slice {
+		panic("attempt to run ToValueSlice on something that's not a slice: " + val.String())
+	} else {
+		elements := make([]types.Value, val.Len())
+		for i := 0; i < len(elements); i++ {
+			elements[i] = val.Index(i).Interface().(types.Value)
+		}
+		return elements
+	}
+}
+
+func NewListFromSlice(initial interface{}) types.Value {
+	return NewList(ToValueSlice(initial)...)
 }
 
 func Elements(list types.Value) []types.Value {
@@ -46,6 +77,15 @@ func Elements(list types.Value) []types.Value {
 	return result
 }
 
+func ElementsAsRefs(list types.Value) []*types.Ref {
+	ll := list.(List)
+	result := make([]*types.Ref, ll.Length())
+	for i := 0; i < len(result); i++ {
+		result[i] = ll.Get(i)
+	}
+	return result
+}
+
 func ElementsDatums(list types.Value) []*types.Datum {
 	ll := list.(List)
 	result := make([]*types.Datum, ll.Length())
@@ -53,4 +93,18 @@ func ElementsDatums(list types.Value) []*types.Datum {
 		result[i] = ll.Get(i).Dereference().(*types.Datum)
 	}
 	return result
+}
+
+// slice should be an empty slice of the type we want for the output.
+func ElementsAsType(slice interface{}, list types.Value) interface{} {
+	elements := Elements(list)
+	sliceVal := reflect.ValueOf(slice)
+	if sliceVal.Kind() != reflect.Slice || sliceVal.Len() > 0 {
+		panic("attempt to use non-empty slice as first argument to ElementsAsType")
+	}
+	build := reflect.MakeSlice(sliceVal.Type(), len(elements), len(elements))
+	for i, elem := range elements {
+		build.Index(i).Set(reflect.ValueOf(elem))
+	}
+	return build.Interface()
 }

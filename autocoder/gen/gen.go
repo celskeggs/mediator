@@ -39,8 +39,7 @@ type DefinedImpl struct {
 }
 
 type DefinedProc struct {
-	Name   string
-	IsVerb bool
+	Name string
 }
 
 type DefinedType struct {
@@ -51,6 +50,8 @@ type DefinedType struct {
 	Procs  []DefinedProc
 	Impls  []DefinedImpl
 	Inits  []DefinedInit
+
+	Verbs []string
 
 	context *DefinedTree
 }
@@ -169,7 +170,6 @@ func (t DefinedTree) ResolveProcedure(typePath path.TypePath, name string) (pred
 			return predefs.ProcedureInfo{
 				Name:    proc.Name,
 				DefPath: defType.TypePath,
-				IsVerb:  proc.IsVerb,
 			}, true
 		}
 	}
@@ -296,6 +296,9 @@ type {{.DataStructName}} struct {
 func New{{.DataStructName}}(src *types.Datum, _ *{{.DataStructName}}, _ ...types.Value) {
 	{{- range .Inits}}
 	src.SetVar("{{.Name}}", {{.Value}})
+	{{- end}}
+	{{- range .Verbs}}
+	src.SetVar("verbs", src.Var("verbs").Invoke("+", atoms.NewVerb({{printf "%q, %q, %q" . $type.TypePath .}})))
 	{{- end}}
 }
 
