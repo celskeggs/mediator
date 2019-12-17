@@ -189,7 +189,7 @@ function startSoundPlayer() {
     return Player;
 }
 
-function prepareGame(canvas, inputsource, textoutput) {
+function prepareGame(canvas, inputsource, verbentry, textoutput) {
     var images = null;
     var isTerminated = false;
     var gameActive = false;
@@ -370,6 +370,15 @@ function prepareGame(canvas, inputsource, textoutput) {
         }
     });
 
+    verbentry.focus();
+
+    verbentry.addEventListener("keypress", function (ev) {
+        if (ev.key === "Enter" && verbentry.value !== "") {
+            sendVerb(verbentry.value);
+            verbentry.value = "";
+        }
+    });
+
     imageLoader(resources, function (receivedImages) {
         images = receivedImages;
         var url = getWebSocketURL();
@@ -383,8 +392,9 @@ function prepareGame(canvas, inputsource, textoutput) {
 
 window.addEventListener("load", function () {
     var canvas = document.getElementById("playspace");
+    var verbEntry = document.getElementById("verb");
     var textOutput = document.getElementById("textspace");
     if (canvas.getContext) {
-        prepareGame(canvas, document.body, textOutput);
+        prepareGame(canvas, document.body, verbEntry, textOutput);
     }
 });

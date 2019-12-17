@@ -1,6 +1,7 @@
 package world
 
 import (
+	"fmt"
 	"github.com/celskeggs/mediator/common"
 	"github.com/celskeggs/mediator/platform/atoms"
 	"github.com/celskeggs/mediator/platform/types"
@@ -64,6 +65,10 @@ func (d *ClientData) GetVirtualEye(src *types.Datum) types.Value {
 }
 
 func InvokeVerb(client types.Value, verb string) {
+	util.FIXME("handle defined verbs, not just built-in verbs")
+	util.FIXME("support expanding partially-typed verbs")
+	util.FIXME("support on-screen verb panels")
+	util.FIXME("support right-clicking to access context menu verbs")
 	switch verb {
 	case ".north":
 		client.Invoke("North")
@@ -75,6 +80,7 @@ func InvokeVerb(client types.Value, verb string) {
 		client.Invoke("West")
 	default:
 		log.Println("got unknown verb:", verb)
+		client.Invoke("<<", types.String(fmt.Sprintf("Not a known verb: %q", verb)))
 	}
 }
 
