@@ -12,6 +12,10 @@ type World interface {
 	LocateXYZ(x, y, z uint) (turf types.Value)
 	Realm() *types.Realm
 	Icon(name string) *icon.Icon
+	FindAll(predicate func(*types.Datum) bool) []types.Value
+	FindAllType(tp types.TypePath) []types.Value
+	FindOne(predicate func(*types.Datum) bool) types.Value
+	FindOneType(tp types.TypePath) types.Value
 }
 
 func WorldOf(t *types.Datum) World {

@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"github.com/celskeggs/mediator/common"
 	"github.com/celskeggs/mediator/platform/atoms"
+	"github.com/celskeggs/mediator/platform/datum"
 	"github.com/celskeggs/mediator/platform/types"
 	"github.com/celskeggs/mediator/util"
 	"github.com/celskeggs/mediator/webclient/sprite"
 	"log"
+	"strings"
 )
 
 //mediator:declare ClientData /client /datum
@@ -65,6 +67,7 @@ func (d *ClientData) GetVirtualEye(src *types.Datum) types.Value {
 }
 
 func InvokeVerb(client types.Value, verb string) {
+	clientDatum, clientData := ClientDataChunk(client)
 	util.FIXME("handle defined verbs, not just built-in verbs")
 	util.FIXME("support expanding partially-typed verbs")
 	util.FIXME("support on-screen verb panels")
@@ -78,9 +81,13 @@ func InvokeVerb(client types.Value, verb string) {
 		client.Invoke("East")
 	case ".west":
 		client.Invoke("West")
+	case ".verbs":
+		for _, verb := range clientData.ListVerbs(clientDatum) {
+			client.Invoke("<<", types.String("found verb: "+verb))
+		}
 	default:
-		log.Println("got unknown verb:", verb)
-		client.Invoke("<<", types.String(fmt.Sprintf("Not a known verb: %q", verb)))
+		args := strings.Split(strings.TrimSpace(verb), " ")
+		clientData.ResolveVerb(clientDatum, args[0], args[1:])
 	}
 }
 
@@ -136,23 +143,20 @@ func (d *ClientData) OperatorWrite(src *types.Datum, output types.Value) types.V
 	return nil
 }
 
-func ClientDataChunk(v types.Value) (*ClientData, bool) {
+func ClientDataChunk(v types.Value) (*types.Datum, *ClientData) {
 	impl, ok := types.Unpack(v)
 	if !ok {
-		return nil, false
+		panic("expected a /client, not non-datum " + v.String())
 	}
 	chunk := impl.Chunk("github.com/celskeggs/mediator/platform/world.ClientData")
 	if chunk == nil {
-		return nil, false
+		panic("expected a /client, not datum " + v.String())
 	}
-	return chunk.(*ClientData), true
+	return v.(*types.Datum), chunk.(*ClientData)
 }
 
 func PullClientRequests(client *types.Datum) (textDisplay []string, sounds []sprite.Sound) {
-	d, ok := ClientDataChunk(client)
-	if !ok {
-		panic("attempt to PullClientRequests on something that's not a /client")
-	}
+	_, d := ClientDataChunk(client)
 	textDisplay, sounds = d.textBuffer, d.soundBuffer
 	d.textBuffer = nil
 	d.soundBuffer = nil
@@ -201,4 +205,39 @@ func (d *ClientData) ProcDel(src *types.Datum) types.Value {
 	util.FIXME("call Logout() on mob")
 	util.FIXME("should killing the connection go here, maybe in addition to other places?")
 	return nil
+}
+
+func (d *ClientData) ResolveVerb(src *types.Datum, verbName string, args []string) {
+	verbUsr := src
+	for _, verbSrcVal := range atoms.WorldOf(src).FindAllType("/atom") {
+		verbSrc := verbSrcVal.(*types.Datum)
+		for _, verbVal := range datum.Elements(verbSrc.Var("verbs")) {
+			verb := verbVal.(atoms.Verb)
+			if verb.Matches(verbName, verbSrc, verbUsr) {
+				resolved, err := verb.ResolveArgs(verbSrc, verbUsr, args)
+				if err != nil {
+					log.Printf("cannot resolve verb %v: %v\n", verb, err)
+					src.Invoke("<<", types.String(fmt.Sprintf("cannot resolve verb %v: %v\n", verb, err)))
+				} else {
+					verb.Apply(verbSrc, verbUsr, resolved)
+				}
+				return
+			}
+		}
+	}
+	log.Println("got unknown verb:", verbName)
+	src.Invoke("<<", types.String(fmt.Sprintf("Not a known verb: %q", verbName)))
+}
+
+func (d *ClientData) ListVerbs(src *types.Datum) (verbs []string) {
+	verbUsr := src
+	for _, verbSrc := range atoms.WorldOf(src).FindAllType("/atom") {
+		for _, verbVal := range datum.Elements(verbSrc.Var("verbs")) {
+			verb := verbVal.(atoms.Verb)
+			if verb.Matches(verb.VisibleName, verbSrc.(*types.Datum), verbUsr) {
+				verbs = append(verbs, verb.VisibleName)
+			}
+		}
+	}
+	return verbs
 }

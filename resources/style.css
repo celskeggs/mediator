@@ -1,7 +1,7 @@
 .container {
     display: flex;
     flex-flow: row nowrap;
-    width: 960px;
+    width: 1008px;
     height: 672px;
     margin: 0 auto;
 }
