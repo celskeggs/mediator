@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"github.com/celskeggs/mediator/autocoder/dtype"
 	"github.com/celskeggs/mediator/dream/declpath"
 	"github.com/celskeggs/mediator/dream/path"
 	"github.com/celskeggs/mediator/dream/tokenizer"
@@ -229,7 +230,7 @@ func parseFunctionArguments(i *input) ([]DreamMakerTypedName, error) {
 			return nil, err
 		}
 		args = append(args, DreamMakerTypedName{
-			Type: typePath,
+			Type: dtype.FromPath(typePath),
 			Name: varName,
 		})
 		if !i.Accept(tokenizer.TokComma) {
@@ -241,6 +242,16 @@ func parseFunctionArguments(i *input) ([]DreamMakerTypedName, error) {
 		return nil, err
 	}
 	return args, nil
+}
+
+func addVar(vars []DreamMakerTypedName, varType dtype.DType, varName string) []DreamMakerTypedName {
+	result := make([]DreamMakerTypedName, len(vars)+1)
+	copy(result, vars)
+	result[len(vars)] = DreamMakerTypedName{
+		Type: varType,
+		Name: varName,
+	}
+	return result
 }
 
 func parseStatement(i *input, variables []DreamMakerTypedName) (DreamMakerStatement, error) {
@@ -273,7 +284,8 @@ func parseStatement(i *input, variables []DreamMakerTypedName) (DreamMakerStatem
 		if !varpath.IsVarDef() {
 			return StatementNone(), fmt.Errorf("path %v is not a variable definition at %v", varpath, loc2)
 		}
-		varTarget, varType, varName := varpath.SplitDef()
+		varTarget, varTypePath, varName := varpath.SplitDef()
+		varType := dtype.FromPath(varTypePath)
 		if !varTarget.IsEmpty() {
 			return StatementNone(), fmt.Errorf("invalid prefix for 'var' in path %v at %v", varpath, loc2)
 		}
@@ -289,7 +301,7 @@ func parseStatement(i *input, variables []DreamMakerTypedName) (DreamMakerStatem
 		if err := i.Expect(tokenizer.TokParenClose); err != nil {
 			return StatementNone(), err
 		}
-		body, err := parseStatementBlock(i, variables)
+		body, err := parseStatementBlock(i, addVar(variables, varType, varName))
 		if err != nil {
 			return StatementNone(), err
 		}
@@ -393,11 +405,11 @@ func parseFunctionBody(i *input, srcType path.TypePath, arguments []DreamMakerTy
 	copy(variables, arguments)
 	variables = append(variables,
 		DreamMakerTypedName{
-			Type: srcType,
+			Type: dtype.Path(srcType),
 			Name: "src",
 		},
 		DreamMakerTypedName{
-			Type: path.ConstTypePath("/mob"),
+			Type: dtype.ConstPath("/mob"),
 			Name: "usr",
 		},
 	)

@@ -3,6 +3,7 @@ package dtype
 import (
 	"fmt"
 	"github.com/celskeggs/mediator/dream/path"
+	"github.com/celskeggs/mediator/util"
 )
 
 type DKind int
@@ -20,6 +21,10 @@ type DType struct {
 	path path.TypePath
 }
 
+func (d DType) IsNone() bool {
+	return d.kind == KNone
+}
+
 func (d DType) Path() path.TypePath {
 	if d.kind != KPath {
 		panic("not a path")
@@ -33,6 +38,10 @@ func (d DType) IsInteger() bool {
 
 func (d DType) IsString() bool {
 	return d.kind == KString
+}
+
+func (d DType) IsAnyPath() bool {
+	return d.kind == KPath
 }
 
 func (d DType) IsPath(path path.TypePath) bool {
@@ -84,6 +93,7 @@ func Integer() DType {
 	}
 }
 
+// assumes that the type path is for a datum, unlike FromPath
 func Path(typePath path.TypePath) DType {
 	return DType{
 		kind: KPath,
@@ -93,4 +103,19 @@ func Path(typePath path.TypePath) DType {
 
 func ConstPath(typePath string) DType {
 	return Path(path.ConstTypePath(typePath))
+}
+
+// decodes path if it's not a datum, unlike Path
+func FromPath(typePath path.TypePath) DType {
+	if !typePath.IsAbsolute {
+		typePath = path.Root().Join(typePath)
+	}
+	if len(typePath.Segments) == 1 {
+		util.FIXME("figure out what the right set of things here is")
+		switch typePath.Segments[0] {
+		case "string":
+			return String()
+		}
+	}
+	return Path(typePath)
 }

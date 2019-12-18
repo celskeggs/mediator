@@ -2,13 +2,13 @@ package procs
 
 import (
 	"fmt"
+	"github.com/celskeggs/mediator/platform/atoms"
+	"github.com/celskeggs/mediator/platform/datum"
 	"github.com/celskeggs/mediator/platform/types"
 )
 
-func KWInvoke(name string, kwargs map[string]types.Value, args ...types.Value) types.Value {
+func KWInvoke(w atoms.World, usr *types.Datum, name string, kwargs map[string]types.Value, args ...types.Value) types.Value {
 	switch name {
-	case "!":
-		return types.FromBool(!types.AsBool(types.Param(args, 0)))
 	case "ismob":
 		return types.FromBool(types.IsType(types.Param(args, 0), "/mob"))
 	case "sound":
@@ -24,6 +24,10 @@ func KWInvoke(name string, kwargs map[string]types.Value, args ...types.Value) t
 	}
 }
 
-func Invoke(name string, args ...types.Value) types.Value {
-	return KWInvoke(name, nil, args...)
+func Invoke(w atoms.World, usr *types.Datum, name string, args ...types.Value) types.Value {
+	return KWInvoke(w, usr, name, nil, args...)
+}
+
+func OperatorNot(x types.Value) types.Value {
+	return types.FromBool(!types.AsBool(x))
 }

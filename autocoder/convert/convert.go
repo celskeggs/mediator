@@ -108,8 +108,10 @@ func AssignPath(dt *gen.DefinedTree, path path.TypePath, variable string, expr p
 		}
 		util.FIXME("make sure that users can't initialize 'verbs' field without making that work out")
 		defType := dt.GetTypeByPath(path)
+		util.FIXME("make it easier to tell that atoms.WorldOf(src) is valid here")
 		expr, _, err := ExprToGo(expr, CodeGenContext{
-			Tree: dt,
+			WorldRef: "atoms.WorldOf(src)",
+			Tree:     dt,
 		})
 		if err != nil {
 			return err
@@ -138,13 +140,17 @@ func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string,
 	}
 
 	var params []string
+	vartypes := map[string]dtype.DType{}
+	vartypes["src"] = dtype.Path(path)
 	for _, a := range arguments {
 		params = append(params, LocalVariablePrefix+a.Name)
+		vartypes[a.Name] = a.Type
 	}
 
 	lines, err := FuncBodyToGo(body, CodeGenContext{
-		Tree:    dt,
-		SrcType: path,
+		WorldRef: "atoms.WorldOf(" + LocalVariablePrefix + "src)",
+		Tree:     dt,
+		VarTypes: vartypes,
 	})
 	if err != nil {
 		return err

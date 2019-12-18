@@ -27,8 +27,23 @@ func ConstantPath(expr parser.DreamMakerExpression) path.TypePath {
 }
 
 type CodeGenContext struct {
-	Tree    *gen.DefinedTree
-	SrcType path.TypePath
+	WorldRef string
+	Tree     *gen.DefinedTree
+	VarTypes map[string]dtype.DType
+}
+
+func (ctx CodeGenContext) WithVar(name string, varType dtype.DType) CodeGenContext {
+	if _, found := ctx.VarTypes[name]; found {
+		util.FIXME("should probably not panic here")
+		panic("duplicate variable " + name)
+	}
+	vt := map[string]dtype.DType{}
+	for k, v := range ctx.VarTypes {
+		vt[k] = v
+	}
+	vt[name] = varType
+	ctx.VarTypes = vt
+	return ctx
 }
 
 type ResourceType int
@@ -57,9 +72,8 @@ func ExprToGo(expr parser.DreamMakerExpression, ctx CodeGenContext) (exprString 
 	case parser.ExprTypeResourceLiteral:
 		switch ResourceTypeByName(expr.Str) {
 		case ResourceTypeIcon:
-			util.FIXME("make this load work in more cases")
 			ctx.Tree.AddImport("github.com/celskeggs/mediator/platform/atoms")
-			return fmt.Sprintf("atoms.WorldOf(src).Icon(%q)", expr.Str), dtype.ConstPath("/icon"), nil
+			return fmt.Sprintf("%s.Icon(%q)", ctx.WorldRef, expr.Str), dtype.ConstPath("/icon"), nil
 		case ResourceTypeAudio:
 			ctx.Tree.AddImport("github.com/celskeggs/mediator/platform/procs")
 			return fmt.Sprintf("procs.NewSound(%q)", expr.Str), dtype.ConstPath("/sound"), nil
@@ -75,7 +89,7 @@ func ExprToGo(expr parser.DreamMakerExpression, ctx CodeGenContext) (exprString 
 		if err != nil {
 			return "", dtype.None(), err
 		}
-		return fmt.Sprintf("procs.Invoke(\"!\", %s)", innerString), dtype.Integer(), nil
+		return fmt.Sprintf("procs.OperatorNot(%s)", innerString), dtype.Integer(), nil
 	case parser.ExprTypeCall:
 		target := expr.Children[0]
 		args := expr.Children[1:]
@@ -108,6 +122,10 @@ func ExprToGo(expr parser.DreamMakerExpression, ctx CodeGenContext) (exprString 
 			}
 		}
 
+		usrRef := "nil"
+		if _, hasusr := ctx.VarTypes["usr"]; hasusr {
+			usrRef = LocalVariablePrefix + "usr"
+		}
 		if len(kwargs) != 0 {
 			kwargStr := "map[string]types.Value{"
 			first := true
@@ -120,15 +138,15 @@ func ExprToGo(expr parser.DreamMakerExpression, ctx CodeGenContext) (exprString 
 				kwargStr += fmt.Sprintf("%q: %s", name, arg)
 			}
 			kwargStr += "}"
-			return fmt.Sprintf("procs.KWInvoke(%q, %s%s)", target.Str, kwargStr, strings.Join(convArgs, "")), dtype.Any(), nil
+			return fmt.Sprintf("procs.KWInvoke(%s, %s, %q, %s%s)", ctx.WorldRef, usrRef, target.Str, kwargStr, strings.Join(convArgs, "")), dtype.Any(), nil
 		} else {
-			return fmt.Sprintf("procs.Invoke(%q%s)", target.Str, strings.Join(convArgs, "")), dtype.Any(), nil
+			return fmt.Sprintf("procs.Invoke(%s, %s, %q%s)", ctx.WorldRef, usrRef, target.Str, strings.Join(convArgs, "")), dtype.Any(), nil
 		}
 	case parser.ExprTypeGetNonLocal:
 		util.FIXME("resolve more types of nonlocals")
 		// look for local fields
-		if !ctx.SrcType.IsEmpty() {
-			ftype, found := ctx.Tree.ResolveField(ctx.SrcType, expr.Str)
+		if srctype, ok := ctx.VarTypes["src"]; ok && srctype.IsAnyPath() {
+			ftype, found := ctx.Tree.ResolveField(srctype.Path(), expr.Str)
 			if found {
 				return LocalVariablePrefix + fmt.Sprintf("src.Var(%q)", expr.Str), ftype, nil
 			}

@@ -21,8 +21,8 @@ func (dms DreamMakerStatement) Dump(output io.Writer, indent int) error {
 			return err
 		}
 	}
-	if !dms.Path.IsEmpty() {
-		_, err := fmt.Fprintf(output, "%spath = %v\n", makeIndent(indent+1), dms.Path)
+	if !dms.VarType.IsNone() {
+		_, err := fmt.Fprintf(output, "%spath = %v\n", makeIndent(indent+1), dms.VarType)
 		if err != nil {
 			return err
 		}

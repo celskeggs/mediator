@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"github.com/celskeggs/mediator/autocoder/dtype"
 	"github.com/celskeggs/mediator/dream/path"
 	"github.com/celskeggs/mediator/dream/tokenizer"
 	"strings"
@@ -233,7 +234,7 @@ func (et StatementType) String() string {
 
 type DreamMakerStatement struct {
 	Type      StatementType
-	Path      path.TypePath
+	VarType   dtype.DType
 	Name      string
 	From      DreamMakerExpression
 	To        DreamMakerExpression
@@ -315,10 +316,10 @@ func StatementDel(expr DreamMakerExpression, loc tokenizer.SourceLocation) Dream
 	}
 }
 
-func StatementForList(vartype path.TypePath, varname string, inExpr DreamMakerExpression, body []DreamMakerStatement, loc tokenizer.SourceLocation) DreamMakerStatement {
+func StatementForList(vartype dtype.DType, varname string, inExpr DreamMakerExpression, body []DreamMakerStatement, loc tokenizer.SourceLocation) DreamMakerStatement {
 	return DreamMakerStatement{
 		Type:      StatementTypeForList,
-		Path:      vartype,
+		VarType:   vartype,
 		Name:      varname,
 		From:      inExpr,
 		Body:      body,
@@ -338,8 +339,8 @@ func (dms DreamMakerStatement) String() string {
 	if !dms.To.IsNone() {
 		params = append(params, fmt.Sprintf("to=%v", dms.To))
 	}
-	if !dms.Path.IsEmpty() {
-		params = append(params, fmt.Sprintf("path=%v", dms.Path))
+	if !dms.VarType.IsNone() {
+		params = append(params, fmt.Sprintf("vartype=%v", dms.VarType))
 	}
 	if dms.Name != "" {
 		params = append(params, fmt.Sprintf("name=%q", dms.Name))
@@ -353,7 +354,7 @@ func (dms DreamMakerStatement) String() string {
 }
 
 type DreamMakerTypedName struct {
-	Type path.TypePath // always absolute; root path for "no type"
+	Type dtype.DType
 	Name string
 }
 
