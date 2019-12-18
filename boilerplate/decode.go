@@ -151,13 +151,17 @@ func (source *SourceInfo) LoadProc(fset *token.FileSet, structName string, decl 
 	for _, param := range decl.Type.Params.List {
 		types = append(types, param.Type)
 	}
-	if len(types) < 1 {
-		return fmt.Errorf("proc %s.%s must take at least src at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
+	if len(types) < 2 {
+		return fmt.Errorf("proc %s.%s must take at least src and usr at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
 	}
 	for i, t := range types {
 		if i == 0 {
 			if !IsDatumType(t) {
 				return fmt.Errorf("proc %s.%s must take src from *types.Datum at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
+			}
+		} else if i == 1 {
+			if !IsDatumType(t) {
+				return fmt.Errorf("proc %s.%s must take usr from *types.Datum at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
 			}
 		} else {
 			if !IsValueType(t) {
@@ -177,7 +181,7 @@ func (source *SourceInfo) LoadProc(fset *token.FileSet, structName string, decl 
 	}
 	source.Procs = append(source.Procs, ProcInfo{
 		Name:       name,
-		ParamCount: len(types) - 1,
+		ParamCount: len(types) - 2,
 	})
 	return nil
 }

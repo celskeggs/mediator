@@ -24,7 +24,7 @@ func (v Verb) SetVar(name string, value types.Value) {
 	panic(fmt.Sprintf("no such variable %q on /verb", name))
 }
 
-func (v Verb) Invoke(name string, parameters ...types.Value) types.Value {
+func (v Verb) Invoke(usr *types.Datum, name string, parameters ...types.Value) types.Value {
 	panic(fmt.Sprintf("no such proc %q on /verb", name))
 }
 
@@ -47,7 +47,7 @@ func (v Verb) ResolveArgs(src *types.Datum, usr *types.Datum, args []string) ([]
 
 func (v Verb) Apply(src *types.Datum, usr *types.Datum, args []types.Value) {
 	util.FIXME("include usr somehow")
-	src.Invoke(v.ProcName, args...)
+	src.Invoke(usr, v.ProcName, args...)
 }
 
 func NewVerb(visibleName, defType, procName string) Verb {

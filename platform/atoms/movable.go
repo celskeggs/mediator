@@ -23,7 +23,7 @@ func ContainingArea(atom types.Value) types.Value {
 	return nil
 }
 
-func (d *AtomData) ProcMove(src *types.Datum, newloc types.Value, direction types.Value) types.Value {
+func (d *AtomData) ProcMove(src *types.Datum, usr *types.Datum, newloc types.Value, direction types.Value) types.Value {
 	util.NiceToHave("implement pixel movement/slides")
 
 	oldloc := src.Var("loc")
@@ -34,40 +34,40 @@ func (d *AtomData) ProcMove(src *types.Datum, newloc types.Value, direction type
 	if newloc != oldloc && newloc != nil {
 		newarea := ContainingArea(newloc)
 		if oldloc != nil {
-			if !types.AsBool(oldloc.Invoke("Exit", src, newloc)) {
+			if !types.AsBool(oldloc.Invoke(usr, "Exit", src, newloc)) {
 				return types.Int(0)
 			}
 			util.NiceToHave("handle Cross and Uncross and Crossed and Uncrossed")
 		}
 		if newarea != oldarea && oldarea != nil {
-			if !types.AsBool(oldarea.Invoke("Exit", src, newarea)) {
+			if !types.AsBool(oldarea.Invoke(usr, "Exit", src, newarea)) {
 				return types.Int(0)
 			}
 		}
-		if !types.AsBool(newloc.Invoke("Enter", src, oldloc)) {
+		if !types.AsBool(newloc.Invoke(usr, "Enter", src, oldloc)) {
 			return types.Int(0)
 		}
 		if newarea != oldarea && newarea != nil {
-			if !types.AsBool(newarea.Invoke("Enter", src, oldarea)) {
+			if !types.AsBool(newarea.Invoke(usr, "Enter", src, oldarea)) {
 				return types.Int(0)
 			}
 		}
 		src.SetVar("loc", newloc)
 		if oldloc != nil {
-			oldloc.Invoke("Exited", src, newloc)
+			oldloc.Invoke(usr, "Exited", src, newloc)
 		}
 		if newarea != oldarea && oldarea != nil {
-			oldarea.Invoke("Exited", src, newarea)
+			oldarea.Invoke(usr, "Exited", src, newarea)
 		}
-		newloc.Invoke("Entered", src, oldloc)
+		newloc.Invoke(usr, "Entered", src, oldloc)
 		if newarea != oldarea && newarea != nil {
-			newarea.Invoke("Entered", src, oldarea)
+			newarea.Invoke(usr, "Entered", src, oldarea)
 		}
 	}
 	return types.Int(1)
 }
 
-func (d *AtomData) ProcBump(src *types.Datum, obstacle types.Value) types.Value {
+func (d *AtomData) ProcBump(src *types.Datum, usr *types.Datum, obstacle types.Value) types.Value {
 	// nothing to do in the general case
 	util.NiceToHave("group support for mob bumping")
 	return nil

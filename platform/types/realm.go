@@ -120,9 +120,9 @@ func (realm *Realm) NewPlain(path TypePath, params ...Value) *Datum {
 	return realm.typeTree.New(realm, path, params...)
 }
 
-func (realm *Realm) New(path TypePath, params ...Value) *Datum {
+func (realm *Realm) New(path TypePath, usr *Datum, params ...Value) *Datum {
 	datum := realm.typeTree.New(realm, path, params...)
-	datum.Invoke("New", params...)
+	datum.Invoke(usr, "New", params...)
 	return datum
 }
 

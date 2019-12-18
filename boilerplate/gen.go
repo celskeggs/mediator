@@ -168,11 +168,11 @@ func (t *{{.Type}}Impl) SetVar(src *types.Datum, name string, value types.Value)
 	}
 }
 
-func (t *{{.Type}}Impl) Proc(src *types.Datum, name string, params ...types.Value) (types.Value, bool) {
+func (t *{{.Type}}Impl) Proc(src *types.Datum, usr *types.Datum, name string, params ...types.Value) (types.Value, bool) {
 	switch name {
 {{- range .Procs}}
 	case "{{.Name}}":
-		return t.{{.StructName}}.{{.ProcName}}(src{{range .ParamNums}}, types.Param(params, {{ . }}){{end}}), true
+		return t.{{.StructName}}.{{.ProcName}}(src, usr{{range .ParamNums}}, types.Param(params, {{ . }}){{end}}), true
 {{- end}}
 	default:
 		return nil, false

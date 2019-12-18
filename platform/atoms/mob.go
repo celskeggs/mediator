@@ -18,10 +18,10 @@ func NewMobData(src *types.Datum, _ *MobData, _ ...types.Value) {
 	src.SetVar("density", types.Int(1))
 }
 
-func (m *MobData) OperatorWrite(src *types.Datum, output types.Value) types.Value {
+func (m *MobData) OperatorWrite(src *types.Datum, usr *types.Datum, output types.Value) types.Value {
 	client := m.GetClient(src)
 	if client != nil {
-		client.Invoke("<<", output)
+		client.Invoke(usr, "<<", output)
 	}
 	return nil
 }
@@ -68,7 +68,8 @@ func (m *MobData) GetKey(src *types.Datum) types.Value {
 	return types.String(m.key)
 }
 
-func (m *MobData) ProcLogin(src *types.Datum) types.Value {
+func (m *MobData) ProcLogin(src *types.Datum, usr *types.Datum) types.Value {
+	util.FIXME("make sure that Login gets called when client.mob is changed")
 	// algorithm:
 	// start at (1,1,1), scan across horizontally, then vertically, then in Z direction
 	// pick first location that is *not* dense. move into it. if failed, continue. if none, leave location as null.
@@ -78,7 +79,7 @@ func (m *MobData) ProcLogin(src *types.Datum) types.Value {
 			for x := uint(1); x <= mx; x++ {
 				turf := WorldOf(src).LocateXYZ(x, y, z)
 				if turf != nil && !types.AsBool(turf.Var("density")) {
-					if types.AsBool(src.Invoke("Move", turf, common.Direction(0))) {
+					if types.AsBool(src.Invoke(usr, "Move", turf, common.Direction(0))) {
 						return nil
 					}
 				}

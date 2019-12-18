@@ -62,7 +62,7 @@ func (icon *Icon) SetVar(name string, value types.Value) {
 	panic("no such var " + name + " on icon")
 }
 
-func (icon *Icon) Invoke(name string, parameters ...types.Value) types.Value {
+func (icon *Icon) Invoke(usr *types.Datum, name string, parameters ...types.Value) types.Value {
 	util.FIXME("implement Icon procedures")
 	panic("no such proc " + name + " on icon")
 }

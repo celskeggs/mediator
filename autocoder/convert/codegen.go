@@ -32,6 +32,14 @@ type CodeGenContext struct {
 	VarTypes map[string]dtype.DType
 }
 
+func (ctx CodeGenContext) UsrRef() string {
+	if _, hasusr := ctx.VarTypes["usr"]; hasusr {
+		return LocalVariablePrefix + "usr"
+	} else {
+		return "nil"
+	}
+}
+
 func (ctx CodeGenContext) WithVar(name string, varType dtype.DType) CodeGenContext {
 	if _, found := ctx.VarTypes[name]; found {
 		util.FIXME("should probably not panic here")
@@ -122,10 +130,6 @@ func ExprToGo(expr parser.DreamMakerExpression, ctx CodeGenContext) (exprString 
 			}
 		}
 
-		usrRef := "nil"
-		if _, hasusr := ctx.VarTypes["usr"]; hasusr {
-			usrRef = LocalVariablePrefix + "usr"
-		}
 		if len(kwargs) != 0 {
 			kwargStr := "map[string]types.Value{"
 			first := true
@@ -138,9 +142,9 @@ func ExprToGo(expr parser.DreamMakerExpression, ctx CodeGenContext) (exprString 
 				kwargStr += fmt.Sprintf("%q: %s", name, arg)
 			}
 			kwargStr += "}"
-			return fmt.Sprintf("procs.KWInvoke(%s, %s, %q, %s%s)", ctx.WorldRef, usrRef, target.Str, kwargStr, strings.Join(convArgs, "")), dtype.Any(), nil
+			return fmt.Sprintf("procs.KWInvoke(%s, %s, %q, %s%s)", ctx.WorldRef, ctx.UsrRef(), target.Str, kwargStr, strings.Join(convArgs, "")), dtype.Any(), nil
 		} else {
-			return fmt.Sprintf("procs.Invoke(%s, %s, %q%s)", ctx.WorldRef, usrRef, target.Str, strings.Join(convArgs, "")), dtype.Any(), nil
+			return fmt.Sprintf("procs.Invoke(%s, %s, %q%s)", ctx.WorldRef, ctx.UsrRef(), target.Str, strings.Join(convArgs, "")), dtype.Any(), nil
 		}
 	case parser.ExprTypeGetNonLocal:
 		util.FIXME("resolve more types of nonlocals")
@@ -236,8 +240,9 @@ func StatementToGo(statement parser.DreamMakerStatement, ctx CodeGenContext) (li
 		if err != nil {
 			return nil, err
 		}
+
 		return []string{
-			fmt.Sprintf("(%s).Invoke(\"<<\", %s)", target, value),
+			fmt.Sprintf("(%s).Invoke(%s, \"<<\", %s)", target, ctx.UsrRef(), value),
 		}, nil
 	case parser.StatementTypeReturn:
 		util.FIXME("support returning values")

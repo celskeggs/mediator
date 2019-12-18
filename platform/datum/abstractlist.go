@@ -46,7 +46,7 @@ func (l List) SetVar(name string, value types.Value) {
 	}
 }
 
-func (l List) Invoke(name string, parameters ...types.Value) types.Value {
+func (l List) Invoke(usr *types.Datum, name string, parameters ...types.Value) types.Value {
 	switch name {
 	case "+":
 		value := types.Param(parameters, 0)

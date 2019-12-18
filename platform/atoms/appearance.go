@@ -66,7 +66,7 @@ func (a Appearance) SetVar(name string, value types.Value) {
 	panic("cannot modify immutable appearance")
 }
 
-func (a Appearance) Invoke(name string, parameters ...types.Value) types.Value {
+func (a Appearance) Invoke(usr *types.Datum, name string, parameters ...types.Value) types.Value {
 	panic("no such function " + name + " on appearance")
 }
 

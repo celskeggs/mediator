@@ -79,13 +79,13 @@ func (w *World) CreateNewPlayer(key string) *types.Datum {
 		client.SetVar("view", types.Int(w.ViewDist))
 	}
 	w.clients[client] = types.Reference(client)
-	client.Invoke("New", w.findExistingMob(key))
+	client.Invoke(nil, "New", w.findExistingMob(key))
 	return client
 }
 
 func (w *World) RemovePlayer(client *types.Datum) {
 	delete(w.clients, client)
-	client.Invoke("Del")
+	client.Invoke(nil, "Del")
 }
 
 func (w *World) PlayerExists(client types.Value) bool {

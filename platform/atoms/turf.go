@@ -44,22 +44,22 @@ func (t *TurfData) SetZ(src *types.Datum, z types.Value) {
 	t.Z = uint(types.Unint(z))
 }
 
-func (t *TurfData) ProcExit(src *types.Datum, atom types.Value, newloc types.Value) types.Value {
+func (t *TurfData) ProcExit(src *types.Datum, usr *types.Datum, atom types.Value, newloc types.Value) types.Value {
 	util.NiceToHave("call Uncross here")
 	return types.Int(1)
 }
 
-func (t *TurfData) ProcEnter(src *types.Datum, atom types.Value, oldloc types.Value) types.Value {
+func (t *TurfData) ProcEnter(src *types.Datum, usr *types.Datum, atom types.Value, oldloc types.Value) types.Value {
 	util.NiceToHave("call Cross here")
 	if types.AsBool(atom.Var("density")) {
 		if types.AsBool(src.Var("density")) {
-			atom.Invoke("Bump", src)
+			atom.Invoke(usr, "Bump", src)
 			return types.Int(0)
 		}
 		util.NiceToHave("something about only atoms that take up the full tile?")
 		for _, existingAtom := range datum.Elements(src.Var("contents")) {
 			if types.AsBool(existingAtom.Var("density")) {
-				atom.Invoke("Bump", existingAtom)
+				atom.Invoke(usr, "Bump", existingAtom)
 				return types.Int(0)
 			}
 		}
@@ -67,12 +67,12 @@ func (t *TurfData) ProcEnter(src *types.Datum, atom types.Value, oldloc types.Va
 	return types.Int(1)
 }
 
-func (t *TurfData) ProcExited(src *types.Datum, atom types.Value, newloc types.Value) types.Value {
+func (t *TurfData) ProcExited(src *types.Datum, usr *types.Datum, atom types.Value, newloc types.Value) types.Value {
 	util.NiceToHave("call Uncrossed here")
 	return nil
 }
 
-func (t *TurfData) ProcEntered(src *types.Datum, atom types.Value, oldloc types.Value) types.Value {
+func (t *TurfData) ProcEntered(src *types.Datum, usr *types.Datum, atom types.Value, oldloc types.Value) types.Value {
 	util.NiceToHave("call Crossed here")
 	return nil
 }

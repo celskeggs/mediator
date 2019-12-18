@@ -72,18 +72,23 @@ func InvokeVerb(client types.Value, verb string) {
 	util.FIXME("support expanding partially-typed verbs")
 	util.FIXME("support on-screen verb panels")
 	util.FIXME("support right-clicking to access context menu verbs")
+	mob := clientData.GetMob(clientDatum)
+	var mobDatum *types.Datum
+	if mob != nil {
+		mobDatum = mob.(*types.Datum)
+	}
 	switch verb {
 	case ".north":
-		client.Invoke("North")
+		client.Invoke(mobDatum, "North")
 	case ".south":
-		client.Invoke("South")
+		client.Invoke(mobDatum, "South")
 	case ".east":
-		client.Invoke("East")
+		client.Invoke(mobDatum, "East")
 	case ".west":
-		client.Invoke("West")
+		client.Invoke(mobDatum, "West")
 	case ".verbs":
 		for _, verb := range clientData.ListVerbs(clientDatum) {
-			client.Invoke("<<", types.String("found verb: "+verb))
+			client.Invoke(mobDatum, "<<", types.String("found verb: "+verb))
 		}
 	default:
 		args := strings.Split(strings.TrimSpace(verb), " ")
@@ -91,7 +96,7 @@ func InvokeVerb(client types.Value, verb string) {
 	}
 }
 
-func (d *ClientData) relMove(src *types.Datum, direction common.Direction) types.Value {
+func (d *ClientData) relMove(src *types.Datum, usr *types.Datum, direction common.Direction) types.Value {
 	var turf types.Value
 	mob := d.GetMob(src)
 	world := atoms.WorldOf(src)
@@ -103,35 +108,35 @@ func (d *ClientData) relMove(src *types.Datum, direction common.Direction) types
 	if turf != nil {
 		types.AssertType(turf, "/turf")
 	}
-	return src.Invoke("Move", turf, direction)
+	return src.Invoke(usr, "Move", turf, direction)
 }
 
-func (d *ClientData) ProcNorth(src *types.Datum) types.Value {
-	return d.relMove(src, common.North)
+func (d *ClientData) ProcNorth(src *types.Datum, usr *types.Datum) types.Value {
+	return d.relMove(src, usr, common.North)
 }
 
-func (d *ClientData) ProcSouth(src *types.Datum) types.Value {
-	return d.relMove(src, common.South)
+func (d *ClientData) ProcSouth(src *types.Datum, usr *types.Datum) types.Value {
+	return d.relMove(src, usr, common.South)
 }
 
-func (d *ClientData) ProcEast(src *types.Datum) types.Value {
-	return d.relMove(src, common.East)
+func (d *ClientData) ProcEast(src *types.Datum, usr *types.Datum) types.Value {
+	return d.relMove(src, usr, common.East)
 }
 
-func (d *ClientData) ProcWest(src *types.Datum) types.Value {
-	return d.relMove(src, common.West)
+func (d *ClientData) ProcWest(src *types.Datum, usr *types.Datum) types.Value {
+	return d.relMove(src, usr, common.West)
 }
 
-func (d *ClientData) ProcMove(src *types.Datum, loc types.Value, dir types.Value) types.Value {
+func (d *ClientData) ProcMove(src *types.Datum, usr *types.Datum, loc types.Value, dir types.Value) types.Value {
 	mob := d.GetMob(src)
 	util.FIXME("cancel automated movement if necessary")
 	if mob != nil {
-		return mob.Invoke("Move", loc, dir)
+		return mob.Invoke(usr, "Move", loc, dir)
 	}
 	return types.Int(0)
 }
 
-func (d *ClientData) OperatorWrite(src *types.Datum, output types.Value) types.Value {
+func (d *ClientData) OperatorWrite(src *types.Datum, usr *types.Datum, output types.Value) types.Value {
 	if text, ok := output.(types.String); ok {
 		d.textBuffer = append(d.textBuffer, string(text))
 	} else if sound, ok := output.(sprite.Sound); ok {
@@ -172,7 +177,7 @@ func (w *World) RenderClientViewAsAtoms(client types.Value) (center types.Value,
 }
 
 func (w *World) constructNewMob() types.Value {
-	mob := w.Realm().New(w.Mob)
+	mob := w.Realm().New(w.Mob, nil)
 	if !types.IsType(mob, "/mob") {
 		panic("constructed mob is not a /mob")
 	}
@@ -189,7 +194,7 @@ func (w *World) findExistingMob(key string) types.Value {
 	})
 }
 
-func (d *ClientData) ProcNew(src *types.Datum, usr types.Value) types.Value {
+func (d *ClientData) ProcNew(src *types.Datum, _ *types.Datum, usr types.Value) types.Value {
 	mob := usr
 	util.FIXME("add support for 'prototype mobs'")
 	if mob == nil {
@@ -197,11 +202,11 @@ func (d *ClientData) ProcNew(src *types.Datum, usr types.Value) types.Value {
 	}
 	util.NiceToHave("add support for Topics")
 	d.SetMob(src, mob)
-	mob.Invoke("Login")
+	mob.Invoke(mob.(*types.Datum), "Login")
 	return mob
 }
 
-func (d *ClientData) ProcDel(src *types.Datum) types.Value {
+func (d *ClientData) ProcDel(src *types.Datum, usr *types.Datum) types.Value {
 	util.FIXME("call Logout() on mob")
 	util.FIXME("should killing the connection go here, maybe in addition to other places?")
 	return nil
@@ -217,7 +222,7 @@ func (d *ClientData) ResolveVerb(src *types.Datum, verbName string, args []strin
 				resolved, err := verb.ResolveArgs(verbSrc, verbUsr, args)
 				if err != nil {
 					log.Printf("cannot resolve verb %v: %v\n", verb, err)
-					src.Invoke("<<", types.String(fmt.Sprintf("cannot resolve verb %v: %v\n", verb, err)))
+					src.Invoke(verbUsr, "<<", types.String(fmt.Sprintf("cannot resolve verb %v: %v\n", verb, err)))
 				} else {
 					verb.Apply(verbSrc, verbUsr, resolved)
 				}
@@ -226,7 +231,7 @@ func (d *ClientData) ResolveVerb(src *types.Datum, verbName string, args []strin
 		}
 	}
 	log.Println("got unknown verb:", verbName)
-	src.Invoke("<<", types.String(fmt.Sprintf("Not a known verb: %q", verbName)))
+	src.Invoke(verbUsr, "<<", types.String(fmt.Sprintf("Not a known verb: %q", verbName)))
 }
 
 func (d *ClientData) ListVerbs(src *types.Datum) (verbs []string) {

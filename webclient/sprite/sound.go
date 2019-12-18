@@ -50,7 +50,7 @@ func (s Sound) SetVar(name string, value types.Value) {
 	}
 }
 
-func (s Sound) Invoke(name string, parameters ...types.Value) types.Value {
+func (s Sound) Invoke(usr *types.Datum, name string, parameters ...types.Value) types.Value {
 	panic("no such proc " + name + " on /sound")
 }
 

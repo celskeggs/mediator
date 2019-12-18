@@ -34,6 +34,7 @@ type DefinedInit struct {
 type DefinedImpl struct {
 	Name   string
 	This   string
+	Usr    string
 	Params []string
 	Body   string
 }
@@ -298,12 +299,12 @@ func New{{.DataStructName}}(src *types.Datum, _ *{{.DataStructName}}, _ ...types
 	src.SetVar("{{.Name}}", {{.Value}})
 	{{- end}}
 	{{- range .Verbs}}
-	src.SetVar("verbs", src.Var("verbs").Invoke("+", atoms.NewVerb({{printf "%q, %q, %q" . $type.TypePath .}})))
+	src.SetVar("verbs", src.Var("verbs").Invoke(nil, "+", atoms.NewVerb({{printf "%q, %q, %q" . $type.TypePath .}})))
 	{{- end}}
 }
 
 {{range .Impls -}}
-func (*{{$type.DataStructName}}) Proc{{.Name}}({{.This}} *types.Datum{{range .Params}}, {{.}} types.Value{{end}}) types.Value {
+func (*{{$type.DataStructName}}) Proc{{.Name}}({{.This}} *types.Datum, {{.Usr}} *types.Datum{{range .Params}}, {{.}} types.Value{{end}}) types.Value {
 {{.Body}}
 }
 

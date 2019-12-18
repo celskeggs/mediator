@@ -72,7 +72,7 @@ func (lo *loaderObserver) SetSize(l parsemap.Location) {
 }
 
 func (lo *loaderObserver) AddAtom(l parsemap.Location, path string) error {
-	atom := lo.world.Realm().New(types.TypePath(path))
+	atom := lo.world.Realm().New(types.TypePath(path), nil)
 	return lo.m[l.X][l.Y][l.Z].Add(atom)
 }
 

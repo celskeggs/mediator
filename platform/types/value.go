@@ -53,7 +53,7 @@ func finalizeRef(r *Ref) {
 type Value interface {
 	Var(name string) Value
 	SetVar(name string, value Value)
-	Invoke(name string, parameters ...Value) Value
+	Invoke(usr *Datum, name string, parameters ...Value) Value
 	String() string
 }
 
@@ -83,7 +83,7 @@ type DatumImpl interface {
 	Type() TypePath
 	Var(src *Datum, name string) (Value, bool)
 	SetVar(src *Datum, name string, value Value) SetResult
-	Proc(src *Datum, name string, params ...Value) (Value, bool)
+	Proc(src *Datum, usr *Datum, name string, params ...Value) (Value, bool)
 	Chunk(ref string) interface{}
 }
 
@@ -124,8 +124,8 @@ func (d *Datum) SetVar(name string, value Value) {
 	}
 }
 
-func (d *Datum) Invoke(name string, params ...Value) Value {
-	result, ok := d.impl.Proc(d, name, params...)
+func (d *Datum) Invoke(usr *Datum, name string, params ...Value) Value {
+	result, ok := d.impl.Proc(d, usr, name, params...)
 	if !ok {
 		panic(fmt.Sprintf("no such procedure %s found on type %v", name, d.Type()))
 	}

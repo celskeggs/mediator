@@ -120,7 +120,7 @@ func (d Direction) SetVar(name string, value types.Value) {
 	panic("no field " + name + " on direction")
 }
 
-func (d Direction) Invoke(name string, parameters ...types.Value) types.Value {
+func (d Direction) Invoke(usr *types.Datum, name string, parameters ...types.Value) types.Value {
 	panic("no proc " + name + " on direction")
 }
 

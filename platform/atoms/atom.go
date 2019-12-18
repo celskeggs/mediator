@@ -146,22 +146,22 @@ func (d *AtomData) GetZ(src *types.Datum) types.Value {
 	}
 }
 
-func (d *AtomData) ProcExit(src *types.Datum, atom types.Value, newloc types.Value) types.Value {
+func (d *AtomData) ProcExit(src *types.Datum, usr *types.Datum, atom types.Value, newloc types.Value) types.Value {
 	// always allow by default
 	return types.Int(1)
 }
 
-func (d *AtomData) ProcEnter(src *types.Datum, atom types.Value, oldloc types.Value) types.Value {
+func (d *AtomData) ProcEnter(src *types.Datum, usr *types.Datum, atom types.Value, oldloc types.Value) types.Value {
 	// always allow by default
 	return types.Int(1)
 }
 
-func (d *AtomData) ProcExited(src *types.Datum, atom types.Value, newloc types.Value) types.Value {
+func (d *AtomData) ProcExited(src *types.Datum, usr *types.Datum, atom types.Value, newloc types.Value) types.Value {
 	// nothing to do
 	return nil
 }
 
-func (d *AtomData) ProcEntered(src *types.Datum, atom types.Value, oldloc types.Value) types.Value {
+func (d *AtomData) ProcEntered(src *types.Datum, usr *types.Datum, atom types.Value, oldloc types.Value) types.Value {
 	// nothing to do
 	return nil
 }

@@ -21,7 +21,7 @@ func (s String) SetVar(name string, value Value) {
 	panic("no variable " + name + " on string")
 }
 
-func (s String) Invoke(name string, parameters ...Value) Value {
+func (s String) Invoke(usr *Datum, name string, parameters ...Value) Value {
 	panic("no proc " + name + " on string")
 }
 
@@ -53,7 +53,7 @@ func (i Int) SetVar(name string, value Value) {
 	panic("no variable " + name + " on int")
 }
 
-func (i Int) Invoke(name string, parameters ...Value) Value {
+func (i Int) Invoke(usr *Datum, name string, parameters ...Value) Value {
 	panic("no proc " + name + " on int")
 }
 
@@ -91,7 +91,7 @@ func (path TypePath) SetVar(name string, value Value) {
 	panic("cannot set variable on type path")
 }
 
-func (path TypePath) Invoke(name string, parameters ...Value) Value {
+func (path TypePath) Invoke(usr *Datum, name string, parameters ...Value) Value {
 	panic("cannot invoke method on type path")
 }
 

@@ -142,6 +142,7 @@ func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string,
 	var params []string
 	vartypes := map[string]dtype.DType{}
 	vartypes["src"] = dtype.Path(path)
+	vartypes["usr"] = dtype.ConstPath("/mob")
 	for _, a := range arguments {
 		params = append(params, LocalVariablePrefix+a.Name)
 		vartypes[a.Name] = a.Type
@@ -159,6 +160,7 @@ func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string,
 	defType.Impls = append(defType.Impls, gen.DefinedImpl{
 		Name:   function,
 		This:   LocalVariablePrefix + "src",
+		Usr:    LocalVariablePrefix + "usr",
 		Params: params,
 		Body:   MergeGoLines(lines),
 	})
