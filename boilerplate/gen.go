@@ -36,7 +36,7 @@ type PreparedGetter struct {
 }
 
 type PreparedProc struct {
-	ProcInfo
+	*ProcInfo
 	StructName string
 }
 
@@ -176,6 +176,21 @@ func (t *{{.Type}}Impl) Proc(src *types.Datum, usr *types.Datum, name string, pa
 {{- end}}
 	default:
 		return nil, false
+	}
+}
+
+func (t *{{.Type}}Impl) ProcSettings(name string) (types.ProcSettings, bool) {
+	switch name {
+{{- range .Procs }}
+	case "{{.Name}}":
+{{- if .HasSettings }}
+		return t.{{.StructName}}.SettingsFor{{.ProcName}}(), true
+{{- else }}
+		return types.ProcSettings{}, true
+{{- end }}
+{{- end }}
+	default:
+		return types.ProcSettings{}, false
 	}
 }
 

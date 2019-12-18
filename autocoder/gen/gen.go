@@ -7,6 +7,7 @@ import (
 	"github.com/celskeggs/mediator/autocoder/predefs"
 	"github.com/celskeggs/mediator/dream/path"
 	"github.com/celskeggs/mediator/dream/tokenizer"
+	"github.com/celskeggs/mediator/platform/types"
 	"github.com/celskeggs/mediator/util"
 	"github.com/hashicorp/go-multierror"
 	"go/format"
@@ -32,11 +33,12 @@ type DefinedInit struct {
 }
 
 type DefinedImpl struct {
-	Name   string
-	This   string
-	Usr    string
-	Params []string
-	Body   string
+	Name     string
+	This     string
+	Usr      string
+	Params   []string
+	Body     string
+	Settings types.ProcSettings
 }
 
 type DefinedProc struct {
@@ -308,6 +310,23 @@ func (*{{$type.DataStructName}}) Proc{{.Name}}({{.This}} *types.Datum, {{.Usr}} 
 {{.Body}}
 }
 
+{{ if not .Settings.IsZero }}
+func (*{{$type.DataStructName}}) SettingsForProc{{.Name}}() types.ProcSettings {
+	return types.ProcSettings{
+{{- if not .Settings.Src.IsZero }}
+		Src: types.SrcSetting{
+			Type: types.{{.Settings.Src.Type}},
+{{- if .Settings.Src.Dist }}
+			Dist: {{.Settings.Src.Dist}},
+{{- end }}
+{{- if .Settings.Src.In }}
+			In: {{.Settings.Src.In}},
+{{- end }}
+		},
+{{- end }}
+	}
+}
+{{end -}}
 {{end -}}
 
 {{- end -}}

@@ -148,6 +148,11 @@ func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string,
 		vartypes[a.Name] = a.Type
 	}
 
+	settings, body, err := ParseSettings(dt, path, body)
+	if err != nil {
+		return err
+	}
+
 	lines, err := FuncBodyToGo(body, CodeGenContext{
 		WorldRef: "atoms.WorldOf(" + LocalVariablePrefix + "src)",
 		Tree:     dt,
@@ -158,11 +163,12 @@ func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string,
 	}
 
 	defType.Impls = append(defType.Impls, gen.DefinedImpl{
-		Name:   function,
-		This:   LocalVariablePrefix + "src",
-		Usr:    LocalVariablePrefix + "usr",
-		Params: params,
-		Body:   MergeGoLines(lines),
+		Name:     function,
+		This:     LocalVariablePrefix + "src",
+		Usr:      LocalVariablePrefix + "usr",
+		Params:   params,
+		Settings: settings,
+		Body:     MergeGoLines(lines),
 	})
 	return nil
 }

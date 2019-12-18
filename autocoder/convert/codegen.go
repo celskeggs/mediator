@@ -6,6 +6,7 @@ import (
 	"github.com/celskeggs/mediator/autocoder/gen"
 	"github.com/celskeggs/mediator/dream/parser"
 	"github.com/celskeggs/mediator/dream/path"
+	"github.com/celskeggs/mediator/platform/types"
 	"github.com/celskeggs/mediator/util"
 	"strings"
 )
@@ -290,6 +291,90 @@ func StatementToGo(statement parser.DreamMakerStatement, ctx CodeGenContext) (li
 		}, nil
 	}
 	return nil, fmt.Errorf("cannot convert statement %v to Go at %v", statement, statement.SourceLoc)
+}
+
+func DefaultSrcSetting(tree *gen.DefinedTree, typePath path.TypePath) types.SrcSetting {
+	if tree.Extends(typePath, path.ConstTypePath("/mob")) {
+		return types.SrcSetting{
+			Type: types.SrcSettingTypeUsr,
+			In:   false,
+		}
+	} else if tree.Extends(typePath, path.ConstTypePath("/obj")) {
+		return types.SrcSetting{
+			Type: types.SrcSettingTypeUsr,
+			In:   true,
+		}
+	} else if tree.Extends(typePath, path.ConstTypePath("/turf")) {
+		return types.SrcSetting{
+			Type: types.SrcSettingTypeView,
+			Dist: 0,
+			In:   false,
+		}
+	} else if tree.Extends(typePath, path.ConstTypePath("/area")) {
+		return types.SrcSetting{
+			Type: types.SrcSettingTypeView,
+			Dist: 0,
+			In:   false,
+		}
+	} else {
+		util.FIXME("figure out what the correct default should be for other cases")
+		return types.SrcSetting{}
+	}
+}
+
+func ParseSrcSetting(expr parser.DreamMakerExpression, stype parser.StatementType) (types.SrcSetting, error) {
+	var sst types.SrcSettingType
+	var dist uint
+	switch expr.Type {
+	case parser.ExprTypeCall:
+		for _, name := range expr.Names {
+			if name != "" {
+				return types.SrcSetting{}, fmt.Errorf("cannot handle keyword arguments in src setting at %v", expr.SourceLoc)
+			}
+		}
+		if expr.Children[0].Type != parser.ExprTypeGetNonLocal || expr.Children[0].Str != "oview" {
+			return types.SrcSetting{}, fmt.Errorf("expected call only to oview, not %q, in src setting at %v", expr.Children[0].Str, expr.Children[0].SourceLoc)
+		}
+		if len(expr.Children) > 2 {
+			return types.SrcSetting{}, fmt.Errorf("expected call to have 0-1 arguments when in src setting at %v", expr.SourceLoc)
+		}
+		if expr.Children[1].Type != parser.ExprTypeIntegerLiteral {
+			return types.SrcSetting{}, fmt.Errorf("expected integer literal in oview parameter at %v", expr.Children[1].SourceLoc)
+		}
+		sst = types.SrcSettingTypeOView
+		dist = uint(expr.Children[1].Integer)
+		if int64(dist) != expr.Children[1].Integer {
+			return types.SrcSetting{}, fmt.Errorf("integer literal out of range at %v", expr.Children[1].SourceLoc)
+		}
+	default:
+		return types.SrcSetting{}, fmt.Errorf("unexpected expression %v while parsing src setting at %v", expr, expr.SourceLoc)
+	}
+	return types.SrcSetting{
+		Type: sst,
+		Dist: dist,
+		In:   stype == parser.StatementTypeSetIn,
+	}, nil
+}
+
+func ParseSettings(dt *gen.DefinedTree, typePath path.TypePath, body []parser.DreamMakerStatement) (types.ProcSettings, []parser.DreamMakerStatement, error) {
+	settings := types.ProcSettings{}
+	settings.Src = DefaultSrcSetting(dt, typePath)
+	setSrc := false
+	for len(body) > 0 && (body[0].Type == parser.StatementTypeSetIn || body[0].Type == parser.StatementTypeSetTo) {
+		if body[0].Name == "src" {
+			if setSrc {
+				return types.ProcSettings{}, nil, fmt.Errorf("duplicate setting for src at %v", body[0].SourceLoc)
+			}
+			var err error
+			settings.Src, err = ParseSrcSetting(body[0].To, body[0].Type)
+			if err != nil {
+				return types.ProcSettings{}, nil, err
+			}
+			setSrc = true
+		}
+		body = body[1:]
+	}
+	return settings, body, nil
 }
 
 func FuncBodyToGo(body []parser.DreamMakerStatement, ctx CodeGenContext) (lines []string, err error) {

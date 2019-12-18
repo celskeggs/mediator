@@ -22,8 +22,9 @@ type VarInfo struct {
 }
 
 type ProcInfo struct {
-	Name       string
-	ParamCount int
+	Name        string
+	ParamCount  int
+	HasSettings bool
 }
 
 type SourceInfo struct {
@@ -34,7 +35,7 @@ type SourceInfo struct {
 	FoundConstructor bool
 	Getters          []*GetterInfo
 	Vars             []VarInfo
-	Procs            []ProcInfo
+	Procs            []*ProcInfo
 }
 
 type TypeInfo struct {

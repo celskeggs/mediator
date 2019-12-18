@@ -111,6 +111,22 @@ func IsValueType(ref ast.Expr) bool {
 	return true
 }
 
+func IsProcSettingsType(ref ast.Expr) bool {
+	selector, ok := ref.(*ast.SelectorExpr)
+	if !ok {
+		return false
+	}
+	ident, ok := selector.X.(*ast.Ident)
+	util.FIXME("check that imports are also correct")
+	if !ok || ident.Name != "types" {
+		return false
+	}
+	if selector.Sel.Name != "ProcSettings" {
+		return false
+	}
+	return true
+}
+
 func (source *SourceInfo) LoadNewFunc(fset *token.FileSet, structName string, decl *ast.FuncDecl) error {
 	// can assume that name is correct
 	if decl.Recv != nil && len(decl.Recv.List) > 0 {
@@ -179,11 +195,38 @@ func (source *SourceInfo) LoadProc(fset *token.FileSet, structName string, decl 
 	if !IsValueType(resultType) {
 		return fmt.Errorf("proc %s.%s must return a types.Value at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
 	}
-	source.Procs = append(source.Procs, ProcInfo{
+	source.Procs = append(source.Procs, &ProcInfo{
 		Name:       name,
 		ParamCount: len(types) - 2,
 	})
 	return nil
+}
+
+func (source *SourceInfo) LoadProcSettings(fset *token.FileSet, structName string, decl *ast.FuncDecl, name string) error {
+	// can assume that receiver was already checked and that 'name' is the name of the proc
+	if decl.Type.Params != nil && len(decl.Type.Params.List) > 0 {
+		return fmt.Errorf("proc settings function %s.%s must take no parameters at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
+	}
+	if decl.Type.Results != nil && len(decl.Type.Results.List) > 1 {
+		return fmt.Errorf("proc settings function %s.%s cannot have more than one result at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
+	}
+	var resultType ast.Expr
+	if decl.Type.Results != nil && len(decl.Type.Results.List) > 0 {
+		resultType = decl.Type.Results.List[0].Type
+	}
+	if !IsProcSettingsType(resultType) {
+		return fmt.Errorf("proc settings function %s.%s must return a types.ProcSettings at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
+	}
+	for _, proc := range source.Procs {
+		if proc.Name == name {
+			if proc.HasSettings {
+				return fmt.Errorf("duplicate proc settings function %s.%s at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
+			}
+			proc.HasSettings = true
+			return nil
+		}
+	}
+	return fmt.Errorf("cannot find base proc for settings proc %s.%s at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
 }
 
 func (source *SourceInfo) GetterInfo(name string) *GetterInfo {
@@ -287,7 +330,12 @@ func (t *TreeInfo) LoadAST(fset *token.FileSet, file *ast.File, importPath strin
 					if ident, ok := recvType.(*ast.Ident); ok {
 						if source := ti.GetSource(importPath, ident.Name); source != nil {
 							if strings.HasPrefix(fun.Name.Name, "Proc") && len(fun.Name.Name) > len("Proc") {
-								err := source.LoadProc(fset, ident.Name, fun, fun.Name.Name[4:])
+								err := source.LoadProc(fset, ident.Name, fun, fun.Name.Name[len("Proc"):])
+								if err != nil {
+									return err
+								}
+							} else if strings.HasPrefix(fun.Name.Name, "SettingsForProc") && len(fun.Name.Name) > len("SettingsForProc") {
+								err := source.LoadProcSettings(fset, ident.Name, fun, fun.Name.Name[len("SettingsForProc"):])
 								if err != nil {
 									return err
 								}

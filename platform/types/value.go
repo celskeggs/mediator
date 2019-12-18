@@ -84,6 +84,7 @@ type DatumImpl interface {
 	Var(src *Datum, name string) (Value, bool)
 	SetVar(src *Datum, name string, value Value) SetResult
 	Proc(src *Datum, usr *Datum, name string, params ...Value) (Value, bool)
+	ProcSettings(name string) (ProcSettings, bool)
 	Chunk(ref string) interface{}
 }
 
