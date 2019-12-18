@@ -76,6 +76,7 @@ var platformFields = []FieldInfo{
 var platformProcs = []ProcedureInfo{
 	{"Entered", path.ConstTypePath("/atom")},
 	{"Bump", path.ConstTypePath("/atom/movable")},
+	{"Move", path.ConstTypePath("/atom/movable")},
 }
 
 var platformGlobalProcs = []string{

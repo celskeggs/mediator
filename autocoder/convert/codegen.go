@@ -121,9 +121,18 @@ func ExprToGo(expr parser.DreamMakerExpression, ctx CodeGenContext) (exprString 
 			return "", dtype.None(), fmt.Errorf("calling non-global functions is not yet implemented")
 		}
 
-		found := ctx.Tree.GlobalProcedureExists(target.Str)
+		var invokeSrc string
+		var found bool
+		if ctx.Tree.GlobalProcedureExists(target.Str) {
+			found = true
+		} else if srctype, ok := ctx.VarTypes["src"]; ok && srctype.IsAnyPath() {
+			if _, ok := ctx.Tree.ResolveProcedure(srctype.Path(), target.Str); ok {
+				found = true
+				invokeSrc = LocalVariablePrefix + "src"
+			}
+		}
 		if !found {
-			return "", dtype.None(), fmt.Errorf("no such global function %s", target.Str)
+			return "", dtype.None(), fmt.Errorf("no such function %s at %v", target.Str, target.SourceLoc)
 		}
 
 		kwargs := make(map[string]string)
@@ -146,6 +155,9 @@ func ExprToGo(expr parser.DreamMakerExpression, ctx CodeGenContext) (exprString 
 		}
 
 		if len(kwargs) != 0 {
+			if invokeSrc != "" {
+				return "", dtype.None(), fmt.Errorf("no support for keyword arguments in datum procedure invocations at %v", expr.SourceLoc)
+			}
 			kwargStr := "map[string]types.Value{"
 			first := true
 			for name, arg := range kwargs {
@@ -158,8 +170,10 @@ func ExprToGo(expr parser.DreamMakerExpression, ctx CodeGenContext) (exprString 
 			}
 			kwargStr += "}"
 			return fmt.Sprintf("procs.KWInvoke(%s, %s, %q, %s%s)", ctx.WorldRef, ctx.UsrRef(), target.Str, kwargStr, strings.Join(convArgs, "")), dtype.Any(), nil
-		} else {
+		} else if invokeSrc == "" {
 			return fmt.Sprintf("procs.Invoke(%s, %s, %q%s)", ctx.WorldRef, ctx.UsrRef(), target.Str, strings.Join(convArgs, "")), dtype.Any(), nil
+		} else {
+			return fmt.Sprintf("(%s).Invoke(%s, %q%s)", invokeSrc, ctx.UsrRef(), target.Str, strings.Join(convArgs, "")), dtype.Any(), nil
 		}
 	case parser.ExprTypeGetNonLocal:
 		util.FIXME("resolve more types of nonlocals")
@@ -265,6 +279,14 @@ func StatementToGo(statement parser.DreamMakerStatement, ctx CodeGenContext) (li
 		util.FIXME("support returning values")
 		return []string{
 			"return nil",
+		}, nil
+	case parser.StatementTypeEvaluate:
+		value, _, err := ExprToGo(statement.To, ctx)
+		if err != nil {
+			return nil, err
+		}
+		return []string{
+			"_ = " + value,
 		}, nil
 	}
 	return nil, fmt.Errorf("cannot convert statement %v to Go at %v", statement, statement.SourceLoc)
