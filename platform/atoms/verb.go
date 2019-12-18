@@ -38,11 +38,16 @@ func (v Verb) Matches(name string, src *types.Datum, usr *types.Datum) bool {
 }
 
 func (v Verb) ResolveArgs(src *types.Datum, usr *types.Datum, args []string) ([]types.Value, error) {
-	return nil, fmt.Errorf("unimplemented")
+	results := make([]types.Value, len(args))
+	for _, _ = range args {
+		return nil, fmt.Errorf("unimplemented")
+	}
+	return results, nil
 }
 
-func (v Verb) Apply(src *types.Datum, usr *types.Datum, strings []types.Value) {
-	panic("unimplemented")
+func (v Verb) Apply(src *types.Datum, usr *types.Datum, args []types.Value) {
+	util.FIXME("include usr somehow")
+	src.Invoke(v.ProcName, args...)
 }
 
 func NewVerb(visibleName, defType, procName string) Verb {
