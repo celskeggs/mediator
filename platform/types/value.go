@@ -149,9 +149,13 @@ func (d *Datum) String() string {
 func Unpack(v Value) (DatumImpl, bool) {
 	d, ok := v.(*Datum)
 	if ok {
-		return d.impl, true
+		return UnpackDatum(d), true
 	}
 	return nil, false
+}
+
+func UnpackDatum(d *Datum) DatumImpl {
+	return d.impl
 }
 
 func Chunk(v Value, ref string) interface{} {

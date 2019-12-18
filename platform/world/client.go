@@ -213,7 +213,13 @@ func (d *ClientData) ProcDel(src *types.Datum, usr *types.Datum) types.Value {
 }
 
 func (d *ClientData) ResolveVerb(src *types.Datum, verbName string, args []string) {
-	verbUsr := src
+	mob := src.Var("mob")
+	if mob == nil {
+		util.FIXME("see if there are cases where verbs can be executed without a mob")
+		// cannot execute verbs without a mob
+		return
+	}
+	verbUsr := mob.(*types.Datum)
 	for _, verbSrcVal := range atoms.WorldOf(src).FindAllType("/atom") {
 		verbSrc := verbSrcVal.(*types.Datum)
 		for _, verbVal := range datum.Elements(verbSrc.Var("verbs")) {

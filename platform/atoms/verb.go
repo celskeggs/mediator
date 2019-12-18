@@ -33,8 +33,25 @@ func (v Verb) String() string {
 }
 
 func (v Verb) Matches(name string, src *types.Datum, usr *types.Datum) bool {
-	util.FIXME("apply src matching")
-	return name == v.VisibleName
+	if name != v.VisibleName {
+		return false
+	}
+	settings, ok := types.UnpackDatum(src).ProcSettings(name)
+	if !ok {
+		util.FIXME("make sure this never actually happens")
+		panic(fmt.Sprintf("attempt to use procedure %s on %v as a verb, when it has no metadata", name, src))
+	}
+	switch settings.Src.Type {
+	case types.SrcSettingTypeUsr:
+		if settings.Src.In {
+			panic("support not implemented for proc src setting 'src in usr'")
+		} else {
+			// src = usr
+			return src == usr
+		}
+	default:
+		panic("support not implemented for proc src setting " + settings.Src.Type.String())
+	}
 }
 
 func (v Verb) ResolveArgs(src *types.Datum, usr *types.Datum, args []string) ([]types.Value, error) {
