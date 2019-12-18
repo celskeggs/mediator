@@ -37,33 +37,60 @@ func ManhattanDistance(a, b types.Value) uint {
 	return MaxUint(AbsDiff(ax, bx), AbsDiff(ay, by))
 }
 
-func (w *World) View1(center *types.Datum) []*types.Datum {
-	return w.View(w.ViewDist, center)
+func (w *World) View1(center *types.Datum, oview bool) []types.Value {
+	return w.View(w.ViewDist, center, oview)
 }
 
-func expandWithContents(atoms []*types.Datum) (out []*types.Datum) {
-	out = append([]*types.Datum{}, atoms...)
+func expandWithContents(atoms []types.Value) (out []types.Value) {
+	out = append([]types.Value{}, atoms...)
 	for _, atom := range atoms {
-		out = append(out, datum.ElementsDatums(atom.Var("contents"))...)
+		out = append(out, datum.Elements(atom.Var("contents"))...)
+	}
+	return out
+}
+
+func atomsExcept(atoms []types.Value, except types.Value) (out []types.Value) {
+	for _, atom := range atoms {
+		if atom != except {
+			out = append(out, atom)
+		}
 	}
 	return out
 }
 
 // note: this does not handle the "centerD = nil" case the same as DreamMaker
-func (w *World) View(distance uint, centerD *types.Datum) []*types.Datum {
+func (w *World) View(distance uint, centerD *types.Datum, oview bool) []types.Value {
 	var center *types.Datum
-	if types.IsType(centerD, "/client") {
-		center = centerD.Var("eye").(*types.Datum)
-	} else if centerD != nil {
-		if !types.IsType(centerD, "/atom") {
+	if centerD != nil {
+		if types.IsType(centerD, "/client") {
+			center = centerD.Var("eye").(*types.Datum)
+		} else if types.IsType(centerD, "/atom") {
+			center = centerD
+		} else {
 			panic("view center is not an /atom")
 		}
-		center = centerD
 	}
-	return w.ViewX(distance, center, center)
+	return w.ViewX(distance, center, center, oview)
 }
 
-func (w *World) ViewX(distance uint, center *types.Datum, perspective *types.Datum) []*types.Datum {
+func (w *World) ViewX(distance uint, center *types.Datum, perspective *types.Datum, oview bool) []types.Value {
+	locations := w.ViewXLocations(distance, center, perspective)
+	if oview {
+		// make sure 'perspective' does not get added to the list of contents
+		contents := expandWithContents(locations)
+		contents = atomsExcept(contents, perspective)
+		return contents
+	} else {
+		// make sure that 'perspective' is in the list of found objects
+		if perspective != nil {
+			locations = append(locations, perspective)
+		}
+		util.FIXME("make sure that perspective is not in the final output twice")
+		return expandWithContents(locations)
+	}
+}
+
+func (w *World) ViewXLocations(distance uint, center *types.Datum, perspective *types.Datum) []types.Value {
 	if center == nil || perspective == nil {
 		return nil
 	}
@@ -80,21 +107,13 @@ func (w *World) ViewX(distance uint, center *types.Datum, perspective *types.Dat
 			}
 			return false
 		})
-		nturfs := limitViewers(distance, center, perspective, turfs)
-		atomsAgain := make([]*types.Datum, len(nturfs)+1)
-		for i, turf := range nturfs {
-			atomsAgain[i] = turf
-		}
-		atomsAgain[len(nturfs)] = perspective
-		return expandWithContents(atomsAgain)
+		return limitViewers(distance, center, perspective, turfs)
 	} else if location != nil {
-		return expandWithContents([]*types.Datum{
-			location.(*types.Datum), perspective,
-		})
+		return []types.Value{
+			location,
+		}
 	} else {
-		return expandWithContents([]*types.Datum{
-			perspective,
-		})
+		return nil
 	}
 }
 
@@ -189,7 +208,7 @@ func (vir *viewInfoRegion) PopulateTurfs(input []types.Value) (maxDepthMax, sumD
 }
 
 // this is an approximate reimplementation of the BYOND algorithm, based on http://www.byond.com/forum/post/2130277#comment20659267
-func limitViewers(distance uint, center *types.Datum, perspective *types.Datum, base []types.Value) []*types.Datum {
+func limitViewers(distance uint, center *types.Datum, perspective *types.Datum, base []types.Value) []types.Value {
 	centerX, centerY := XY(center)
 	perspectiveX, perspectiveY := XY(perspective)
 	vir := newViewInfoRegion(distance, centerX, centerY, perspectiveX, perspectiveY)
@@ -341,7 +360,7 @@ func limitViewers(distance uint, center *types.Datum, perspective *types.Datum, 
 
 	// at this point, if vis2 != 0, then we have line of sight visibility but not necessarily anything else
 
-	var finalTurfs []*types.Datum
+	var finalTurfs []types.Value
 
 	for _, infos := range vir.Info {
 		for _, info := range infos {

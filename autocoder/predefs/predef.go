@@ -81,6 +81,7 @@ var platformProcs = []ProcedureInfo{
 var platformGlobalProcs = []string{
 	"ismob",
 	"sound",
+	"oview",
 }
 
 type platformDefiner struct {

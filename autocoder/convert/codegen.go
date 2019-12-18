@@ -153,8 +153,24 @@ func ExprToGo(expr parser.DreamMakerExpression, ctx CodeGenContext) (exprString 
 		}
 		return "", dtype.None(), fmt.Errorf("cannot find nonlocal %s at %v", expr.Str, expr.SourceLoc)
 	case parser.ExprTypeGetLocal:
-		util.FIXME("types for locals")
-		return LocalVariablePrefix + expr.Str, dtype.Any(), nil
+		vtype, ok := ctx.VarTypes[expr.Str]
+		if !ok {
+			return "", dtype.None(), fmt.Errorf("unexpectedly could not find type for var %q at %v ... there may be a parser bug", expr.Str, expr.SourceLoc)
+		}
+		return LocalVariablePrefix + expr.Str, vtype, nil
+	case parser.ExprTypeGetField:
+		exprStr, exprType, err := ExprToGo(expr.Children[0], ctx)
+		if err != nil {
+			return "", dtype.None(), err
+		}
+		if !exprType.IsAnyPath() {
+			return "", dtype.None(), fmt.Errorf("attempt to find field %q on non-datum type %v at %v", expr.Str, exprType, expr.SourceLoc)
+		}
+		fieldType, ok := ctx.Tree.ResolveField(exprType.Path(), expr.Str)
+		if !ok {
+			return "", dtype.None(), fmt.Errorf("cannot find field %q on datum type %v at %v", expr.Str, exprType, expr.SourceLoc)
+		}
+		return fmt.Sprintf("(%s).Var(%q)", exprStr, expr.Str), fieldType, nil
 	case parser.ExprTypeStringConcat:
 		var terms []string
 		for _, term := range expr.Children {
@@ -163,14 +179,15 @@ func ExprToGo(expr parser.DreamMakerExpression, ctx CodeGenContext) (exprString 
 				return "", dtype.None(), err
 			}
 			if actualType.IsString() {
-				terms = append(terms, "("+termString+")")
+				ctx.Tree.AddImport("github.com/celskeggs/mediator/platform/types")
+				terms = append(terms, "types.Unstring("+termString+")")
 			} else {
 				util.FIXME("think more carefully here than just assuming it's an atom")
 				ctx.Tree.AddImport("github.com/celskeggs/mediator/platform/format")
 				terms = append(terms, "format.FormatAtom("+termString+")")
 			}
 		}
-		return strings.Join(terms, " + "), dtype.String(), nil
+		return fmt.Sprintf("types.String(%s)", strings.Join(terms, " + ")), dtype.String(), nil
 	default:
 		return "", dtype.None(), fmt.Errorf("unimplemented evaluation of expr %v at %v", expr, expr.SourceLoc)
 	}
@@ -186,6 +203,23 @@ func StatementToGo(statement parser.DreamMakerStatement, ctx CodeGenContext) (li
 		lines = append(lines, fmt.Sprintf("if (types.AsBool(%v)) {", condition))
 		for _, bodyStatement := range statement.Body {
 			extraLines, err := StatementToGo(bodyStatement, ctx)
+			if err != nil {
+				return nil, err
+			}
+			lines = append(lines, extraLines...)
+		}
+		lines = append(lines, "}")
+		return lines, nil
+	case parser.StatementTypeForList:
+		list, _, err := ExprToGo(statement.From, ctx)
+		if err != nil {
+			return nil, err
+		}
+		ctx.Tree.AddImport("github.com/celskeggs/mediator/platform/datum")
+		lines = append(lines, fmt.Sprintf("for _, %s := range datum.Elements(%s) {", LocalVariablePrefix+statement.Name, list))
+		subctx := ctx.WithVar(statement.Name, statement.VarType)
+		for _, bodyStatement := range statement.Body {
+			extraLines, err := StatementToGo(bodyStatement, subctx)
 			if err != nil {
 				return nil, err
 			}

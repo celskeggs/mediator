@@ -19,6 +19,11 @@ func KWInvoke(w atoms.World, usr *types.Datum, name string, kwargs map[string]ty
 			types.KWParam(args, 3, kwargs, "channel"),
 			types.KWParam(args, 4, kwargs, "volume"),
 		)
+	case "oview":
+		if usr == nil {
+			panic("usr was nil when calling oview")
+		}
+		return datum.NewList(w.View1(usr, true)...)
 	default:
 		panic(fmt.Sprintf("unimplemented global function %q", name))
 	}

@@ -28,8 +28,8 @@ func formatMacro(macro string, atom *types.Datum) string {
 	}
 }
 
-func FormatAtom(atom types.Value) types.String {
-	return types.String(formatMacro("the", atom.(*types.Datum)))
+func FormatAtom(atom types.Value) string {
+	return formatMacro("the", atom.(*types.Datum))
 }
 
 func Format(str string, data ...types.Value) string {
@@ -41,7 +41,7 @@ func Format(str string, data ...types.Value) string {
 	moreParts := make([]string, len(parts)+len(data))
 	moreParts[0] = parts[0]
 	for i := 0; i < len(data); i++ {
-		moreParts[2*i+1] = string(FormatAtom(data[i].(*types.Datum)))
+		moreParts[2*i+1] = FormatAtom(data[i].(*types.Datum))
 		moreParts[2*i+2] = parts[i+1]
 	}
 	return strings.Join(moreParts, "")

@@ -16,6 +16,8 @@ type World interface {
 	FindAllType(tp types.TypePath) []types.Value
 	FindOne(predicate func(*types.Datum) bool) types.Value
 	FindOneType(tp types.TypePath) types.Value
+	View(distance uint, centerD *types.Datum, oview bool) []types.Value
+	View1(centerD *types.Datum, oview bool) []types.Value
 }
 
 func WorldOf(t *types.Datum) World {
