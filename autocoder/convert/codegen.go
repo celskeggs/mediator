@@ -221,6 +221,11 @@ func StatementToGo(statement parser.DreamMakerStatement, ctx CodeGenContext) (li
 		}
 		ctx.Tree.AddImport("github.com/celskeggs/mediator/platform/datum")
 		lines = append(lines, fmt.Sprintf("for _, %s := range datum.Elements(%s) {", LocalVariablePrefix+statement.Name, list))
+		if !statement.VarType.IsNone() {
+			lines = append(lines, fmt.Sprintf("if !types.IsType(%s, %q) {", LocalVariablePrefix+statement.Name, statement.VarType.Path()))
+			lines = append(lines, "continue")
+			lines = append(lines, "}")
+		}
 		subctx := ctx.WithVar(statement.Name, statement.VarType)
 		for _, bodyStatement := range statement.Body {
 			extraLines, err := StatementToGo(bodyStatement, subctx)
