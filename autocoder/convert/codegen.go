@@ -324,7 +324,7 @@ func DefaultSrcSetting(tree *gen.DefinedTree, typePath path.TypePath) types.SrcS
 
 func ParseSrcSetting(expr parser.DreamMakerExpression, stype parser.StatementType) (types.SrcSetting, error) {
 	var sst types.SrcSettingType
-	var dist uint
+	var dist int
 	switch expr.Type {
 	case parser.ExprTypeCall:
 		for _, name := range expr.Names {
@@ -338,13 +338,17 @@ func ParseSrcSetting(expr parser.DreamMakerExpression, stype parser.StatementTyp
 		if len(expr.Children) > 2 {
 			return types.SrcSetting{}, fmt.Errorf("expected call to have 0-1 arguments when in src setting at %v", expr.SourceLoc)
 		}
-		if expr.Children[1].Type != parser.ExprTypeIntegerLiteral {
-			return types.SrcSetting{}, fmt.Errorf("expected integer literal in oview parameter at %v", expr.Children[1].SourceLoc)
-		}
 		sst = types.SrcSettingTypeOView
-		dist = uint(expr.Children[1].Integer)
-		if int64(dist) != expr.Children[1].Integer {
-			return types.SrcSetting{}, fmt.Errorf("integer literal out of range at %v", expr.Children[1].SourceLoc)
+		if len(expr.Children) == 2 {
+			if expr.Children[1].Type != parser.ExprTypeIntegerLiteral {
+				return types.SrcSetting{}, fmt.Errorf("expected integer literal in oview parameter at %v", expr.Children[1].SourceLoc)
+			}
+			dist = int(expr.Children[1].Integer)
+			if dist < 0 || int64(dist) != expr.Children[1].Integer {
+				return types.SrcSetting{}, fmt.Errorf("integer literal out of range at %v", expr.Children[1].SourceLoc)
+			}
+		} else {
+			dist = types.SrcDistUnspecified
 		}
 	default:
 		return types.SrcSetting{}, fmt.Errorf("unexpected expression %v while parsing src setting at %v", expr, expr.SourceLoc)

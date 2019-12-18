@@ -28,7 +28,7 @@ func (d *AtomData) ProcMove(src *types.Datum, usr *types.Datum, newloc types.Val
 
 	oldloc := src.Var("loc")
 	oldarea := ContainingArea(src)
-	if direction.(common.Direction) != 0 {
+	if direction != nil && direction.(common.Direction) != 0 {
 		src.SetVar("dir", direction)
 	}
 	if newloc != oldloc && newloc != nil {

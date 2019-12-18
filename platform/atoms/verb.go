@@ -49,6 +49,25 @@ func (v Verb) Matches(name string, src *types.Datum, usr *types.Datum) bool {
 			// src = usr
 			return src == usr
 		}
+	case types.SrcSettingTypeOView:
+		util.FIXME("come up with a more efficient way to do this")
+		if settings.Src.In {
+			// src in oview(N)
+			var objects []types.Value
+			if settings.Src.Dist == types.SrcDistUnspecified {
+				objects = WorldOf(src).View1(usr, true)
+			} else {
+				objects = WorldOf(src).View(uint(settings.Src.Dist), usr, true)
+			}
+			for _, obj := range objects {
+				if obj == src {
+					return true
+				}
+			}
+			return false
+		} else {
+			panic("support not implemented for proc src setting 'src = oview(...)'")
+		}
 	default:
 		panic("support not implemented for proc src setting " + settings.Src.Type.String())
 	}

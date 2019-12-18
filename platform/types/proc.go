@@ -13,6 +13,8 @@ const (
 	SrcSettingTypeOView
 )
 
+const SrcDistUnspecified int = -1
+
 func (s SrcSettingType) String() string {
 	// these need to match the constant name in this package, so that code generation works correctly
 	switch s {
@@ -39,7 +41,7 @@ func (s SrcSettingType) String() string {
 
 type SrcSetting struct {
 	Type SrcSettingType
-	Dist uint
+	Dist int
 	In   bool
 }
 

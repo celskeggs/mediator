@@ -87,6 +87,7 @@ func InvokeVerb(client types.Value, verb string) {
 	case ".west":
 		client.Invoke(mobDatum, "West")
 	case ".verbs":
+		client.Invoke(mobDatum, "<<", types.String("looking for verbs..."))
 		for _, verb := range clientData.ListVerbs(clientDatum) {
 			client.Invoke(mobDatum, "<<", types.String("found verb: "+verb))
 		}
@@ -241,7 +242,13 @@ func (d *ClientData) ResolveVerb(src *types.Datum, verbName string, args []strin
 }
 
 func (d *ClientData) ListVerbs(src *types.Datum) (verbs []string) {
-	verbUsr := src
+	mob := src.Var("mob")
+	if mob == nil {
+		util.FIXME("see if there are cases where verbs can be executed without a mob")
+		// cannot execute verbs without a mob
+		return
+	}
+	verbUsr := mob.(*types.Datum)
 	for _, verbSrc := range atoms.WorldOf(src).FindAllType("/atom") {
 		for _, verbVal := range datum.Elements(verbSrc.Var("verbs")) {
 			verb := verbVal.(atoms.Verb)
