@@ -7,6 +7,7 @@ import (
 	"github.com/celskeggs/mediator/dream/path"
 	"github.com/celskeggs/mediator/dream/tokenizer"
 	"github.com/celskeggs/mediator/util"
+	"strings"
 )
 
 func parsePath(i *input) (path.TypePath, error) {
@@ -76,22 +77,30 @@ func parseExpression0(i *input, variables []DreamMakerTypedName) (DreamMakerExpr
 	loc := i.Peek().Loc
 	if i.Accept(tokenizer.TokStringStart) {
 		var subexpressions []DreamMakerExpression
+		capitalize := true
 		for !i.Accept(tokenizer.TokStringEnd) {
+			partLoc := i.Peek().Loc
 			if i.Accept(tokenizer.TokStringInsertStart) {
 				expr, err := parseExpression(i, variables)
 				if err != nil {
 					return ExprNone(), err
 				}
-				subexpressions = append(subexpressions, expr)
+				macro := "the"
+				if capitalize {
+					macro = "The"
+				}
+				subexpressions = append(subexpressions, ExprStringMacro(macro, expr, partLoc))
 				if err := i.Expect(tokenizer.TokStringInsertEnd); err != nil {
 					return ExprNone(), err
 				}
+				capitalize = false
 			} else {
 				tok, err := i.ExpectParam(tokenizer.TokStringLiteral)
 				if err != nil {
 					return ExprNone(), err
 				}
 				subexpressions = append(subexpressions, ExprStringLiteral(tok.Str, tok.Loc))
+				capitalize = strings.HasSuffix(strings.TrimSpace(tok.Str), ".")
 			}
 		}
 		if len(subexpressions) == 0 {

@@ -74,6 +74,14 @@ func ResourceTypeByName(name string) ResourceType {
 
 const LocalVariablePrefix = "var"
 
+func unstring(expr string) string {
+	if strings.HasPrefix(expr, "types.String(") && strings.HasSuffix(expr, ")") {
+		return expr[len("types.String(") : len(expr)-1]
+	} else {
+		return "types.Unstring(" + expr + ")"
+	}
+}
+
 // expressions should always produce a types.Value
 func ExprToGo(expr parser.DreamMakerExpression, ctx CodeGenContext) (exprString string, etype dtype.DType, err error) {
 	switch expr.Type {
@@ -92,6 +100,13 @@ func ExprToGo(expr parser.DreamMakerExpression, ctx CodeGenContext) (exprString 
 		return fmt.Sprintf("types.Int(%d)", expr.Integer), dtype.Integer(), nil
 	case parser.ExprTypeStringLiteral:
 		return fmt.Sprintf("types.String(%q)", expr.Str), dtype.String(), nil
+	case parser.ExprTypeStringMacro:
+		innerExpr, _, err := ExprToGo(expr.Children[0], ctx)
+		if err != nil {
+			return "", dtype.None(), err
+		}
+		ctx.Tree.AddImport("github.com/celskeggs/mediator/platform/format")
+		return fmt.Sprintf("types.String(format.FormatMacro(%q, %s))", expr.Str, innerExpr), dtype.String(), nil
 	case parser.ExprTypeBooleanNot:
 		innerString, _, err := ExprToGo(expr.Children[0], ctx)
 		if err != nil {
@@ -182,14 +197,11 @@ func ExprToGo(expr parser.DreamMakerExpression, ctx CodeGenContext) (exprString 
 			if err != nil {
 				return "", dtype.None(), err
 			}
-			if actualType.IsString() {
-				ctx.Tree.AddImport("github.com/celskeggs/mediator/platform/types")
-				terms = append(terms, "types.Unstring("+termString+")")
-			} else {
-				util.FIXME("think more carefully here than just assuming it's an atom")
-				ctx.Tree.AddImport("github.com/celskeggs/mediator/platform/format")
-				terms = append(terms, "format.FormatAtom("+termString+")")
+			if !actualType.IsString() {
+				return "", dtype.None(), fmt.Errorf("expected string concat to have string term, not %v at %v", actualType, expr.SourceLoc)
 			}
+			ctx.Tree.AddImport("github.com/celskeggs/mediator/platform/types")
+			terms = append(terms, unstring(termString))
 		}
 		return fmt.Sprintf("types.String(%s)", strings.Join(terms, " + ")), dtype.String(), nil
 	default:

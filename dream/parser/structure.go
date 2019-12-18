@@ -16,6 +16,7 @@ const (
 	ExprTypePathLiteral
 	ExprTypeIntegerLiteral
 	ExprTypeStringLiteral
+	ExprTypeStringMacro
 	ExprTypeStringConcat
 	ExprTypeGetLocal
 	ExprTypeGetNonLocal
@@ -37,6 +38,8 @@ func (et ExprType) String() string {
 		return "IntegerLiteral"
 	case ExprTypeStringLiteral:
 		return "StringLiteral"
+	case ExprTypeStringMacro:
+		return "StringMacro"
 	case ExprTypeStringConcat:
 		return "StringConcat"
 	case ExprTypeGetLocal:
@@ -100,6 +103,15 @@ func ExprPathLiteral(path path.TypePath, loc tokenizer.SourceLocation) DreamMake
 	return DreamMakerExpression{
 		Type:      ExprTypePathLiteral,
 		Path:      path,
+		SourceLoc: loc,
+	}
+}
+
+func ExprStringMacro(macro string, expr DreamMakerExpression, loc tokenizer.SourceLocation) DreamMakerExpression {
+	return DreamMakerExpression{
+		Type:      ExprTypeStringMacro,
+		Str:       macro,
+		Children:  []DreamMakerExpression{expr},
 		SourceLoc: loc,
 	}
 }
