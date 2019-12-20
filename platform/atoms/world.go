@@ -5,6 +5,14 @@ import (
 	"github.com/celskeggs/mediator/platform/types"
 )
 
+type ViewMode uint
+
+const (
+	ViewInclusive ViewMode = iota // corresponds to view proc
+	ViewExclusive                 // corresponds to oview proc
+	ViewVisual                    // actual visual drawn elements; like 'view' but excludes contents of player
+)
+
 type World interface {
 	PlayerExists(client types.Value) bool
 	MaxXYZ() (uint, uint, uint)
@@ -16,8 +24,8 @@ type World interface {
 	FindAllType(tp types.TypePath) []types.Value
 	FindOne(predicate func(*types.Datum) bool) types.Value
 	FindOneType(tp types.TypePath) types.Value
-	View(distance uint, centerD *types.Datum, oview bool) []types.Value
-	View1(centerD *types.Datum, oview bool) []types.Value
+	View(distance uint, centerD *types.Datum, mode ViewMode) []types.Value
+	View1(centerD *types.Datum, mode ViewMode) []types.Value
 }
 
 func WorldOf(t *types.Datum) World {

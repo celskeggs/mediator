@@ -169,12 +169,12 @@ func PullClientRequests(client *types.Datum) (textDisplay []string, sounds []spr
 	return textDisplay, sounds
 }
 
-func (w *World) RenderClientViewAsAtoms(client types.Value) (center types.Value, atoms []types.Value) {
+func (w *World) RenderClientViewAsAtoms(client types.Value) (center types.Value, viewAtoms []types.Value) {
 	util.FIXME("actually do this correctly")
 	eye := client.Var("eye").(*types.Datum)
 	veye := client.Var("virtual_eye").(*types.Datum)
 	view := types.Unuint(client.Var("view"))
-	return veye, w.ViewX(view, veye, eye, false)
+	return veye, w.ViewX(view, veye, eye, atoms.ViewVisual)
 }
 
 func (w *World) constructNewMob() types.Value {

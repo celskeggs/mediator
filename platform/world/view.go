@@ -2,6 +2,7 @@ package world
 
 import (
 	"github.com/celskeggs/mediator/common"
+	"github.com/celskeggs/mediator/platform/atoms"
 	"github.com/celskeggs/mediator/platform/datum"
 	"github.com/celskeggs/mediator/platform/types"
 	"github.com/celskeggs/mediator/util"
@@ -37,8 +38,8 @@ func ManhattanDistance(a, b types.Value) uint {
 	return MaxUint(AbsDiff(ax, bx), AbsDiff(ay, by))
 }
 
-func (w *World) View1(center *types.Datum, oview bool) []types.Value {
-	return w.View(w.ViewDist, center, oview)
+func (w *World) View1(center *types.Datum, mode atoms.ViewMode) []types.Value {
+	return w.View(w.ViewDist, center, mode)
 }
 
 func expandWithContents(atoms []types.Value) (out []types.Value) {
@@ -58,8 +59,17 @@ func atomsExcept(atoms []types.Value, except types.Value) (out []types.Value) {
 	return out
 }
 
+func containsAtom(atoms []types.Value, cmp types.Value) bool {
+	for _, atom := range atoms {
+		if atom == cmp {
+			return true
+		}
+	}
+	return false
+}
+
 // note: this does not handle the "centerD = nil" case the same as DreamMaker
-func (w *World) View(distance uint, centerD *types.Datum, oview bool) []types.Value {
+func (w *World) View(distance uint, centerD *types.Datum, mode atoms.ViewMode) []types.Value {
 	var center *types.Datum
 	if centerD != nil {
 		if types.IsType(centerD, "/client") {
@@ -70,23 +80,33 @@ func (w *World) View(distance uint, centerD *types.Datum, oview bool) []types.Va
 			panic("view center is not an /atom")
 		}
 	}
-	return w.ViewX(distance, center, center, oview)
+	return w.ViewX(distance, center, center, mode)
 }
 
-func (w *World) ViewX(distance uint, center *types.Datum, perspective *types.Datum, oview bool) []types.Value {
+func (w *World) ViewX(distance uint, center *types.Datum, perspective *types.Datum, mode atoms.ViewMode) []types.Value {
 	locations := w.ViewXLocations(distance, center, perspective)
-	if oview {
-		// make sure 'perspective' does not get added to the list of contents
-		contents := expandWithContents(locations)
-		contents = atomsExcept(contents, perspective)
-		return contents
-	} else {
-		// make sure that 'perspective' is in the list of found objects
+	switch mode {
+	case atoms.ViewInclusive:
+		// make sure that 'perspective' and its contents are in the list of found objects
 		if perspective != nil {
 			locations = append(locations, perspective)
 		}
 		util.FIXME("make sure that perspective is not in the final output twice")
 		return expandWithContents(locations)
+	case atoms.ViewVisual:
+		// include 'perspective' in the list of found objects, but not its contents
+		contents := expandWithContents(locations)
+		if !containsAtom(contents, perspective) {
+			contents = append(contents, perspective)
+		}
+		return contents
+	case atoms.ViewExclusive:
+		// make sure 'perspective' does not get added to the list of contents
+		contents := expandWithContents(locations)
+		contents = atomsExcept(contents, perspective)
+		return contents
+	default:
+		panic("unknown view type " + string(uint(mode)))
 	}
 }
 

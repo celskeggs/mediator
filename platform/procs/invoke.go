@@ -23,7 +23,7 @@ func KWInvoke(w atoms.World, usr *types.Datum, name string, kwargs map[string]ty
 		if usr == nil {
 			panic("usr was nil when calling oview")
 		}
-		return datum.NewList(w.View1(usr, true)...)
+		return datum.NewList(w.View1(usr, atoms.ViewExclusive)...)
 	default:
 		panic(fmt.Sprintf("unimplemented global function %q", name))
 	}

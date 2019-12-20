@@ -55,9 +55,9 @@ func (v Verb) Matches(name string, src *types.Datum, usr *types.Datum) bool {
 			// src in oview(N)
 			var objects []types.Value
 			if settings.Src.Dist == types.SrcDistUnspecified {
-				objects = WorldOf(src).View1(usr, true)
+				objects = WorldOf(src).View1(usr, ViewExclusive)
 			} else {
-				objects = WorldOf(src).View(uint(settings.Src.Dist), usr, true)
+				objects = WorldOf(src).View(uint(settings.Src.Dist), usr, ViewExclusive)
 			}
 			for _, obj := range objects {
 				if obj == src {
