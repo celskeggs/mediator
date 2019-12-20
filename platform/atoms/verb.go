@@ -44,7 +44,7 @@ func (v Verb) Matches(name string, src *types.Datum, usr *types.Datum) bool {
 	switch settings.Src.Type {
 	case types.SrcSettingTypeUsr:
 		if settings.Src.In {
-			panic("support not implemented for proc src setting 'src in usr'")
+			return src.Var("loc") == usr
 		} else {
 			// src = usr
 			return src == usr
