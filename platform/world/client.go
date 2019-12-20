@@ -214,6 +214,7 @@ func (d *ClientData) ProcDel(src *types.Datum, usr *types.Datum) types.Value {
 }
 
 func (d *ClientData) ResolveVerb(src *types.Datum, verbName string, args []string) {
+	util.FIXME("autocomplete user's input, following the 'space autocompletes' rule, rather than just letting the player type")
 	mob := src.Var("mob")
 	if mob == nil {
 		util.FIXME("see if there are cases where verbs can be executed without a mob")
@@ -225,7 +226,7 @@ func (d *ClientData) ResolveVerb(src *types.Datum, verbName string, args []strin
 		verbSrc := verbSrcVal.(*types.Datum)
 		for _, verbVal := range datum.Elements(verbSrc.Var("verbs")) {
 			verb := verbVal.(atoms.Verb)
-			if verb.Matches(verbName, verbSrc, verbUsr) {
+			if verb.Matches(verbName, verbSrc, verbUsr, args) {
 				resolved, err := verb.ResolveArgs(verbSrc, verbUsr, args)
 				if err != nil {
 					log.Printf("cannot resolve verb %v: %v\n", verb, err)
@@ -252,7 +253,7 @@ func (d *ClientData) ListVerbs(src *types.Datum) (verbs []string) {
 	for _, verbSrc := range atoms.WorldOf(src).FindAllType("/atom") {
 		for _, verbVal := range datum.Elements(verbSrc.Var("verbs")) {
 			verb := verbVal.(atoms.Verb)
-			if verb.Matches(verb.VisibleName, verbSrc.(*types.Datum), verbUsr) {
+			if verb.Matches(verb.VisibleName, verbSrc.(*types.Datum), verbUsr, nil) {
 				verbs = append(verbs, verb.VisibleName)
 			}
 		}

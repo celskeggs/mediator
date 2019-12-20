@@ -32,14 +32,20 @@ func (v Verb) String() string {
 	return fmt.Sprintf("[verb name=%q proc=%v/%s]", v.VisibleName, v.DefiningType, v.ProcName)
 }
 
-func (v Verb) Matches(name string, src *types.Datum, usr *types.Datum) bool {
+func (v Verb) Matches(name string, src *types.Datum, usr *types.Datum, args []string) bool {
 	if name != v.VisibleName {
 		return false
 	}
-	settings, ok := types.UnpackDatum(src).ProcSettings(name)
+	settings, ok := types.UnpackDatum(src).ProcSettings(v.VisibleName)
 	if !ok {
 		util.FIXME("make sure this never actually happens")
 		panic(fmt.Sprintf("attempt to use procedure %s on %v as a verb, when it has no metadata", name, src))
+	}
+	if settings.Src.In && len(args) >= 1 {
+		// then we expect the first argument to refer to us; if it doesn't, we don't match.
+		if args[0] != types.Unstring(src.Var("name")) {
+			return false
+		}
 	}
 	switch settings.Src.Type {
 	case types.SrcSettingTypeUsr:
@@ -74,6 +80,13 @@ func (v Verb) Matches(name string, src *types.Datum, usr *types.Datum) bool {
 }
 
 func (v Verb) ResolveArgs(src *types.Datum, usr *types.Datum, args []string) ([]types.Value, error) {
+	settings, ok := types.UnpackDatum(src).ProcSettings(v.VisibleName)
+	if !ok {
+		panic("should not have gotten here; verb should not have matched")
+	}
+	if settings.Src.In && len(args) >= 1 {
+		args = args[1:]
+	}
 	results := make([]types.Value, len(args))
 	for _, _ = range args {
 		return nil, fmt.Errorf("unimplemented")
