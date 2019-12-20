@@ -4,23 +4,23 @@ import (
 	"fmt"
 	"github.com/celskeggs/mediator/autocoder/dtype"
 	"github.com/celskeggs/mediator/autocoder/gen"
-	"github.com/celskeggs/mediator/dream/parser"
+	"github.com/celskeggs/mediator/dream/ast"
 	"github.com/celskeggs/mediator/dream/path"
 	"github.com/celskeggs/mediator/platform/types"
 	"github.com/celskeggs/mediator/util"
 	"strings"
 )
 
-func ConstantString(expr parser.DreamMakerExpression) string {
-	if expr.Type == parser.ExprTypeStringLiteral {
+func ConstantString(expr ast.Expression) string {
+	if expr.Type == ast.ExprTypeStringLiteral {
 		return expr.Str
 	} else {
 		panic("unimplemented: constant string from expr " + expr.String())
 	}
 }
 
-func ConstantPath(expr parser.DreamMakerExpression) path.TypePath {
-	if expr.Type == parser.ExprTypePathLiteral {
+func ConstantPath(expr ast.Expression) path.TypePath {
+	if expr.Type == ast.ExprTypePathLiteral {
 		return expr.Path
 	} else {
 		panic("unimplemented: constant path from expr " + expr.String())
@@ -100,9 +100,9 @@ func unstring(expr string) string {
 }
 
 // expressions should always produce a types.Value
-func ExprToGo(expr parser.DreamMakerExpression, ctx CodeGenContext) (exprString string, etype dtype.DType, err error) {
+func ExprToGo(expr ast.Expression, ctx CodeGenContext) (exprString string, etype dtype.DType, err error) {
 	switch expr.Type {
-	case parser.ExprTypeResourceLiteral:
+	case ast.ExprTypeResourceLiteral:
 		switch ResourceTypeByName(expr.Str) {
 		case ResourceTypeIcon:
 			ctx.Tree.AddImport("github.com/celskeggs/mediator/platform/atoms")
@@ -113,28 +113,28 @@ func ExprToGo(expr parser.DreamMakerExpression, ctx CodeGenContext) (exprString 
 		default:
 			return "", dtype.None(), fmt.Errorf("cannot interpret resource name %q", expr.Str)
 		}
-	case parser.ExprTypeIntegerLiteral:
+	case ast.ExprTypeIntegerLiteral:
 		return fmt.Sprintf("types.Int(%d)", expr.Integer), dtype.Integer(), nil
-	case parser.ExprTypeStringLiteral:
+	case ast.ExprTypeStringLiteral:
 		return fmt.Sprintf("types.String(%q)", expr.Str), dtype.String(), nil
-	case parser.ExprTypeStringMacro:
+	case ast.ExprTypeStringMacro:
 		innerExpr, _, err := ExprToGo(expr.Children[0], ctx)
 		if err != nil {
 			return "", dtype.None(), err
 		}
 		ctx.Tree.AddImport("github.com/celskeggs/mediator/platform/format")
 		return fmt.Sprintf("types.String(format.FormatMacro(%q, %s))", expr.Str, innerExpr), dtype.String(), nil
-	case parser.ExprTypeBooleanNot:
+	case ast.ExprTypeBooleanNot:
 		innerString, _, err := ExprToGo(expr.Children[0], ctx)
 		if err != nil {
 			return "", dtype.None(), err
 		}
 		return fmt.Sprintf("procs.OperatorNot(%s)", innerString), dtype.Integer(), nil
-	case parser.ExprTypeCall:
+	case ast.ExprTypeCall:
 		target := expr.Children[0]
 		args := expr.Children[1:]
 
-		if target.Type != parser.ExprTypeGetNonLocal {
+		if target.Type != ast.ExprTypeGetNonLocal {
 			return "", dtype.None(), fmt.Errorf("calling non-global functions is not yet implemented")
 		}
 
@@ -192,7 +192,7 @@ func ExprToGo(expr parser.DreamMakerExpression, ctx CodeGenContext) (exprString 
 		} else {
 			return fmt.Sprintf("(%s).Invoke(%s, %q%s)", invokeSrc, ctx.UsrRef(), target.Str, strings.Join(convArgs, "")), dtype.Any(), nil
 		}
-	case parser.ExprTypeNew:
+	case ast.ExprTypeNew:
 		for _, name := range expr.Names {
 			if name != "" {
 				return "", dtype.None(), fmt.Errorf("unhandled: keyword argument in new operation at %v", expr.SourceLoc)
@@ -207,19 +207,19 @@ func ExprToGo(expr parser.DreamMakerExpression, ctx CodeGenContext) (exprString 
 			argStrs = append(argStrs, ", "+argStr)
 		}
 		return fmt.Sprintf("%s.Realm().New(%q, %s%s)", ctx.WorldRef, expr.Path, ctx.UsrRef(), strings.Join(argStrs, "")), dtype.Path(expr.Path), nil
-	case parser.ExprTypeGetNonLocal:
+	case ast.ExprTypeGetNonLocal:
 		getExpr, _, ftype, ok := ctx.ResolveNonLocal(expr.Str)
 		if ok {
 			return getExpr, ftype, nil
 		}
 		return "", dtype.None(), fmt.Errorf("cannot find nonlocal %s at %v", expr.Str, expr.SourceLoc)
-	case parser.ExprTypeGetLocal:
+	case ast.ExprTypeGetLocal:
 		vtype, ok := ctx.VarTypes[expr.Str]
 		if !ok {
-			return "", dtype.None(), fmt.Errorf("unexpectedly could not find type for var %q at %v ... there may be a parser bug", expr.Str, expr.SourceLoc)
+			return "", dtype.None(), fmt.Errorf("unexpectedly could not find type for var %q at %v ... there may be a ast.bug", expr.Str, expr.SourceLoc)
 		}
 		return LocalVariablePrefix + expr.Str, vtype, nil
-	case parser.ExprTypeGetField:
+	case ast.ExprTypeGetField:
 		exprStr, exprType, err := ExprToGo(expr.Children[0], ctx)
 		if err != nil {
 			return "", dtype.None(), err
@@ -232,7 +232,7 @@ func ExprToGo(expr parser.DreamMakerExpression, ctx CodeGenContext) (exprString 
 			return "", dtype.None(), fmt.Errorf("cannot find field %q on datum type %v at %v", expr.Str, exprType, expr.SourceLoc)
 		}
 		return fmt.Sprintf("(%s).Var(%q)", exprStr, expr.Str), fieldType, nil
-	case parser.ExprTypeStringConcat:
+	case ast.ExprTypeStringConcat:
 		var terms []string
 		for _, term := range expr.Children {
 			termString, actualType, err := ExprToGo(term, ctx)
@@ -251,9 +251,9 @@ func ExprToGo(expr parser.DreamMakerExpression, ctx CodeGenContext) (exprString 
 	}
 }
 
-func StatementToGo(statement parser.DreamMakerStatement, ctx CodeGenContext) (lines []string, err error) {
+func StatementToGo(statement ast.Statement, ctx CodeGenContext) (lines []string, err error) {
 	switch statement.Type {
-	case parser.StatementTypeIf:
+	case ast.StatementTypeIf:
 		condition, _, err := ExprToGo(statement.From, ctx)
 		if err != nil {
 			return nil, err
@@ -268,7 +268,7 @@ func StatementToGo(statement parser.DreamMakerStatement, ctx CodeGenContext) (li
 		}
 		lines = append(lines, "}")
 		return lines, nil
-	case parser.StatementTypeForList:
+	case ast.StatementTypeForList:
 		list, _, err := ExprToGo(statement.From, ctx)
 		if err != nil {
 			return nil, err
@@ -290,7 +290,7 @@ func StatementToGo(statement parser.DreamMakerStatement, ctx CodeGenContext) (li
 		}
 		lines = append(lines, "}")
 		return lines, nil
-	case parser.StatementTypeWrite:
+	case ast.StatementTypeWrite:
 		target, _, err := ExprToGo(statement.To, ctx)
 		if err != nil {
 			return nil, err
@@ -303,12 +303,12 @@ func StatementToGo(statement parser.DreamMakerStatement, ctx CodeGenContext) (li
 		return []string{
 			fmt.Sprintf("(%s).Invoke(%s, \"<<\", %s)", target, ctx.UsrRef(), value),
 		}, nil
-	case parser.StatementTypeReturn:
+	case ast.StatementTypeReturn:
 		util.FIXME("support returning values")
 		return []string{
 			"return nil",
 		}, nil
-	case parser.StatementTypeEvaluate:
+	case ast.StatementTypeEvaluate:
 		value, _, err := ExprToGo(statement.To, ctx)
 		if err != nil {
 			return nil, err
@@ -316,12 +316,12 @@ func StatementToGo(statement parser.DreamMakerStatement, ctx CodeGenContext) (li
 		return []string{
 			"_ = " + value,
 		}, nil
-	case parser.StatementTypeAssign:
+	case ast.StatementTypeAssign:
 		value, _, err := ExprToGo(statement.From, ctx)
 		if err != nil {
 			return nil, err
 		}
-		if statement.To.Type == parser.ExprTypeGetNonLocal {
+		if statement.To.Type == ast.ExprTypeGetNonLocal {
 			name := statement.To.Str
 			_, setExpr, _, ok := ctx.ResolveNonLocal(name)
 			if ok {
@@ -334,7 +334,7 @@ func StatementToGo(statement parser.DreamMakerStatement, ctx CodeGenContext) (li
 		} else {
 			return nil, fmt.Errorf("not sure how to handle assignment to expression %v at %v", statement.To, statement.SourceLoc)
 		}
-	case parser.StatementTypeDel:
+	case ast.StatementTypeDel:
 		value, _, err := ExprToGo(statement.From, ctx)
 		if err != nil {
 			return nil, err
@@ -375,17 +375,17 @@ func DefaultSrcSetting(tree *gen.DefinedTree, typePath path.TypePath) types.SrcS
 	}
 }
 
-func ParseSrcSetting(expr parser.DreamMakerExpression, stype parser.StatementType) (types.SrcSetting, error) {
+func ParseSrcSetting(expr ast.Expression, stype ast.StatementType) (types.SrcSetting, error) {
 	var sst types.SrcSettingType
 	var dist int
 	switch expr.Type {
-	case parser.ExprTypeCall:
+	case ast.ExprTypeCall:
 		for _, name := range expr.Names {
 			if name != "" {
 				return types.SrcSetting{}, fmt.Errorf("cannot handle keyword arguments in src setting at %v", expr.SourceLoc)
 			}
 		}
-		if expr.Children[0].Type != parser.ExprTypeGetNonLocal || expr.Children[0].Str != "oview" {
+		if expr.Children[0].Type != ast.ExprTypeGetNonLocal || expr.Children[0].Str != "oview" {
 			return types.SrcSetting{}, fmt.Errorf("expected call only to oview, not %q, in src setting at %v", expr.Children[0].Str, expr.Children[0].SourceLoc)
 		}
 		if len(expr.Children) > 2 {
@@ -393,7 +393,7 @@ func ParseSrcSetting(expr parser.DreamMakerExpression, stype parser.StatementTyp
 		}
 		sst = types.SrcSettingTypeOView
 		if len(expr.Children) == 2 {
-			if expr.Children[1].Type != parser.ExprTypeIntegerLiteral {
+			if expr.Children[1].Type != ast.ExprTypeIntegerLiteral {
 				return types.SrcSetting{}, fmt.Errorf("expected integer literal in oview parameter at %v", expr.Children[1].SourceLoc)
 			}
 			dist = int(expr.Children[1].Integer)
@@ -409,15 +409,15 @@ func ParseSrcSetting(expr parser.DreamMakerExpression, stype parser.StatementTyp
 	return types.SrcSetting{
 		Type: sst,
 		Dist: dist,
-		In:   stype == parser.StatementTypeSetIn,
+		In:   stype == ast.StatementTypeSetIn,
 	}, nil
 }
 
-func ParseSettings(dt *gen.DefinedTree, typePath path.TypePath, body []parser.DreamMakerStatement) (types.ProcSettings, []parser.DreamMakerStatement, error) {
+func ParseSettings(dt *gen.DefinedTree, typePath path.TypePath, body []ast.Statement) (types.ProcSettings, []ast.Statement, error) {
 	settings := types.ProcSettings{}
 	settings.Src = DefaultSrcSetting(dt, typePath)
 	setSrc := false
-	for len(body) > 0 && (body[0].Type == parser.StatementTypeSetIn || body[0].Type == parser.StatementTypeSetTo) {
+	for len(body) > 0 && (body[0].Type == ast.StatementTypeSetIn || body[0].Type == ast.StatementTypeSetTo) {
 		if body[0].Name == "src" {
 			if setSrc {
 				return types.ProcSettings{}, nil, fmt.Errorf("duplicate setting for src at %v", body[0].SourceLoc)
@@ -434,7 +434,7 @@ func ParseSettings(dt *gen.DefinedTree, typePath path.TypePath, body []parser.Dr
 	return settings, body, nil
 }
 
-func FuncBodyToGo(body []parser.DreamMakerStatement, ctx CodeGenContext) (lines []string, err error) {
+func FuncBodyToGo(body []ast.Statement, ctx CodeGenContext) (lines []string, err error) {
 	hadReturn := false
 	for _, statement := range body {
 		if hadReturn {
@@ -445,7 +445,7 @@ func FuncBodyToGo(body []parser.DreamMakerStatement, ctx CodeGenContext) (lines 
 			return nil, err
 		}
 		lines = append(lines, extraLines...)
-		if statement.Type == parser.StatementTypeReturn {
+		if statement.Type == ast.StatementTypeReturn {
 			hadReturn = true
 		}
 	}

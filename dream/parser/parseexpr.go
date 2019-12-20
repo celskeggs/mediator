@@ -2,80 +2,81 @@ package parser
 
 import (
 	"fmt"
+	"github.com/celskeggs/mediator/dream/ast"
 	"github.com/celskeggs/mediator/dream/tokenizer"
 	"strings"
 )
 
-func parseExpression0(i *input, variables []DreamMakerTypedName) (DreamMakerExpression, error) {
+func parseExpression0(i *input, variables []ast.TypedName) (ast.Expression, error) {
 	loc := i.Peek().Loc
 	if i.Accept(tokenizer.TokStringStart) {
-		var subexpressions []DreamMakerExpression
+		var subexpressions []ast.Expression
 		capitalize := true
 		for !i.Accept(tokenizer.TokStringEnd) {
 			partLoc := i.Peek().Loc
 			if i.Accept(tokenizer.TokStringInsertStart) {
 				expr, err := parseExpression(i, variables)
 				if err != nil {
-					return ExprNone(), err
+					return ast.ExprNone(), err
 				}
 				macro := "the"
 				if capitalize {
 					macro = "The"
 				}
-				subexpressions = append(subexpressions, ExprStringMacro(macro, expr, partLoc))
+				subexpressions = append(subexpressions, ast.ExprStringMacro(macro, expr, partLoc))
 				if err := i.Expect(tokenizer.TokStringInsertEnd); err != nil {
-					return ExprNone(), err
+					return ast.ExprNone(), err
 				}
 				capitalize = false
 			} else {
 				tok, err := i.ExpectParam(tokenizer.TokStringLiteral)
 				if err != nil {
-					return ExprNone(), err
+					return ast.ExprNone(), err
 				}
-				subexpressions = append(subexpressions, ExprStringLiteral(tok.Str, tok.Loc))
+				subexpressions = append(subexpressions, ast.ExprStringLiteral(tok.Str, tok.Loc))
 				capitalize = strings.HasSuffix(strings.TrimSpace(tok.Str), ".")
 			}
 		}
 		if len(subexpressions) == 0 {
-			return ExprStringLiteral("", loc), nil
+			return ast.ExprStringLiteral("", loc), nil
 		} else if len(subexpressions) == 1 {
 			return subexpressions[0], nil
 		} else {
-			return ExprStringConcat(subexpressions, loc), nil
+			return ast.ExprStringConcat(subexpressions, loc), nil
 		}
 	} else if ok := i.Accept(tokenizer.TokKeywordNew); ok {
 		typepath, err := parsePath(i)
 		if err != nil {
-			return ExprNone(), err
+			return ast.ExprNone(), err
 		}
 		keywords, exprs, err := parseExpressionArguments(i, variables)
 		if err != nil {
-			return ExprNone(), err
+			return ast.ExprNone(), err
 		}
-		return ExprNew(typepath, keywords, exprs, loc), nil
+		return ast.ExprNew(typepath, keywords, exprs, loc), nil
 	} else if tok, ok := i.AcceptParam(tokenizer.TokInteger); ok {
-		return ExprIntegerLiteral(tok.Int, loc), nil
+		return ast.ExprIntegerLiteral(tok.Int, loc), nil
 	} else if tok, ok := i.AcceptParam(tokenizer.TokResource); ok {
-		return ExprResourceLiteral(tok.Str, loc), nil
+		return ast.ExprResourceLiteral(tok.Str, loc), nil
 	} else if i.Peek().TokenType == tokenizer.TokSlash {
 		tpath, err := parsePath(i)
 		if err != nil {
-			return ExprNone(), err
+			return ast.ExprNone(), err
 		}
-		return ExprPathLiteral(tpath, loc), nil
+		return ast.ExprPathLiteral(tpath, loc), nil
 	} else if tok, ok := i.AcceptParam(tokenizer.TokSymbol); ok {
 		for _, param := range variables {
 			if tok.Str == param.Name {
-				return ExprGetLocal(tok.Str, loc), nil
+				return ast.ExprGetLocal(tok.Str, loc), nil
 			}
 		}
-		return ExprGetNonLocal(tok.Str, loc), nil
+		return ast.ExprGetNonLocal(tok.Str, loc), nil
 	} else {
-		return ExprNone(), fmt.Errorf("invalid token %v when parsing expression at %v", i.Peek(), loc)
+		return ast.ExprNone(), fmt.Errorf("invalid token %v when parsing expression at %v", i.Peek(), loc)
 	}
 }
 
-func parseExpressionArguments(i *input, variables []DreamMakerTypedName) (keywords []string, expressions []DreamMakerExpression, err error) {
+func parseExpressionArguments(i *input, variables []ast.TypedName) (keywords []string, expressions []ast.Expression, err error) {
 	if err := i.Expect(tokenizer.TokParenOpen); err != nil {
 		return nil, nil, err
 	}
@@ -110,39 +111,39 @@ func parseExpressionArguments(i *input, variables []DreamMakerTypedName) (keywor
 	return keywords, expressions, nil
 }
 
-func parseExpression1(i *input, variables []DreamMakerTypedName) (DreamMakerExpression, error) {
+func parseExpression1(i *input, variables []ast.TypedName) (ast.Expression, error) {
 	expr, err := parseExpression0(i, variables)
 	if err != nil {
-		return ExprNone(), err
+		return ast.ExprNone(), err
 	}
 	for {
 		loc := i.Peek().Loc
 		if i.Peek().TokenType == tokenizer.TokParenOpen {
 			keywords, exprs, err := parseExpressionArguments(i, variables)
 			if err != nil {
-				return ExprNone(), err
+				return ast.ExprNone(), err
 			}
-			expr = ExprCall(expr, keywords, exprs, loc)
+			expr = ast.ExprCall(expr, keywords, exprs, loc)
 		} else if i.Accept(tokenizer.TokDot) {
 			field, err := i.ExpectParam(tokenizer.TokSymbol)
 			if err != nil {
-				return ExprNone(), err
+				return ast.ExprNone(), err
 			}
-			expr = ExprGetField(expr, field.Str, field.Loc)
+			expr = ast.ExprGetField(expr, field.Str, field.Loc)
 		} else {
 			return expr, nil
 		}
 	}
 }
 
-func parseExpression(i *input, variables []DreamMakerTypedName) (DreamMakerExpression, error) {
+func parseExpression(i *input, variables []ast.TypedName) (ast.Expression, error) {
 	loc := i.Peek().Loc
 	if i.Accept(tokenizer.TokNot) {
 		expr, err := parseExpression1(i, variables)
 		if err != nil {
-			return ExprNone(), err
+			return ast.ExprNone(), err
 		}
-		return ExprBooleanNot(expr, loc), nil
+		return ast.ExprBooleanNot(expr, loc), nil
 	}
 	return parseExpression1(i, variables)
 }

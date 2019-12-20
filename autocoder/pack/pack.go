@@ -2,7 +2,7 @@ package pack
 
 import (
 	"fmt"
-	"github.com/celskeggs/mediator/dream/parser"
+	"github.com/celskeggs/mediator/dream/ast"
 	"github.com/celskeggs/mediator/midi"
 	"github.com/celskeggs/mediator/resourcepack"
 	"github.com/pkg/errors"
@@ -52,7 +52,7 @@ func ScanDirectory(dir string) (paths []string, _ error) {
 	return paths, nil
 }
 
-func ScanResources(dmf *parser.DreamMakerFile) (paths []string, _ error) {
+func ScanResources(dmf *ast.File) (paths []string, _ error) {
 	coreResources, err := build.Default.Import(CoreResourcesPath, "", build.FindOnly)
 	if err != nil {
 		return nil, errors.Wrapf(err, "while finding core resources at path %v", CoreResourcesPath)
@@ -71,7 +71,7 @@ func ScanResources(dmf *parser.DreamMakerFile) (paths []string, _ error) {
 	return paths, nil
 }
 
-func GenerateResourcePack(dmf *parser.DreamMakerFile, outputPack string) error {
+func GenerateResourcePack(dmf *ast.File, outputPack string) error {
 	if !strings.HasSuffix(outputPack, OutputSuffix) {
 		return fmt.Errorf("output resource pack name does not end in %s: %q", OutputSuffix, outputPack)
 	}

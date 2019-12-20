@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/celskeggs/mediator/autocoder/dtype"
 	"github.com/celskeggs/mediator/autocoder/gen"
-	"github.com/celskeggs/mediator/dream/parser"
+	"github.com/celskeggs/mediator/dream/ast"
 	"github.com/celskeggs/mediator/dream/path"
 	"github.com/celskeggs/mediator/dream/tokenizer"
 	"github.com/celskeggs/mediator/util"
@@ -83,7 +83,7 @@ func DefineProc(dt *gen.DefinedTree, typePath path.TypePath, isVerb bool, variab
 	return nil
 }
 
-func AssignPath(dt *gen.DefinedTree, path path.TypePath, variable string, expr parser.DreamMakerExpression, loc tokenizer.SourceLocation) error {
+func AssignPath(dt *gen.DefinedTree, path path.TypePath, variable string, expr ast.Expression, loc tokenizer.SourceLocation) error {
 	switch path.String() {
 	case "/world":
 		switch variable {
@@ -125,7 +125,7 @@ func AssignPath(dt *gen.DefinedTree, path path.TypePath, variable string, expr p
 	return nil
 }
 
-func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string, arguments []parser.DreamMakerTypedName, body []parser.DreamMakerStatement, loc tokenizer.SourceLocation) error {
+func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string, arguments []ast.TypedName, body []ast.Statement, loc tokenizer.SourceLocation) error {
 	if !dt.Exists(path) {
 		return fmt.Errorf("no such path %v for implementation of function %v at %v", path, function, loc)
 	}

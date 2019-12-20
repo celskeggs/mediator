@@ -1,4 +1,4 @@
-package parser
+package ast
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ func makeIndent(indent int) string {
 	return strings.Repeat("\t", indent)
 }
 
-func (dms DreamMakerStatement) Dump(output io.Writer, indent int) error {
+func (dms Statement) Dump(output io.Writer, indent int) error {
 	_, err := fmt.Fprintf(output, "%s[statement %v]\n", makeIndent(indent), dms.Type)
 	if err != nil {
 		return err
@@ -48,7 +48,7 @@ func (dms DreamMakerStatement) Dump(output io.Writer, indent int) error {
 	return nil
 }
 
-func DumpStatementList(output io.Writer, header string, indent int, statements []DreamMakerStatement) error {
+func DumpStatementList(output io.Writer, header string, indent int, statements []Statement) error {
 	_, err := fmt.Fprintf(output, "%s[%s len=%d]\n", makeIndent(indent), header, len(statements))
 	if err != nil {
 		return err
@@ -62,7 +62,7 @@ func DumpStatementList(output io.Writer, header string, indent int, statements [
 	return nil
 }
 
-func (dmd DreamMakerDefinition) Dump(output io.Writer) error {
+func (dmd Definition) Dump(output io.Writer) error {
 	_, err := fmt.Fprintf(output, "[definition %v]\n", dmd.Type)
 	if err != nil {
 		return err
@@ -112,42 +112,30 @@ func (dmd DreamMakerDefinition) Dump(output io.Writer) error {
 	return nil
 }
 
-func (dmf *DreamMakerFile) Dump(output io.Writer) error {
+func (f *File) Dump(output io.Writer) error {
 	_, err := fmt.Fprintln(output, "[beginning of parser dump]")
 	if err != nil {
 		return err
 	}
-	for _, dir := range dmf.SearchPath {
+	for _, dir := range f.SearchPath {
 		_, err := fmt.Fprintf(output, "searchpath = %q\n", dir)
 		if err != nil {
 			return err
 		}
 	}
-	for _, mapName := range dmf.Maps {
+	for _, mapName := range f.Maps {
 		_, err := fmt.Fprintf(output, "map = %q\n", mapName)
 		if err != nil {
 			return err
 		}
 	}
-	for _, def := range dmf.Definitions {
+	for _, def := range f.Definitions {
 		err := def.Dump(output)
 		if err != nil {
 			return err
 		}
 	}
 	_, err = fmt.Fprintln(output, "[end of parser dump]")
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func DumpParsedFile(filename string, output io.Writer) error {
-	dmf, err := ParseFile(filename)
-	if err != nil {
-		return err
-	}
-	err = dmf.Dump(output)
 	if err != nil {
 		return err
 	}

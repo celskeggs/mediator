@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"github.com/celskeggs/mediator/autocoder/gen"
 	"github.com/celskeggs/mediator/autocoder/pack"
+	"github.com/celskeggs/mediator/dream/ast"
 	"github.com/celskeggs/mediator/dream/parser"
 	"github.com/celskeggs/mediator/dream/path"
 	"github.com/celskeggs/mediator/dream/tokenizer"
 	"github.com/pkg/errors"
 )
 
-func Convert(dmf *parser.DreamMakerFile, packageName string) (*gen.DefinedTree, error) {
+func Convert(dmf *ast.File, packageName string) (*gen.DefinedTree, error) {
 	dt := &gen.DefinedTree{
 		Package:   packageName,
 		WorldMob:  path.ConstTypePath("/mob"),
@@ -19,7 +20,7 @@ func Convert(dmf *parser.DreamMakerFile, packageName string) (*gen.DefinedTree, 
 	}
 	// define all types
 	for _, def := range dmf.Definitions {
-		if def.Type == parser.DefTypeDefine {
+		if def.Type == ast.DefTypeDefine {
 			err := DefinePath(dt, def.Path)
 			if err != nil {
 				return nil, err
@@ -29,11 +30,11 @@ func Convert(dmf *parser.DreamMakerFile, packageName string) (*gen.DefinedTree, 
 	// declare all variables, procedures, and verbs
 	for _, def := range dmf.Definitions {
 		var err error
-		if def.Type == parser.DefTypeVarDef {
+		if def.Type == ast.DefTypeVarDef {
 			err = DefineVar(dt, def.Path, def.VarType, def.Variable, def.SourceLoc)
-		} else if def.Type == parser.DefTypeProcDecl {
+		} else if def.Type == ast.DefTypeProcDecl {
 			err = DefineProc(dt, def.Path, false, def.Variable, def.SourceLoc)
-		} else if def.Type == parser.DefTypeVerbDecl {
+		} else if def.Type == ast.DefTypeVerbDecl {
 			err = DefineProc(dt, def.Path, true, def.Variable, def.SourceLoc)
 		}
 		if err != nil {
@@ -42,7 +43,7 @@ func Convert(dmf *parser.DreamMakerFile, packageName string) (*gen.DefinedTree, 
 	}
 	// assign all values
 	for _, def := range dmf.Definitions {
-		if def.Type == parser.DefTypeAssign {
+		if def.Type == ast.DefTypeAssign {
 			err := AssignPath(dt, def.Path, def.Variable, def.Expression, def.SourceLoc)
 			if err != nil {
 				return nil, err
@@ -51,7 +52,7 @@ func Convert(dmf *parser.DreamMakerFile, packageName string) (*gen.DefinedTree, 
 	}
 	// implement all functions
 	for _, def := range dmf.Definitions {
-		if def.Type == parser.DefTypeImplement {
+		if def.Type == ast.DefTypeImplement {
 			err := ImplementFunction(dt, def.Path, def.Variable, def.Arguments, def.Body, def.SourceLoc)
 			if err != nil {
 				return nil, err

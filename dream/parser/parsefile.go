@@ -3,19 +3,20 @@ package parser
 import (
 	"fmt"
 	"github.com/celskeggs/mediator/autocoder/dtype"
+	"github.com/celskeggs/mediator/dream/ast"
 	"github.com/celskeggs/mediator/dream/declpath"
 	"github.com/celskeggs/mediator/dream/path"
 	"github.com/celskeggs/mediator/dream/tokenizer"
 )
 
-func parseFunctionArguments(i *input) ([]DreamMakerTypedName, error) {
+func parseFunctionArguments(i *input) ([]ast.TypedName, error) {
 	if err := i.Expect(tokenizer.TokParenOpen); err != nil {
 		return nil, err
 	}
 	if i.Accept(tokenizer.TokParenClose) {
 		return nil, nil
 	}
-	var args []DreamMakerTypedName
+	var args []ast.TypedName
 	for {
 		loc := i.Peek().Loc
 		declPath, err := parsePath(i)
@@ -32,7 +33,7 @@ func parseFunctionArguments(i *input) ([]DreamMakerTypedName, error) {
 		if err != nil {
 			return nil, err
 		}
-		args = append(args, DreamMakerTypedName{
+		args = append(args, ast.TypedName{
 			Type: dtype.FromPath(typePath),
 			Name: varName,
 		})
@@ -47,15 +48,15 @@ func parseFunctionArguments(i *input) ([]DreamMakerTypedName, error) {
 	return args, nil
 }
 
-func parseFunctionBody(i *input, srcType path.TypePath, arguments []DreamMakerTypedName) ([]DreamMakerStatement, error) {
-	variables := make([]DreamMakerTypedName, len(arguments))
+func parseFunctionBody(i *input, srcType path.TypePath, arguments []ast.TypedName) ([]ast.Statement, error) {
+	variables := make([]ast.TypedName, len(arguments))
 	copy(variables, arguments)
 	variables = append(variables,
-		DreamMakerTypedName{
+		ast.TypedName{
 			Type: dtype.Path(srcType),
 			Name: "src",
 		},
-		DreamMakerTypedName{
+		ast.TypedName{
 			Type: dtype.ConstPath("/mob"),
 			Name: "usr",
 		},
@@ -63,7 +64,7 @@ func parseFunctionBody(i *input, srcType path.TypePath, arguments []DreamMakerTy
 	return parseStatementBlock(i, variables)
 }
 
-func parseBlock(i *input, basePath declpath.DeclPath) ([]DreamMakerDefinition, error) {
+func parseBlock(i *input, basePath declpath.DeclPath) ([]ast.Definition, error) {
 	if i.Accept(tokenizer.TokNewline) {
 		return nil, nil
 	}
@@ -84,13 +85,13 @@ func parseBlock(i *input, basePath declpath.DeclPath) ([]DreamMakerDefinition, e
 			if err != nil {
 				return nil, err
 			}
-			return []DreamMakerDefinition{
-				DefVarDef(varTarget, varType, varName, loc),
-				DefAssign(varTarget, varName, expr, loc),
+			return []ast.Definition{
+				ast.DefVarDef(varTarget, varType, varName, loc),
+				ast.DefAssign(varTarget, varName, expr, loc),
 			}, nil
 		} else if i.Accept(tokenizer.TokNewline) {
-			return []DreamMakerDefinition{
-				DefVarDef(varTarget, varType, varName, loc),
+			return []ast.Definition{
+				ast.DefVarDef(varTarget, varType, varName, loc),
 			}, nil
 		} else {
 			return nil, fmt.Errorf("expected valid start-var token, not %s at %v", i.Peek().String(), i.Peek().Loc)
@@ -109,14 +110,14 @@ func parseBlock(i *input, basePath declpath.DeclPath) ([]DreamMakerDefinition, e
 			return nil, fmt.Errorf("cannot declare function on root at %v", loc)
 		}
 		if fullPath.IsVerbDef() {
-			return []DreamMakerDefinition{
-				DefVerbDecl(procTarget, procName, loc),
-				DefImplement(procTarget, procName, args, body, loc),
+			return []ast.Definition{
+				ast.DefVerbDecl(procTarget, procName, loc),
+				ast.DefImplement(procTarget, procName, args, body, loc),
 			}, nil
 		} else {
-			return []DreamMakerDefinition{
-				DefProcDecl(procTarget, procName, loc),
-				DefImplement(procTarget, procName, args, body, loc),
+			return []ast.Definition{
+				ast.DefProcDecl(procTarget, procName, loc),
+				ast.DefImplement(procTarget, procName, args, body, loc),
 			}, nil
 		}
 	} else if !fullPath.IsPlain() {
@@ -125,7 +126,7 @@ func parseBlock(i *input, basePath declpath.DeclPath) ([]DreamMakerDefinition, e
 			// nothing to define
 			return nil, nil
 		} else if i.Accept(tokenizer.TokIndent) {
-			var defs []DreamMakerDefinition
+			var defs []ast.Definition
 			for !i.Accept(tokenizer.TokUnindent) {
 				block, err := parseBlock(i, fullPath)
 				if err != nil {
@@ -153,8 +154,8 @@ func parseBlock(i *input, basePath declpath.DeclPath) ([]DreamMakerDefinition, e
 		if len(typePath.Segments) == 0 {
 			return nil, fmt.Errorf("cannot assign variable on root at %v", loc)
 		}
-		return []DreamMakerDefinition{
-			DefAssign(typePath, variable, expr, loc),
+		return []ast.Definition{
+			ast.DefAssign(typePath, variable, expr, loc),
 		}, nil
 	} else if i.Peek().TokenType == tokenizer.TokParenOpen {
 		args, err := parseFunctionArguments(i)
@@ -172,16 +173,16 @@ func parseBlock(i *input, basePath declpath.DeclPath) ([]DreamMakerDefinition, e
 		if len(typePath.Segments) == 0 {
 			return nil, fmt.Errorf("cannot implement function on root at %v", loc)
 		}
-		return []DreamMakerDefinition{
-			DefImplement(typePath, function, args, body, loc),
+		return []ast.Definition{
+			ast.DefImplement(typePath, function, args, body, loc),
 		}, nil
 	} else if i.Accept(tokenizer.TokNewline) {
-		return []DreamMakerDefinition{
-			DefDefine(plainPath, loc),
+		return []ast.Definition{
+			ast.DefDefine(plainPath, loc),
 		}, nil
 	} else if i.Accept(tokenizer.TokIndent) {
-		defs := []DreamMakerDefinition{
-			DefDefine(plainPath, loc),
+		defs := []ast.Definition{
+			ast.DefDefine(plainPath, loc),
 		}
 		for !i.Accept(tokenizer.TokUnindent) {
 			block, err := parseBlock(i, fullPath)
@@ -196,8 +197,8 @@ func parseBlock(i *input, basePath declpath.DeclPath) ([]DreamMakerDefinition, e
 	}
 }
 
-func parseFile(i *input) (*DreamMakerFile, error) {
-	var allDefs []DreamMakerDefinition
+func parseFile(i *input) (*ast.File, error) {
+	var allDefs []ast.Definition
 	for i.HasNext() {
 		defs, err := parseBlock(i, declpath.Root())
 		if err != nil {
@@ -205,7 +206,7 @@ func parseFile(i *input) (*DreamMakerFile, error) {
 		}
 		allDefs = append(allDefs, defs...)
 	}
-	return &DreamMakerFile{
+	return &ast.File{
 		Definitions: allDefs,
 	}, nil
 }

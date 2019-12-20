@@ -1,4 +1,4 @@
-package parser
+package ast
 
 import (
 	"fmt"
@@ -59,108 +59,108 @@ func (et ExprType) String() string {
 	}
 }
 
-type DreamMakerExpression struct {
+type Expression struct {
 	Type      ExprType
 	Str       string
 	Integer   int64
 	Names     []string
-	Children  []DreamMakerExpression
+	Children  []Expression
 	Path      path.TypePath
 	SourceLoc tokenizer.SourceLocation
 }
 
-func ExprNone() DreamMakerExpression {
-	return DreamMakerExpression{
+func ExprNone() Expression {
+	return Expression{
 		Type: ExprTypeNone,
 	}
 }
 
-func ExprResourceLiteral(literal string, loc tokenizer.SourceLocation) DreamMakerExpression {
-	return DreamMakerExpression{
+func ExprResourceLiteral(literal string, loc tokenizer.SourceLocation) Expression {
+	return Expression{
 		Type:      ExprTypeResourceLiteral,
 		Str:       literal,
 		SourceLoc: loc,
 	}
 }
 
-func ExprIntegerLiteral(literal int64, loc tokenizer.SourceLocation) DreamMakerExpression {
-	return DreamMakerExpression{
+func ExprIntegerLiteral(literal int64, loc tokenizer.SourceLocation) Expression {
+	return Expression{
 		Type:      ExprTypeIntegerLiteral,
 		Integer:   literal,
 		SourceLoc: loc,
 	}
 }
 
-func ExprStringLiteral(literal string, loc tokenizer.SourceLocation) DreamMakerExpression {
-	return DreamMakerExpression{
+func ExprStringLiteral(literal string, loc tokenizer.SourceLocation) Expression {
+	return Expression{
 		Type:      ExprTypeStringLiteral,
 		Str:       literal,
 		SourceLoc: loc,
 	}
 }
 
-func ExprPathLiteral(path path.TypePath, loc tokenizer.SourceLocation) DreamMakerExpression {
-	return DreamMakerExpression{
+func ExprPathLiteral(path path.TypePath, loc tokenizer.SourceLocation) Expression {
+	return Expression{
 		Type:      ExprTypePathLiteral,
 		Path:      path,
 		SourceLoc: loc,
 	}
 }
 
-func ExprStringMacro(macro string, expr DreamMakerExpression, loc tokenizer.SourceLocation) DreamMakerExpression {
-	return DreamMakerExpression{
+func ExprStringMacro(macro string, expr Expression, loc tokenizer.SourceLocation) Expression {
+	return Expression{
 		Type:      ExprTypeStringMacro,
 		Str:       macro,
-		Children:  []DreamMakerExpression{expr},
+		Children:  []Expression{expr},
 		SourceLoc: loc,
 	}
 }
 
-func ExprStringConcat(exprs []DreamMakerExpression, loc tokenizer.SourceLocation) DreamMakerExpression {
-	return DreamMakerExpression{
+func ExprStringConcat(exprs []Expression, loc tokenizer.SourceLocation) Expression {
+	return Expression{
 		Type:      ExprTypeStringConcat,
 		Children:  exprs,
 		SourceLoc: loc,
 	}
 }
 
-func ExprGetLocal(name string, loc tokenizer.SourceLocation) DreamMakerExpression {
-	return DreamMakerExpression{
+func ExprGetLocal(name string, loc tokenizer.SourceLocation) Expression {
+	return Expression{
 		Type:      ExprTypeGetLocal,
 		Str:       name,
 		SourceLoc: loc,
 	}
 }
 
-func ExprGetNonLocal(name string, loc tokenizer.SourceLocation) DreamMakerExpression {
-	return DreamMakerExpression{
+func ExprGetNonLocal(name string, loc tokenizer.SourceLocation) Expression {
+	return Expression{
 		Type:      ExprTypeGetNonLocal,
 		Str:       name,
 		SourceLoc: loc,
 	}
 }
 
-func ExprGetField(expr DreamMakerExpression, field string, loc tokenizer.SourceLocation) DreamMakerExpression {
-	return DreamMakerExpression{
+func ExprGetField(expr Expression, field string, loc tokenizer.SourceLocation) Expression {
+	return Expression{
 		Type:      ExprTypeGetField,
 		Str:       field,
-		Children:  []DreamMakerExpression{expr},
+		Children:  []Expression{expr},
 		SourceLoc: loc,
 	}
 }
 
-func ExprBooleanNot(expr DreamMakerExpression, loc tokenizer.SourceLocation) DreamMakerExpression {
-	return DreamMakerExpression{
+func ExprBooleanNot(expr Expression, loc tokenizer.SourceLocation) Expression {
+	return Expression{
 		Type:      ExprTypeBooleanNot,
-		Children:  []DreamMakerExpression{expr},
+		Children:  []Expression{expr},
 		SourceLoc: loc,
 	}
 }
 
-func ExprCall(expr DreamMakerExpression, keywords []string, arguments []DreamMakerExpression, loc tokenizer.SourceLocation) DreamMakerExpression {
-	children := []DreamMakerExpression{expr}
+func ExprCall(expr Expression, keywords []string, arguments []Expression, loc tokenizer.SourceLocation) Expression {
+	children := []Expression{expr}
 	children = append(children, arguments...)
-	return DreamMakerExpression{
+	return Expression{
 		Type:      ExprTypeCall,
 		Names:     keywords,
 		Children:  children,
@@ -168,8 +168,8 @@ func ExprCall(expr DreamMakerExpression, keywords []string, arguments []DreamMak
 	}
 }
 
-func ExprNew(typepath path.TypePath, keywords []string, arguments []DreamMakerExpression, loc tokenizer.SourceLocation) DreamMakerExpression {
-	return DreamMakerExpression{
+func ExprNew(typepath path.TypePath, keywords []string, arguments []Expression, loc tokenizer.SourceLocation) Expression {
+	return Expression{
 		Type:      ExprTypeNew,
 		Names:     keywords,
 		Path:      typepath,
@@ -178,11 +178,11 @@ func ExprNew(typepath path.TypePath, keywords []string, arguments []DreamMakerEx
 	}
 }
 
-func (dme DreamMakerExpression) IsNone() bool {
+func (dme Expression) IsNone() bool {
 	return dme.Type == ExprTypeNone
 }
 
-func (dme DreamMakerExpression) String() string {
+func (dme Expression) String() string {
 	var params []string
 	if dme.Integer != 0 || dme.Type == ExprTypeIntegerLiteral {
 		params = append(params, fmt.Sprintf("integer=%d", dme.Integer))
@@ -244,24 +244,24 @@ func (et StatementType) String() string {
 	}
 }
 
-type DreamMakerStatement struct {
+type Statement struct {
 	Type      StatementType
 	VarType   dtype.DType
 	Name      string
-	From      DreamMakerExpression
-	To        DreamMakerExpression
-	Body      []DreamMakerStatement
+	From      Expression
+	To        Expression
+	Body      []Statement
 	SourceLoc tokenizer.SourceLocation
 }
 
-func StatementNone() DreamMakerStatement {
-	return DreamMakerStatement{
+func StatementNone() Statement {
+	return Statement{
 		Type: StatementTypeNone,
 	}
 }
 
-func StatementWrite(destination DreamMakerExpression, value DreamMakerExpression, loc tokenizer.SourceLocation) DreamMakerStatement {
-	return DreamMakerStatement{
+func StatementWrite(destination Expression, value Expression, loc tokenizer.SourceLocation) Statement {
+	return Statement{
 		Type:      StatementTypeWrite,
 		From:      value,
 		To:        destination,
@@ -269,8 +269,8 @@ func StatementWrite(destination DreamMakerExpression, value DreamMakerExpression
 	}
 }
 
-func StatementIf(condition DreamMakerExpression, body []DreamMakerStatement, loc tokenizer.SourceLocation) DreamMakerStatement {
-	return DreamMakerStatement{
+func StatementIf(condition Expression, body []Statement, loc tokenizer.SourceLocation) Statement {
+	return Statement{
 		Type:      StatementTypeIf,
 		From:      condition,
 		Body:      body,
@@ -278,15 +278,15 @@ func StatementIf(condition DreamMakerExpression, body []DreamMakerStatement, loc
 	}
 }
 
-func StatementReturn(loc tokenizer.SourceLocation) DreamMakerStatement {
-	return DreamMakerStatement{
+func StatementReturn(loc tokenizer.SourceLocation) Statement {
+	return Statement{
 		Type:      StatementTypeReturn,
 		SourceLoc: loc,
 	}
 }
 
-func StatementSetTo(field string, expr DreamMakerExpression, loc tokenizer.SourceLocation) DreamMakerStatement {
-	return DreamMakerStatement{
+func StatementSetTo(field string, expr Expression, loc tokenizer.SourceLocation) Statement {
+	return Statement{
 		Type:      StatementTypeSetTo,
 		Name:      field,
 		To:        expr,
@@ -294,8 +294,8 @@ func StatementSetTo(field string, expr DreamMakerExpression, loc tokenizer.Sourc
 	}
 }
 
-func StatementSetIn(field string, expr DreamMakerExpression, loc tokenizer.SourceLocation) DreamMakerStatement {
-	return DreamMakerStatement{
+func StatementSetIn(field string, expr Expression, loc tokenizer.SourceLocation) Statement {
+	return Statement{
 		Type:      StatementTypeSetIn,
 		Name:      field,
 		To:        expr,
@@ -303,16 +303,16 @@ func StatementSetIn(field string, expr DreamMakerExpression, loc tokenizer.Sourc
 	}
 }
 
-func StatementEvaluate(expr DreamMakerExpression, loc tokenizer.SourceLocation) DreamMakerStatement {
-	return DreamMakerStatement{
+func StatementEvaluate(expr Expression, loc tokenizer.SourceLocation) Statement {
+	return Statement{
 		Type:      StatementTypeEvaluate,
 		To:        expr,
 		SourceLoc: loc,
 	}
 }
 
-func StatementAssign(destination DreamMakerExpression, value DreamMakerExpression, loc tokenizer.SourceLocation) DreamMakerStatement {
-	return DreamMakerStatement{
+func StatementAssign(destination Expression, value Expression, loc tokenizer.SourceLocation) Statement {
+	return Statement{
 		Type:      StatementTypeAssign,
 		From:      value,
 		To:        destination,
@@ -320,16 +320,16 @@ func StatementAssign(destination DreamMakerExpression, value DreamMakerExpressio
 	}
 }
 
-func StatementDel(expr DreamMakerExpression, loc tokenizer.SourceLocation) DreamMakerStatement {
-	return DreamMakerStatement{
+func StatementDel(expr Expression, loc tokenizer.SourceLocation) Statement {
+	return Statement{
 		Type:      StatementTypeDel,
 		From:      expr,
 		SourceLoc: loc,
 	}
 }
 
-func StatementForList(vartype dtype.DType, varname string, inExpr DreamMakerExpression, body []DreamMakerStatement, loc tokenizer.SourceLocation) DreamMakerStatement {
-	return DreamMakerStatement{
+func StatementForList(vartype dtype.DType, varname string, inExpr Expression, body []Statement, loc tokenizer.SourceLocation) Statement {
+	return Statement{
 		Type:      StatementTypeForList,
 		VarType:   vartype,
 		Name:      varname,
@@ -339,11 +339,11 @@ func StatementForList(vartype dtype.DType, varname string, inExpr DreamMakerExpr
 	}
 }
 
-func (dms DreamMakerStatement) IsNone() bool {
+func (dms Statement) IsNone() bool {
 	return dms.Type == StatementTypeNone
 }
 
-func (dms DreamMakerStatement) String() string {
+func (dms Statement) String() string {
 	var params []string
 	if !dms.From.IsNone() {
 		params = append(params, fmt.Sprintf("from=%v", dms.From))
@@ -365,15 +365,15 @@ func (dms DreamMakerStatement) String() string {
 	return fmt.Sprintf("%v(%s)", dms.Type, strings.Join(params, ", "))
 }
 
-type DreamMakerTypedName struct {
+type TypedName struct {
 	Type dtype.DType
 	Name string
 }
 
-type DreamMakerDefType int
+type DefType int
 
 const (
-	DefTypeNone DreamMakerDefType = iota
+	DefTypeNone DefType = iota
 	DefTypeDefine
 	DefTypeAssign
 	DefTypeVarDef
@@ -382,7 +382,7 @@ const (
 	DefTypeImplement
 )
 
-func (t DreamMakerDefType) String() string {
+func (t DefType) String() string {
 	switch t {
 	case DefTypeNone:
 		return "None"
@@ -403,27 +403,27 @@ func (t DreamMakerDefType) String() string {
 	}
 }
 
-type DreamMakerDefinition struct {
-	Type       DreamMakerDefType
+type Definition struct {
+	Type       DefType
 	Path       path.TypePath
 	VarType    path.TypePath
 	Variable   string
-	Expression DreamMakerExpression
-	Arguments  []DreamMakerTypedName
-	Body       []DreamMakerStatement
+	Expression Expression
+	Arguments  []TypedName
+	Body       []Statement
 	SourceLoc  tokenizer.SourceLocation
 }
 
-func DefDefine(path path.TypePath, location tokenizer.SourceLocation) DreamMakerDefinition {
-	return DreamMakerDefinition{
+func DefDefine(path path.TypePath, location tokenizer.SourceLocation) Definition {
+	return Definition{
 		Type:      DefTypeDefine,
 		Path:      path,
 		SourceLoc: location,
 	}
 }
 
-func DefAssign(path path.TypePath, variable string, value DreamMakerExpression, location tokenizer.SourceLocation) DreamMakerDefinition {
-	return DreamMakerDefinition{
+func DefAssign(path path.TypePath, variable string, value Expression, location tokenizer.SourceLocation) Definition {
+	return Definition{
 		Type:       DefTypeAssign,
 		Path:       path,
 		Variable:   variable,
@@ -432,8 +432,8 @@ func DefAssign(path path.TypePath, variable string, value DreamMakerExpression, 
 	}
 }
 
-func DefVarDef(path path.TypePath, varType path.TypePath, variable string, location tokenizer.SourceLocation) DreamMakerDefinition {
-	return DreamMakerDefinition{
+func DefVarDef(path path.TypePath, varType path.TypePath, variable string, location tokenizer.SourceLocation) Definition {
+	return Definition{
 		Type:      DefTypeVarDef,
 		Path:      path,
 		VarType:   varType,
@@ -442,8 +442,8 @@ func DefVarDef(path path.TypePath, varType path.TypePath, variable string, locat
 	}
 }
 
-func DefProcDecl(path path.TypePath, variable string, location tokenizer.SourceLocation) DreamMakerDefinition {
-	return DreamMakerDefinition{
+func DefProcDecl(path path.TypePath, variable string, location tokenizer.SourceLocation) Definition {
+	return Definition{
 		Type:      DefTypeProcDecl,
 		Path:      path,
 		Variable:  variable,
@@ -451,8 +451,8 @@ func DefProcDecl(path path.TypePath, variable string, location tokenizer.SourceL
 	}
 }
 
-func DefVerbDecl(path path.TypePath, variable string, location tokenizer.SourceLocation) DreamMakerDefinition {
-	return DreamMakerDefinition{
+func DefVerbDecl(path path.TypePath, variable string, location tokenizer.SourceLocation) Definition {
+	return Definition{
 		Type:      DefTypeVerbDecl,
 		Path:      path,
 		Variable:  variable,
@@ -460,8 +460,8 @@ func DefVerbDecl(path path.TypePath, variable string, location tokenizer.SourceL
 	}
 }
 
-func DefImplement(path path.TypePath, function string, arguments []DreamMakerTypedName, body []DreamMakerStatement, location tokenizer.SourceLocation) DreamMakerDefinition {
-	return DreamMakerDefinition{
+func DefImplement(path path.TypePath, function string, arguments []TypedName, body []Statement, location tokenizer.SourceLocation) Definition {
+	return Definition{
 		Type:      DefTypeImplement,
 		Path:      path,
 		Variable:  function,
@@ -471,14 +471,14 @@ func DefImplement(path path.TypePath, function string, arguments []DreamMakerTyp
 	}
 }
 
-type DreamMakerFile struct {
-	Definitions []DreamMakerDefinition
+type File struct {
+	Definitions []Definition
 	SearchPath  []string
 	Maps        []string
 }
 
-func (dmf *DreamMakerFile) Extend(file *DreamMakerFile) {
-	dmf.Definitions = append(dmf.Definitions, file.Definitions...)
-	dmf.SearchPath = append(dmf.SearchPath, file.SearchPath...)
-	dmf.Maps = append(dmf.Maps, file.Maps...)
+func (f *File) Extend(file *File) {
+	f.Definitions = append(f.Definitions, file.Definitions...)
+	f.SearchPath = append(f.SearchPath, file.SearchPath...)
+	f.Maps = append(f.Maps, file.Maps...)
 }

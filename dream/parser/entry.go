@@ -2,10 +2,12 @@ package parser
 
 import (
 	"fmt"
+	"github.com/celskeggs/mediator/dream/ast"
 	"github.com/celskeggs/mediator/dream/preprocessor"
 	"github.com/celskeggs/mediator/dream/tokenizer"
 	"github.com/celskeggs/mediator/util"
 	"github.com/pkg/errors"
+	"io"
 	"os"
 )
 
@@ -97,7 +99,7 @@ func (i *input) AcceptAll(tokenType tokenizer.TokenType) (count uint) {
 	return count
 }
 
-func ParseDM(tokens <-chan tokenizer.Token) (*DreamMakerFile, error) {
+func ParseDM(tokens <-chan tokenizer.Token) (*ast.File, error) {
 	defer func() {
 		for range tokens {
 			// drain input
@@ -133,7 +135,7 @@ func (p *ParseContext) LoadTokens(filename string) <-chan tokenizer.Token {
 	return indentedCh
 }
 
-func ParseFile(filename string) (dmf *DreamMakerFile, err error) {
+func ParseFile(filename string) (dmf *ast.File, err error) {
 	context := NewParseContext()
 	tokenCh := make(chan tokenizer.Token)
 
@@ -162,8 +164,8 @@ func ParseFile(filename string) (dmf *DreamMakerFile, err error) {
 	return dmf, nil
 }
 
-func ParseFiles(filenames []string) (total *DreamMakerFile, err error) {
-	total = &DreamMakerFile{
+func ParseFiles(filenames []string) (total *ast.File, err error) {
+	total = &ast.File{
 		Definitions: nil,
 	}
 	for _, file := range filenames {
@@ -175,4 +177,16 @@ func ParseFiles(filenames []string) (total *DreamMakerFile, err error) {
 	}
 	total.Dump(os.Stdout)
 	return total, nil
+}
+
+func DumpParsedFile(filename string, output io.Writer) error {
+	dmf, err := ParseFile(filename)
+	if err != nil {
+		return err
+	}
+	err = dmf.Dump(output)
+	if err != nil {
+		return err
+	}
+	return nil
 }
