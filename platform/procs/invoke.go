@@ -24,6 +24,32 @@ func KWInvoke(w atoms.World, usr *types.Datum, name string, kwargs map[string]ty
 			panic("usr was nil when calling oview")
 		}
 		return datum.NewList(w.View1(usr, atoms.ViewExclusive)...)
+	case "stat":
+		context := w.StatContext()
+		if context == nil {
+			panic("attempt to use stat() when not presently within a Stat() invocation")
+		}
+		if len(args) >= 2 {
+			context.Stat(types.Unstring(types.Param(args, 0)), types.Param(args, 1))
+		} else {
+			context.Stat("", types.Param(args, 0))
+		}
+		return nil
+	case "statpanel":
+		context := w.StatContext()
+		if context == nil {
+			panic("attempt to use statpanel() when not presently within a Stat() invocation")
+		}
+		visible := context.StatPanel(types.Unstring(types.Param(args, 0)))
+		if len(args) >= 2 {
+			context.Stat("", types.Param(args, 1))
+			return nil
+		} else if len(args) >= 3 {
+			context.Stat(types.Unstring(types.Param(args, 1)), types.Param(args, 2))
+			return nil
+		} else {
+			return types.FromBool(visible)
+		}
 	default:
 		panic(fmt.Sprintf("unimplemented global function %q", name))
 	}

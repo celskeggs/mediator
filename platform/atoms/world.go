@@ -26,8 +26,15 @@ type World interface {
 	FindOneType(tp types.TypePath) types.Value
 	View(distance uint, centerD *types.Datum, mode ViewMode) []types.Value
 	View1(centerD *types.Datum, mode ViewMode) []types.Value
+	// if there's a Stat() operation in progress, this stores a reference to the context so that we can update the panel
+	StatContext() StatContext
 }
 
 func WorldOf(t *types.Datum) World {
 	return t.Realm().WorldRef().(World)
+}
+
+type StatContext interface {
+	Stat(name string, value types.Value)
+	StatPanel(panel string) bool
 }

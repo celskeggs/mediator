@@ -14,6 +14,7 @@ const (
 	KString
 	KInteger
 	KPath
+	KList
 )
 
 type DType struct {
@@ -40,6 +41,10 @@ func (d DType) IsString() bool {
 	return d.kind == KString
 }
 
+func (d DType) IsList() bool {
+	return d.kind == KList
+}
+
 func (d DType) IsAnyPath() bool {
 	return d.kind == KPath
 }
@@ -64,6 +69,8 @@ func (d DType) String() string {
 		return "integer"
 	case KPath:
 		return "path:" + d.path.String()
+	case KList:
+		return "list"
 	default:
 		panic(fmt.Sprintf("unknown dtype kind: %d", d.kind))
 	}
@@ -90,6 +97,12 @@ func String() DType {
 func Integer() DType {
 	return DType{
 		kind: KInteger,
+	}
+}
+
+func List() DType {
+	return DType{
+		kind: KList,
 	}
 }
 

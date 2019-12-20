@@ -175,3 +175,8 @@ func (d *AtomData) ProcEntered(src *types.Datum, usr *types.Datum, atom types.Va
 	// nothing to do
 	return nil
 }
+
+func (d *AtomData) ProcStat(src *types.Datum, usr *types.Datum) types.Value {
+	// nothing to do
+	return nil
+}

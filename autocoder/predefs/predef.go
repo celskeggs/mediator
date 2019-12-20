@@ -3,6 +3,7 @@ package predefs
 import (
 	"github.com/celskeggs/mediator/autocoder/dtype"
 	"github.com/celskeggs/mediator/dream/path"
+	"github.com/celskeggs/mediator/util"
 	"strings"
 )
 
@@ -73,18 +74,22 @@ var platformFields = []FieldInfo{
 	{"density", "/atom", dtype.Integer()},
 	{"opacity", "/atom", dtype.Integer()},
 	{"suffix", "/atom", dtype.String()},
+	{"contents", "/atom", dtype.List()},
 }
 
 var platformProcs = []ProcedureInfo{
 	{"Entered", path.ConstTypePath("/atom")},
 	{"Bump", path.ConstTypePath("/atom/movable")},
 	{"Move", path.ConstTypePath("/atom/movable")},
+	{"Stat", path.ConstTypePath("/atom")},
 }
 
 var platformGlobalProcs = []string{
 	"ismob",
 	"sound",
 	"oview",
+	"stat",
+	"statpanel",
 }
 
 type platformDefiner struct {
@@ -110,6 +115,7 @@ func (p platformDefiner) ParentOf(typePath path.TypePath) path.TypePath {
 }
 
 func (p platformDefiner) ResolveField(typePath path.TypePath, name string) (dType dtype.DType, found bool) {
+	util.FIXME("retrieve field and procedure info from source scanning, rather than a hard-coded table")
 	for _, field := range platformFields {
 		if field.DefPath == typePath.String() && name == field.Name {
 			return field.Type, true
@@ -122,13 +128,17 @@ func (p platformDefiner) ResolveField(typePath path.TypePath, name string) (dTyp
 	return p.ResolveField(parentPath, name)
 }
 
-func (p platformDefiner) ResolveProcedure(typePath path.TypePath, shortName string) (ProcedureInfo, bool) {
+func (p platformDefiner) ResolveProcedure(typePath path.TypePath, name string) (ProcedureInfo, bool) {
 	for _, proc := range platformProcs {
-		if proc.DefPath.Equals(typePath) && shortName == proc.Name {
+		if proc.DefPath.Equals(typePath) && name == proc.Name {
 			return proc, true
 		}
 	}
-	return ProcedureInfo{}, false
+	parentPath := p.ParentOf(typePath)
+	if parentPath.IsEmpty() {
+		return ProcedureInfo{}, false
+	}
+	return p.ResolveProcedure(parentPath, name)
 }
 
 func (p platformDefiner) GlobalProcedureExists(name string) bool {
