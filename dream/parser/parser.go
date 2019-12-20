@@ -195,7 +195,7 @@ func parseExpression1(i *input, variables []DreamMakerTypedName) (DreamMakerExpr
 			if err != nil {
 				return ExprNone(), err
 			}
-			expr = ExprGetField(expr, field.Str, loc)
+			expr = ExprGetField(expr, field.Str, field.Loc)
 		} else {
 			return expr, nil
 		}
