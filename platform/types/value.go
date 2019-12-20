@@ -17,6 +17,9 @@ func Reference(v Value) *Ref {
 		return nil
 	}
 	if d, ok := v.(*Datum); ok {
+		if d.impl == nil {
+			panic("attempt to Reference deleted datum")
+		}
 		if d.refCount == 0 {
 			d.realm.add(d)
 		}
@@ -30,18 +33,28 @@ func Reference(v Value) *Ref {
 	}
 }
 
-func (d *Ref) Dereference() Value {
-	if d == nil {
+func (r *Ref) Dereference() Value {
+	if r == nil {
 		return nil
 	}
-	if d.v == nil {
+	if r.v == nil {
 		panic("nil value during dereference")
 	}
-	return d.v
+	if datum, ok := r.v.(*Datum); ok {
+		// datum has been deleted; return nil now
+		if datum.impl == nil {
+			return nil
+		}
+	}
+	return r.v
 }
 
 func Del(v Value) {
-	panic("unimplemented: object deletion")
+	datum, ok := v.(*Datum)
+	if !ok {
+		panic("cannot delete non-datum value " + v.String())
+	}
+	datum.delete()
 }
 
 func finalizeRef(r *Ref) {
@@ -49,7 +62,9 @@ func finalizeRef(r *Ref) {
 	if d == nil {
 		panic("finalizeRef should only be set up for Datum Refs")
 	}
-	d.decrementRefs()
+	if d.impl != nil {
+		d.decrementRefs()
+	}
 	r.v = nil
 }
 
@@ -67,10 +82,6 @@ type Datum struct {
 	// refcount is the number of Refs to this Datum. the datum only counts as being in the realm when this is nonzero.
 	refCount uint
 	realm    *Realm
-
-	// TODO: readd singleton support
-	//	// used for areas; causes there to only exist a single instance of each type
-	//	singleton bool
 }
 
 var _ Value = &Datum{}
@@ -102,13 +113,34 @@ func (d *Datum) decrementRefs() {
 	}
 }
 
+func (d *Datum) delete() {
+	if d.impl == nil {
+		panic("attempt to delete deleted datum")
+	}
+	// if you attempt to use a deleted datum for anything, it will panic; this is intentional.
+	// you should never be able to get your hands on a deleted datum, anyway -- if it COULD become deleted, then it's
+	// a long-lived reference, and therefore should be stored as a *Ref, which will handle the ability for it to become
+	// nil through deletion.
+	d.impl = nil
+	if d.refCount > 0 {
+		d.realm.remove(d)
+		d.refCount = 0
+	}
+}
+
 func (d *Datum) Type() TypePath {
+	if d.impl == nil {
+		panic("attempt to get type of deleted datum")
+	}
 	return d.impl.Type()
 }
 
 func (d *Datum) Var(name string) Value {
 	if d == nil {
 		panic(fmt.Sprintf("attempt to access variable %s on null value", name))
+	}
+	if d.impl == nil {
+		panic("attempt to access variable on deleted datum")
 	}
 	v, ok := d.impl.Var(d, name)
 	if !ok {
@@ -118,6 +150,9 @@ func (d *Datum) Var(name string) Value {
 }
 
 func (d *Datum) SetVar(name string, value Value) {
+	if d.impl == nil {
+		panic("attempt to set variable on deleted datum")
+	}
 	switch d.impl.SetVar(d, name, value) {
 	case SetResultOk:
 	case SetResultNonexistent:
@@ -130,6 +165,9 @@ func (d *Datum) SetVar(name string, value Value) {
 }
 
 func (d *Datum) Invoke(usr *Datum, name string, params ...Value) Value {
+	if d.impl == nil {
+		panic("attempt to invoke proc on deleted datum")
+	}
 	result, ok := d.impl.Proc(d, usr, name, params...)
 	if !ok {
 		panic(fmt.Sprintf("no such procedure %s found on type %v", name, d.Type()))
@@ -147,6 +185,10 @@ func (d *Datum) Realm() *Realm {
 }
 
 func (d *Datum) String() string {
+	if d.impl == nil {
+		// see comment in delete(), above, about why you should never be able to access this
+		return "[deleted datum that you should never be able to have a pointer to]"
+	}
 	return fmt.Sprintf("[datum of type %s]", d.Type())
 }
 
@@ -159,12 +201,18 @@ func Unpack(v Value) (DatumImpl, bool) {
 }
 
 func UnpackDatum(d *Datum) DatumImpl {
+	if d.impl == nil {
+		panic("attempt to unpack deleted datum")
+	}
 	return d.impl
 }
 
 func Chunk(v Value, ref string) interface{} {
 	d, ok := v.(*Datum)
 	if ok {
+		if d.impl == nil {
+			panic("attempt to get chunk from deleted datum")
+		}
 		return d.impl.Chunk(ref)
 	}
 	return nil
@@ -196,7 +244,10 @@ func IsType(v Value, path TypePath) bool {
 		if datum == nil {
 			panic("found half-nil datum")
 		}
-		return datum.realm.IsSubType(datum.Type(), path)
+		if datum.impl == nil {
+			panic("attempt to check type of deleted datum")
+		}
+		return datum.Realm().IsSubType(datum.Type(), path)
 	}
 	return false
 }

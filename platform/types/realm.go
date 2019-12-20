@@ -127,6 +127,9 @@ func (realm *Realm) New(path TypePath, usr *Datum, params ...Value) *Datum {
 }
 
 func (realm *Realm) NewDatum(impl DatumImpl) *Datum {
+	if impl == nil {
+		panic("datum impl should never start as nil")
+	}
 	return &Datum{
 		impl:     impl,
 		refCount: 0,
