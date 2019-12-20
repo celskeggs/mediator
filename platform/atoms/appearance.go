@@ -21,6 +21,7 @@ type Appearance struct {
 	Layer     int
 	Name      string
 	Desc      string
+	Suffix    string
 }
 
 var _ types.Value = Appearance{}
@@ -57,6 +58,8 @@ func (a Appearance) Var(name string) types.Value {
 		return types.Int(a.Layer)
 	case "name":
 		return types.String(a.Name)
+	case "suffix":
+		return types.String(a.Suffix)
 	default:
 		panic("no such field " + name + " on appearance")
 	}

@@ -67,6 +67,14 @@ func (d *AtomData) SetName(src *types.Datum, value types.Value) {
 	d.VarAppearance.Name = types.Unstring(value)
 }
 
+func (d *AtomData) GetSuffix(src *types.Datum) types.Value {
+	return types.String(d.VarAppearance.Suffix)
+}
+
+func (d *AtomData) SetSuffix(src *types.Datum, value types.Value) {
+	d.VarAppearance.Suffix = types.Unstring(value)
+}
+
 func (d *AtomData) GetContents(src *types.Datum) types.Value {
 	util.FIXME("should this really be a copy?")
 	var contents []*types.Ref

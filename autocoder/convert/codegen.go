@@ -55,6 +55,22 @@ func (ctx CodeGenContext) WithVar(name string, varType dtype.DType) CodeGenConte
 	return ctx
 }
 
+func (ctx CodeGenContext) ResolveNonLocal(name string) (get string, set func(to string) string, vtype dtype.DType, ok bool) {
+	util.FIXME("resolve more types of nonlocals")
+	// look for local fields
+	if srctype, ok := ctx.VarTypes["src"]; ok && srctype.IsAnyPath() {
+		ftype, found := ctx.Tree.ResolveField(srctype.Path(), name)
+		if found {
+			return fmt.Sprintf("%ssrc.Var(%q)", LocalVariablePrefix, name),
+				func(value string) string {
+					return fmt.Sprintf("%ssrc.SetVar(%q, %s)", LocalVariablePrefix, name, value)
+				},
+				ftype, true
+		}
+	}
+	return "", nil, dtype.None(), false
+}
+
 type ResourceType int
 
 const (
@@ -176,14 +192,25 @@ func ExprToGo(expr parser.DreamMakerExpression, ctx CodeGenContext) (exprString 
 		} else {
 			return fmt.Sprintf("(%s).Invoke(%s, %q%s)", invokeSrc, ctx.UsrRef(), target.Str, strings.Join(convArgs, "")), dtype.Any(), nil
 		}
-	case parser.ExprTypeGetNonLocal:
-		util.FIXME("resolve more types of nonlocals")
-		// look for local fields
-		if srctype, ok := ctx.VarTypes["src"]; ok && srctype.IsAnyPath() {
-			ftype, found := ctx.Tree.ResolveField(srctype.Path(), expr.Str)
-			if found {
-				return LocalVariablePrefix + fmt.Sprintf("src.Var(%q)", expr.Str), ftype, nil
+	case parser.ExprTypeNew:
+		for _, name := range expr.Names {
+			if name != "" {
+				return "", dtype.None(), fmt.Errorf("unhandled: keyword argument in new operation at %v", expr.SourceLoc)
 			}
+		}
+		var argStrs []string
+		for _, arg := range expr.Children {
+			argStr, _, err := ExprToGo(arg, ctx)
+			if err != nil {
+				return "", dtype.None(), err
+			}
+			argStrs = append(argStrs, ", "+argStr)
+		}
+		return fmt.Sprintf("%s.Realm().New(%q, %s%s)", ctx.WorldRef, expr.Path, ctx.UsrRef(), strings.Join(argStrs, "")), dtype.Path(expr.Path), nil
+	case parser.ExprTypeGetNonLocal:
+		getExpr, _, ftype, ok := ctx.ResolveNonLocal(expr.Str)
+		if ok {
+			return getExpr, ftype, nil
 		}
 		return "", dtype.None(), fmt.Errorf("cannot find nonlocal %s at %v", expr.Str, expr.SourceLoc)
 	case parser.ExprTypeGetLocal:
@@ -288,6 +315,32 @@ func StatementToGo(statement parser.DreamMakerStatement, ctx CodeGenContext) (li
 		}
 		return []string{
 			"_ = " + value,
+		}, nil
+	case parser.StatementTypeAssign:
+		value, _, err := ExprToGo(statement.From, ctx)
+		if err != nil {
+			return nil, err
+		}
+		if statement.To.Type == parser.ExprTypeGetNonLocal {
+			name := statement.To.Str
+			_, setExpr, _, ok := ctx.ResolveNonLocal(name)
+			if ok {
+				util.FIXME("should any typechecking happen here?")
+				return []string{
+					setExpr(value),
+				}, nil
+			}
+			return nil, fmt.Errorf("cannot resolve nonlocal %q at %v", name, statement.SourceLoc)
+		} else {
+			return nil, fmt.Errorf("not sure how to handle assignment to expression %v at %v", statement.To, statement.SourceLoc)
+		}
+	case parser.StatementTypeDel:
+		value, _, err := ExprToGo(statement.From, ctx)
+		if err != nil {
+			return nil, err
+		}
+		return []string{
+			fmt.Sprintf("types.Del(%s)", value),
 		}, nil
 	}
 	return nil, fmt.Errorf("cannot convert statement %v to Go at %v", statement, statement.SourceLoc)

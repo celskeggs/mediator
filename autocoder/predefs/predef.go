@@ -72,6 +72,7 @@ var platformFields = []FieldInfo{
 	{"loc", "/atom", dtype.ConstPath("/atom")},
 	{"density", "/atom", dtype.Integer()},
 	{"opacity", "/atom", dtype.Integer()},
+	{"suffix", "/atom", dtype.String()},
 }
 
 var platformProcs = []ProcedureInfo{

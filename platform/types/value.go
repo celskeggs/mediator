@@ -40,6 +40,10 @@ func (d *Ref) Dereference() Value {
 	return d.v
 }
 
+func Del(v Value) {
+	panic("unimplemented: object deletion")
+}
+
 func finalizeRef(r *Ref) {
 	d := r.v.(*Datum)
 	if d == nil {
