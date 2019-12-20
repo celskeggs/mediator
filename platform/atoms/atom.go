@@ -19,11 +19,13 @@ type AtomData struct {
 	contents      map[*types.Datum]*types.Ref
 }
 
-func NewAtomData(_ *types.Datum, data *AtomData, _ ...types.Value) {
-	util.FIXME("handle location early per docs")
+func NewAtomData(src *types.Datum, data *AtomData, args ...types.Value) {
 	data.VarDir = common.South
 	data.VarAppearance = Appearance{
 		Name: "atom",
+	}
+	if len(args) >= 1 {
+		data.SetLoc(src, args[0])
 	}
 }
 
