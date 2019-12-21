@@ -42,6 +42,11 @@ func (t *PreparedVar) ConvertTo() []string {
 	if at, ok := t.Type.(*ast.ArrayType); ok && at.Len == nil {
 		return []string{"datum.NewListFromSlice(", ")"}
 	}
+	if ref, ok := getPtrTypeRef(t.Type, t.PackageShort); ok {
+		if ref == "*types.Ref" {
+			return []string{"", ".Dereference()"}
+		}
+	}
 	return []string{"", ""}
 }
 
@@ -59,8 +64,21 @@ func getTypeRef(t ast.Expr, packageShort string) (ref string, ok bool) {
 	return "", false
 }
 
+func getPtrTypeRef(t ast.Expr, packageShort string) (ref string, ok bool) {
+	if star, ok := t.(*ast.StarExpr); ok {
+		inner, ok := getTypeRef(star.X, packageShort)
+		if ok {
+			return "*" + inner, true
+		}
+	}
+	return getTypeRef(t, packageShort)
+}
+
 func (t *PreparedVar) ConvertFrom() []string {
-	if ref, ok := getTypeRef(t.Type, t.PackageShort); ok {
+	if ref, ok := getPtrTypeRef(t.Type, t.PackageShort); ok {
+		if ref == "*types.Ref" {
+			return []string{"types.Reference(", ")"}
+		}
 		return []string{"", ".(" + ref + ")"}
 	} else if ident, ok := t.Type.(*ast.Ident); ok {
 		switch ident.Name {
