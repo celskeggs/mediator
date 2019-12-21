@@ -186,7 +186,6 @@ func (vir *viewInfoRegion) XYToOffset(xu, yu uint) (lx, ly uint) {
 	x, y := int(xu), int(yu)
 	rx, ry := x-vir.CornerX, y-vir.CornerY
 	if x < vir.CornerX || x >= vir.CornerX+len(vir.Info) {
-		println("parameters:", x, y, vir.CornerX, vir.CornerY, vir.Distance)
 		panic("InfoAt parameters out of range")
 	}
 	if y < vir.CornerY || y >= vir.CornerY+len(vir.Info[rx]) {
@@ -326,7 +325,6 @@ func limitViewers(distance uint, center *types.Datum, perspective *types.Datum, 
 			info.Vis2 = info.Vis
 			if info.Luminosity == 0 && !info.Lit {
 				info.Vis = 0
-				println("cancel out icon due to luminosity")
 			}
 		}
 	}

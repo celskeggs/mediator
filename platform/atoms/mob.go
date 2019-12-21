@@ -70,8 +70,7 @@ func (m *MobData) GetKey(src *types.Datum) types.Value {
 	return types.String(m.key)
 }
 
-func (m *MobData) ProcLogin(src *types.Datum, usr *types.Datum) types.Value {
-	util.FIXME("make sure that Login gets called when client.mob is changed")
+func (m *MobData) moveToInitialLocation(src *types.Datum, usr *types.Datum) {
 	// algorithm:
 	// start at (1,1,1), scan across horizontally, then vertically, then in Z direction
 	// pick first location that is *not* dense. move into it. if failed, continue. if none, leave location as null.
@@ -82,13 +81,21 @@ func (m *MobData) ProcLogin(src *types.Datum, usr *types.Datum) types.Value {
 				turf := WorldOf(src).LocateXYZ(x, y, z)
 				if turf != nil && !types.AsBool(turf.Var("density")) {
 					if types.AsBool(src.Invoke(usr, "Move", turf, common.Direction(0))) {
-						return nil
+						return
 					}
 				}
 			}
 		}
 	}
-	util.FIXME("change stat object to mob")
+}
+
+func (m *MobData) ProcLogin(src *types.Datum, usr *types.Datum) types.Value {
+	util.FIXME("make sure that Login gets called when client.mob is changed")
+	m.moveToInitialLocation(src, usr)
+	c := m.GetClient(src)
+	if c != nil {
+		c.SetVar("statobj", src)
+	}
 	return nil
 }
 

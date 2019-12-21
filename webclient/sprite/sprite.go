@@ -1,6 +1,8 @@
 package sprite
 
-import "github.com/celskeggs/mediator/util"
+import (
+	"github.com/celskeggs/mediator/util"
+)
 
 type GameSprite struct {
 	Icon         string `json:"icon"`
@@ -14,7 +16,42 @@ type GameSprite struct {
 	Height       uint   `json:"h"`
 }
 
+type StatEntry struct {
+	Label        string `json:"label"`
+	Icon         string `json:"icon"`
+	SourceX      uint   `json:"sx"`
+	SourceY      uint   `json:"sy"`
+	SourceWidth  uint   `json:"sw"`
+	SourceHeight uint   `json:"sh"`
+	Name         string `json:"name"`
+	Suffix       string `json:"suffix"`
+}
+
+type StatPanel struct {
+	Entries []StatEntry
+}
+
+func (p *StatPanel) indexOfLabel(label string) int {
+	for i, entry := range p.Entries {
+		if entry.Label == label {
+			return i
+		}
+	}
+	return -1
+}
+
+func (p *StatPanel) Add(entry StatEntry) {
+	if entry.Label != "" {
+		if index := p.indexOfLabel(entry.Label); index != -1 {
+			p.Entries[index] = entry
+			return
+		}
+	}
+	p.Entries = append(p.Entries, entry)
+}
+
 type StatDisplay struct {
+	Panels map[string]StatPanel
 }
 
 func (d StatDisplay) Equal(o StatDisplay) bool {
