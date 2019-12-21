@@ -1,5 +1,7 @@
 package sprite
 
+import "github.com/celskeggs/mediator/util"
+
 type GameSprite struct {
 	Icon         string `json:"icon"`
 	SourceX      uint   `json:"sx"`
@@ -12,15 +14,27 @@ type GameSprite struct {
 	Height       uint   `json:"h"`
 }
 
+type StatDisplay struct {
+}
+
+func (d StatDisplay) Equal(o StatDisplay) bool {
+	util.FIXME("populate StatDisplay")
+	return true
+}
+
 type SpriteView struct {
 	WindowTitle    string       `json:"windowtitle"`
 	ViewPortWidth  uint         `json:"viewportwidth"`
 	ViewPortHeight uint         `json:"viewportheight"`
 	Sprites        []GameSprite `json:"sprites"`
+	Stats          StatDisplay  `json:"stats"`
 }
 
 func (a SpriteView) Equal(b SpriteView) bool {
 	if a.ViewPortWidth != b.ViewPortWidth || a.ViewPortHeight != b.ViewPortHeight {
+		return false
+	}
+	if !a.Stats.Equal(b.Stats) {
 		return false
 	}
 	if len(a.Sprites) != len(b.Sprites) {

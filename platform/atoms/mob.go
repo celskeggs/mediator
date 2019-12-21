@@ -4,12 +4,14 @@ import (
 	"github.com/celskeggs/mediator/common"
 	"github.com/celskeggs/mediator/platform/types"
 	"github.com/celskeggs/mediator/util"
+	"github.com/celskeggs/mediator/webclient/sprite"
 )
 
 //mediator:declare MobData /mob /atom/movable
 type MobData struct {
 	key    string
 	client types.Value // not a ref to avoid refcounting cycle
+	stat   *StatContext
 }
 
 func NewMobData(src *types.Datum, _ *MobData, _ ...types.Value) {
@@ -88,4 +90,25 @@ func (m *MobData) ProcLogin(src *types.Datum, usr *types.Datum) types.Value {
 	}
 	util.FIXME("change stat object to mob")
 	return nil
+}
+
+func (m *MobData) StatContext() *StatContext {
+	util.FIXME("implement stat display")
+	return m.stat
+}
+
+func (m *MobData) StartStatContext() {
+	if m.stat != nil {
+		panic("stat context already started!")
+	}
+	m.stat = &StatContext{}
+}
+
+func (m *MobData) EndStatContext() sprite.StatDisplay {
+	if m.stat == nil {
+		panic("stat context not started!")
+	}
+	disp := m.stat.Display()
+	m.stat = nil
+	return disp
 }

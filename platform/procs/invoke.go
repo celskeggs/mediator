@@ -25,7 +25,14 @@ func KWInvoke(w atoms.World, usr *types.Datum, name string, kwargs map[string]ty
 		}
 		return datum.NewList(w.View1(usr, atoms.ViewExclusive)...)
 	case "stat":
-		context := w.StatContext()
+		if usr == nil {
+			panic("usr is nil during attempt to use stat()")
+		}
+		mob, ok := atoms.MobDataChunk(usr)
+		if !ok {
+			panic("usr is not a /mob during attempt to use stat()")
+		}
+		context := mob.StatContext()
 		if context == nil {
 			panic("attempt to use stat() when not presently within a Stat() invocation")
 		}
@@ -36,7 +43,14 @@ func KWInvoke(w atoms.World, usr *types.Datum, name string, kwargs map[string]ty
 		}
 		return nil
 	case "statpanel":
-		context := w.StatContext()
+		if usr == nil {
+			panic("usr is nil during attempt to use statpanel()")
+		}
+		mob, ok := atoms.MobDataChunk(usr)
+		if !ok {
+			panic("usr is not a /mob during attempt to use statpanel()")
+		}
+		context := mob.StatContext()
 		if context == nil {
 			panic("attempt to use statpanel() when not presently within a Stat() invocation")
 		}

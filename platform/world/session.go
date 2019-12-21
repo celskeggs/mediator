@@ -16,6 +16,8 @@ type worldAPI struct {
 	updates chan struct{}
 }
 
+var _ websession.WorldAPI = &worldAPI{}
+
 func (w *worldAPI) AddPlayer() websession.PlayerAPI {
 	util.FIXME("get a key for this")
 	client := w.World.CreateNewPlayer("")
@@ -29,9 +31,28 @@ func (w *worldAPI) AddPlayer() websession.PlayerAPI {
 	}
 }
 
+func (w *worldAPI) Tick() {
+	// update stat panels
+	for _, player := range w.World.clients {
+		p := player.Dereference()
+		_, client := ClientDataChunk(p)
+		mob := p.Var("mob")
+		md, ok := atoms.MobDataChunk(mob)
+		if ok {
+			md.StartStatContext()
+			util.FIXME("handle Stat sleeping correctly")
+			p.Invoke(mob.(*types.Datum), "Stat")
+			client.statDisplay = md.EndStatContext()
+		} else {
+			// cannot run stat for this client; return empty display
+			client.statDisplay = sprite.StatDisplay{}
+		}
+	}
+	w.Update()
+}
+
 // should be called by functions in session.go primarily.
 func (w *worldAPI) Update() {
-	util.FIXME("figure out timed updates and how they work with both THIS update system and the SingleThread thing")
 	select {
 	case w.updates <- struct{}{}:
 	default:
@@ -69,7 +90,7 @@ func (p playerAPI) Command(cmd webclient.Command) {
 const SpriteSize = 32
 
 func (p playerAPI) Render() sprite.SpriteView {
-	center, viewAtoms := p.API.World.RenderClientViewAsAtoms(p.Client)
+	center, viewAtoms, stats := p.API.World.RenderClientView(p.Client)
 
 	util.FIXME("don't use hardcoded tile sizes here")
 	util.FIXME("add adjacent cell movement animations")
@@ -82,6 +103,7 @@ func (p playerAPI) Render() sprite.SpriteView {
 	view.WindowTitle = p.API.World.Name
 	view.ViewPortWidth = viewportSize
 	view.ViewPortHeight = viewportSize
+	view.Stats = stats
 
 	if center != nil {
 		cX, cY := XY(center)

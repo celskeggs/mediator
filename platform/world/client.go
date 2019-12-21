@@ -16,10 +16,12 @@ import (
 type ClientData struct {
 	VarKey      string
 	VarView     int
+	VarStatobj  *types.Ref
 	mob         *types.Ref
 	eye         *types.Ref
 	textBuffer  []string
 	soundBuffer []sprite.Sound
+	statDisplay sprite.StatDisplay
 }
 
 func NewClientData(_ *types.Datum, _ *ClientData, _ ...types.Value) {
@@ -149,6 +151,14 @@ func (d *ClientData) OperatorWrite(src *types.Datum, usr *types.Datum, output ty
 	return nil
 }
 
+func (d *ClientData) ProcStat(src *types.Datum, usr *types.Datum) types.Value {
+	statobj := d.VarStatobj.Dereference()
+	if statobj != nil {
+		statobj.Invoke(usr, "Stat")
+	}
+	return nil
+}
+
 func ClientDataChunk(v types.Value) (*types.Datum, *ClientData) {
 	impl, ok := types.Unpack(v)
 	if !ok {
@@ -169,12 +179,13 @@ func PullClientRequests(client *types.Datum) (textDisplay []string, sounds []spr
 	return textDisplay, sounds
 }
 
-func (w *World) RenderClientViewAsAtoms(client types.Value) (center types.Value, viewAtoms []types.Value) {
+func (w *World) RenderClientView(client types.Value) (center types.Value, viewAtoms []types.Value, stat sprite.StatDisplay) {
+	_, cc := ClientDataChunk(client)
 	util.FIXME("actually do this correctly")
 	eye := client.Var("eye").(*types.Datum)
 	veye := client.Var("virtual_eye").(*types.Datum)
 	view := types.Unuint(client.Var("view"))
-	return veye, w.ViewX(view, veye, eye, atoms.ViewVisual)
+	return veye, w.ViewX(view, veye, eye, atoms.ViewVisual), cc.statDisplay
 }
 
 func (w *World) constructNewMob() types.Value {

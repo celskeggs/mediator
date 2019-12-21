@@ -130,11 +130,6 @@ func (w *World) Icon(name string) *icon.Icon {
 	return w.iconCache.LoadOrPanic(name)
 }
 
-func (w *World) StatContext() atoms.StatContext {
-	util.FIXME("make this non-nil when handling Stat display")
-	return nil
-}
-
 func NewWorld(realm *types.Realm, cache *icon.IconCache) *World {
 	world := &World{
 		Name:          "Untitled",

@@ -21,8 +21,7 @@ func (ws worldServer) ResourcePack() *resourcepack.ResourcePack {
 }
 
 func (ws worldServer) Connect() webclient.ServerSession {
-	// TODO: for efficiency, this should probably be bounded and drop messages
-	subscription := make(chan struct{})
+	subscription := make(chan struct{}, 1)
 	session := &worldSession{
 		WS:           ws,
 		Active:       true,
@@ -129,6 +128,24 @@ func consumeAnyOutstanding(c <-chan struct{}) {
 	}
 }
 
+func (ws *worldServer) Ticker(fps int) {
+	period := time.Second / time.Duration(fps)
+	go func() {
+		next := time.Now().Add(period)
+		for {
+			here := time.Now()
+			remaining := next.Sub(here)
+			if remaining > 0 {
+				time.Sleep(remaining)
+			}
+			next = here.Add(period)
+			ws.SingleThread.Run(func() {
+				ws.World.Tick()
+			})
+		}
+	}()
+}
+
 func LaunchServer(world WorldAPI, pack *resourcepack.ResourcePack) error {
 	// TODO: teardown for SingleThread and our subscriber?
 	ws := worldServer{
@@ -147,12 +164,18 @@ func LaunchServer(world WorldAPI, pack *resourcepack.ResourcePack) error {
 			consumeAnyOutstanding(updates)
 			ws.SingleThread.Run(func() {
 				for subscriber := range ws.Subscribers {
-					subscriber <- struct{}{}
+					select {
+					case subscriber <- struct{}{}:
+						// notify if we can
+					default:
+						// if we can't... well, it already has a notification pending, so we're fine
+					}
 				}
 			})
 		}
 		// TODO: maybe it should sometimes?
 		panic("update stream should never end")
 	}()
+	ws.Ticker(10)
 	return webclient.LaunchHTTP(ws)
 }
