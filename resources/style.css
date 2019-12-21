@@ -42,7 +42,7 @@
     flex: 1;
 }
 
-.paneltabs {
+#paneltabs {
     display: flex;
     flex-direction: row;
     flex: 0 0 auto;
@@ -50,7 +50,7 @@
     padding: 0 0 0 6px;
 }
 
-.paneltabs button {
+#paneltabs button {
     margin-right: 6px;
     padding: 5px 10px;
     border: 1px solid black;
@@ -59,11 +59,24 @@
     background-color: #DDD;
 }
 
-.panelbody {
+#panelbody {
     flex: 1;
     border: 1px solid black;
     margin-bottom: 6px;
     box-sizing: border-box;
+}
+
+#panelbody div {
+    display: flex;
+    align-items: center;
+}
+
+.statsuffix {
+    margin-left: 10px;
+}
+
+.statlabel {
+    margin-right: 10px;
 }
 
 .textcontainer {

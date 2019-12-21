@@ -189,7 +189,7 @@ function startSoundPlayer() {
     return Player;
 }
 
-function prepareGame(canvas, inputsource, verbentry, textoutput) {
+function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, textoutput) {
     var images = null;
     var isTerminated = false;
     var gameActive = false;
@@ -197,6 +197,8 @@ function prepareGame(canvas, inputsource, verbentry, textoutput) {
     var aspectRatio = width / height;
     var aspectShiftX = 0, aspectShiftY = 0;
     var gameSprites = [];
+    var statPanels = {};
+    var selectedStatPanel = null;
     var keyDirection = null;
     var sendMessage = function (message) {
     };
@@ -306,6 +308,116 @@ function prepareGame(canvas, inputsource, verbentry, textoutput) {
         }
     }
 
+    function renderPanelTabs(tabs, selected) {
+        while (paneltabs.children.length > tabs.length) {
+            paneltabs.children[paneltabs.children.length-1].remove();
+        }
+        while (paneltabs.children.length < tabs.length) {
+            var button = document.createElement("button");
+            button.addEventListener("click", function () {
+                selectedStatPanel = this.textContent;
+                updateStatPanels();
+            });
+            paneltabs.appendChild(button);
+        }
+        for (var i = 0; i < paneltabs.children.length; i++) {
+            paneltabs.children[i].textContent = tabs[i];
+            var isSelected = tabs[i] === selected;
+            if (isSelected) {
+                paneltabs.children[i].classList.add("selected");
+            } else {
+                paneltabs.children[i].classList.remove("selected");
+            }
+        }
+    }
+
+    function renderPanelData(entries) {
+        while (panelbody.children.length > entries.length) {
+            panelbody.children[panelbody.children.length-1].remove();
+        }
+        while (panelbody.children.length < entries.length) {
+            var child = document.createElement("div");
+            var statlabel = document.createElement("span");
+            statlabel.classList.add("statlabel");
+            child.appendChild(statlabel);
+            child.appendChild(document.createElement("div"));
+            child.appendChild(document.createElement("span"));
+            var statsuffix = document.createElement("span");
+            statsuffix.classList.add("statsuffix");
+            child.appendChild(statsuffix);
+            panelbody.appendChild(child);
+        }
+        for (var i = 0; i < panelbody.children.length; i++) {
+            var data = entries[i];
+            var entry = panelbody.children[i];
+            var labelSpan = entry.children[0];
+            var iconDiv = entry.children[1];
+            var nameSpan = entry.children[2];
+            var suffixSpan = entry.children[3];
+
+            labelSpan.textContent = data.label;
+            nameSpan.textContent = data.name;
+            suffixSpan.textContent = data.suffix;
+
+            if (images !== null) {
+                var wantedImage = null;
+                if (data.icon !== "" && data.icon in images) {
+                    wantedImage = images[data.icon];
+                }
+                if (wantedImage === null) {
+                    if (iconDiv.children.length > 0) {
+                        iconDiv.children[0].remove();
+                    }
+                    iconDiv.style.width = "";
+                    iconDiv.style.height = "";
+                    iconDiv.style.overflow = "";
+                } else {
+                    if (iconDiv.children.length > 0 && iconDiv.children[0].src !== wantedImage.src) {
+                        iconDiv.children[0].remove();
+                    }
+                    iconDiv.style.width = (data.sw || wantedImage.width) + "px";
+                    iconDiv.style.height = (data.sh || wantedImage.height) + "px";
+                    iconDiv.style.overflow = "hidden";
+                    var img;
+                    if (iconDiv.children.length === 0) {
+                        img = wantedImage.cloneNode(true);
+                        iconDiv.appendChild(img);
+                    } else {
+                        img = iconDiv.children[0];
+                    }
+                    img.marginLeft = "-" + (data.sx || 0) + "px";
+                    img.marginTop = "-" + (data.sy || 0) + "px";
+                }
+
+            }
+        }
+    }
+
+    function updateStatPanels() {
+        var panels = statPanels;
+        var allPanels = [];
+        var canUseStatPanel = false;
+        for (var panel in panels) {
+            if (panels.hasOwnProperty(panel)) {
+                allPanels.push(panel);
+                if (selectedStatPanel !== null && selectedStatPanel === panel) {
+                    canUseStatPanel = true;
+                }
+            }
+        }
+        allPanels.sort();
+        if (!canUseStatPanel) {
+            selectedStatPanel = allPanels.length > 0 ? allPanels[0] : null;
+        }
+        renderPanelTabs(allPanels, selectedStatPanel);
+        if (selectedStatPanel !== null) {
+            var paneldata = panels[selectedStatPanel];
+            renderPanelData(paneldata.entries || []);
+        } else {
+            renderPanelData([]);
+        }
+    }
+
     function onMessage(message) {
         if (!gameActive) {
             gameActive = true;
@@ -316,6 +428,8 @@ function prepareGame(canvas, inputsource, verbentry, textoutput) {
             if (message.newstate.windowtitle) {
                 document.getElementsByTagName("title")[0].textContent = message.newstate.windowtitle;
             }
+            statPanels = message.newstate.stats.panels || {};
+            updateStatPanels();
         }
         if (message.textlines) {
             for (var i = 0; i < message.textlines.length; i++) {
@@ -393,8 +507,10 @@ function prepareGame(canvas, inputsource, verbentry, textoutput) {
 window.addEventListener("load", function () {
     var canvas = document.getElementById("playspace");
     var verbEntry = document.getElementById("verb");
+    var panelTabs = document.getElementById("paneltabs");
+    var panelBody = document.getElementById("panelbody");
     var textOutput = document.getElementById("textspace");
     if (canvas.getContext) {
-        prepareGame(canvas, document.body, verbEntry, textOutput);
+        prepareGame(canvas, document.body, verbEntry, panelTabs, panelBody, textOutput);
     }
 });
