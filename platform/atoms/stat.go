@@ -54,7 +54,16 @@ func (s *StatContext) Stat(name string, value types.Value) {
 	panel := s.display.Panels[s.currentPanel]
 	if list, ok := value.(datum.List); ok && name == "" {
 		for _, element := range datum.Elements(list) {
+			if element == nil {
+				continue
+			}
 			panel.Add(renderDatumToStat(element))
+		}
+	} else if value == nil {
+		if name != "" {
+			panel.Add(sprite.StatEntry{
+				Label: name,
+			})
 		}
 	} else {
 		stat := renderDatumToStat(value)
