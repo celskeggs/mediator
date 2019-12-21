@@ -70,9 +70,17 @@ func NewListFromSlice(initial interface{}) types.Value {
 
 func Elements(list types.Value) []types.Value {
 	ll := list.(List)
-	result := make([]types.Value, ll.Length())
-	for i := 0; i < len(result); i++ {
-		result[i] = ll.Get(i).Dereference()
+	var result []types.Value
+	inlen := ll.Length()
+	for i := 0; i < inlen; i++ {
+		element := ll.Get(i)
+		deref := element.Dereference()
+		if element != nil && deref == nil {
+			util.FIXME("come up with a more effective way to handle this")
+			// object was deleted; do not include in results
+		} else {
+			result = append(result, deref)
+		}
 	}
 	return result
 }

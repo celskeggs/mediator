@@ -79,8 +79,12 @@ func (d *AtomData) SetSuffix(src *types.Datum, value types.Value) {
 
 func (d *AtomData) GetContents(src *types.Datum) types.Value {
 	util.FIXME("should this really be a copy?")
-	contents := make([]*types.Ref, len(d.contents))
-	copy(contents, d.contents)
+	var contents []*types.Ref
+	for _, element := range d.contents {
+		if element.Dereference() != nil {
+			contents = append(contents, element)
+		}
+	}
 	return datum.NewListFromRefs(contents...)
 }
 
