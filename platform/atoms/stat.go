@@ -52,7 +52,7 @@ func (s *StatContext) Stat(name string, value types.Value) {
 		s.display.Panels = map[string]sprite.StatPanel{}
 	}
 	panel := s.display.Panels[s.currentPanel]
-	if list, ok := value.(*datum.List); ok && name == "" {
+	if list, ok := value.(datum.List); ok && name == "" {
 		for _, element := range datum.Elements(list) {
 			panel.Add(renderDatumToStat(element))
 		}

@@ -1,9 +1,5 @@
 package sprite
 
-import (
-	"github.com/celskeggs/mediator/util"
-)
-
 type GameSprite struct {
 	Icon         string `json:"icon"`
 	SourceX      uint   `json:"sx"`
@@ -28,7 +24,7 @@ type StatEntry struct {
 }
 
 type StatPanel struct {
-	Entries []StatEntry
+	Entries []StatEntry `json:"entries"`
 }
 
 func (p *StatPanel) indexOfLabel(label string) int {
@@ -50,12 +46,37 @@ func (p *StatPanel) Add(entry StatEntry) {
 	p.Entries = append(p.Entries, entry)
 }
 
+func (p StatPanel) Equal(o StatPanel) bool {
+	if len(p.Entries) != len(o.Entries) {
+		return false
+	}
+	for i, ent := range p.Entries {
+		if o.Entries[i] != ent {
+			return false
+		}
+	}
+	return true
+}
+
 type StatDisplay struct {
-	Panels map[string]StatPanel
+	Panels map[string]StatPanel `json:"panels"`
 }
 
 func (d StatDisplay) Equal(o StatDisplay) bool {
-	util.FIXME("populate StatDisplay")
+	if d.Panels == nil {
+		return o.Panels == nil
+	}
+	if len(d.Panels) != len(o.Panels) {
+		return false
+	}
+	for name, panel := range d.Panels {
+		if ent, ok := o.Panels[name]; !ok {
+			// nonexistent, so the keys are different
+			return false
+		} else if !panel.Equal(ent) {
+			return false
+		}
+	}
 	return true
 }
 
