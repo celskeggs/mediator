@@ -16,7 +16,7 @@ type AtomData struct {
 	VarDir        common.Direction
 	VarVerbs      []Verb
 	location      *types.Ref
-	contents      map[*types.Datum]*types.Ref
+	contents      []*types.Ref
 }
 
 func NewAtomData(src *types.Datum, data *AtomData, args ...types.Value) {
@@ -79,10 +79,8 @@ func (d *AtomData) SetSuffix(src *types.Datum, value types.Value) {
 
 func (d *AtomData) GetContents(src *types.Datum) types.Value {
 	util.FIXME("should this really be a copy?")
-	var contents []*types.Ref
-	for _, ref := range d.contents {
-		contents = append(contents, ref)
-	}
+	contents := make([]*types.Ref, len(d.contents))
+	copy(contents, d.contents)
 	return datum.NewListFromRefs(contents...)
 }
 
@@ -102,17 +100,24 @@ func AtomDataChunk(v types.Value) (*AtomData, bool) {
 	return chunk.(*AtomData), true
 }
 
+func removeFromContents(contents []*types.Ref, remove *types.Datum) []*types.Ref {
+	for i, elem := range contents {
+		if elem.Dereference() == remove {
+			copy(contents[i:], contents[i+1:])
+			contents = contents[:len(contents)-1]
+			return contents
+		}
+	}
+	panic("did not find expected atom in contents")
+}
+
 func (d *AtomData) SetLoc(src *types.Datum, location types.Value) {
 	if d.location != nil {
 		oldloc, ok := AtomDataChunk(d.location.Dereference())
 		if !ok {
 			panic("location of atom was not a valid atom or nil")
 		}
-		contents := oldloc.contents
-		if _, found := contents[src]; !found {
-			panic("did not find self in location's contents")
-		}
-		delete(contents, src)
+		oldloc.contents = removeFromContents(oldloc.contents, src)
 	}
 	d.location = nil
 	if location != nil {
@@ -121,13 +126,12 @@ func (d *AtomData) SetLoc(src *types.Datum, location types.Value) {
 			panic("attempt to move atom to non-atom location: " + location.String())
 		}
 		d.location = types.Reference(location)
-		if newloc.contents == nil {
-			newloc.contents = map[*types.Datum]*types.Ref{}
+		for _, elem := range newloc.contents {
+			if elem.Dereference() == src {
+				panic("should not have found self in new location's contents")
+			}
 		}
-		if _, found := newloc.contents[src]; found {
-			panic("should not have found self in new location's contents")
-		}
-		newloc.contents[src] = types.Reference(src)
+		newloc.contents = append(newloc.contents, types.Reference(src))
 	}
 }
 
