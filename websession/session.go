@@ -27,7 +27,7 @@ func (ws worldServer) Connect() webclient.ServerSession {
 		Active:       true,
 		Subscription: subscription,
 	}
-	ws.SingleThread.Run(func() {
+	ws.SingleThread.Run("AddPlayer()", func() {
 		session.Player = ws.World.AddPlayer()
 		ws.Subscribers[subscription] = struct{}{}
 	})
@@ -55,7 +55,7 @@ func (ws *worldSession) Close() {
 		panic("session already closed")
 	}
 	ws.Active = false
-	ws.WS.SingleThread.Run(func() {
+	ws.WS.SingleThread.Run("Close()", func() {
 		ws.removeSubscription()
 		ws.Player.Remove()
 	})
@@ -66,7 +66,7 @@ var countTimeSpent = 0
 
 func (e *worldSession) OnMessage(cmd webclient.Command) {
 	if e.Active {
-		e.WS.SingleThread.Run(func() {
+		e.WS.SingleThread.Run("OnMessage()", func() {
 			if !e.Player.IsValid() {
 				e.removeSubscription()
 			} else {
@@ -75,7 +75,7 @@ func (e *worldSession) OnMessage(cmd webclient.Command) {
 				total := time.Now().Sub(start)
 				totalTimeSpent += total
 				countTimeSpent += 1
-				fmt.Printf("frame: %v\t, avg=%v\n", total, totalTimeSpent/time.Duration(countTimeSpent))
+				fmt.Printf("update: %v\t, avg=%v\n", total, totalTimeSpent/time.Duration(countTimeSpent))
 			}
 		})
 	}
@@ -92,7 +92,7 @@ func (e *worldSession) BeginSend(send func(update *sprite.ViewUpdate) error) {
 		first := true
 		for range e.Subscription {
 			diff := false
-			e.WS.SingleThread.Run(func() {
+			e.WS.SingleThread.Run("Render()", func() {
 				sv2 := e.Player.Render()
 				if !sv.Equal(sv2) {
 					diff = true
@@ -139,7 +139,7 @@ func (ws *worldServer) Ticker(fps int) {
 				time.Sleep(remaining)
 			}
 			next = here.Add(period)
-			ws.SingleThread.Run(func() {
+			ws.SingleThread.Run("Tick()", func() {
 				ws.World.Tick()
 			})
 		}
@@ -162,7 +162,7 @@ func LaunchServer(world WorldAPI, pack *resourcepack.ResourcePack) error {
 		for range updates {
 			// this way, even if we run slow, it doesn't matter!
 			consumeAnyOutstanding(updates)
-			ws.SingleThread.Run(func() {
+			ws.SingleThread.Run("Update()", func() {
 				for subscriber := range ws.Subscribers {
 					select {
 					case subscriber <- struct{}{}:
