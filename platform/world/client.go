@@ -91,7 +91,8 @@ func InvokeVerb(client types.Value, verb string) {
 		client.Invoke(mobDatum, "West")
 	case ".verbs":
 		client.Invoke(mobDatum, "<<", types.String("looking for verbs..."))
-		for _, verb := range clientData.ListVerbs(clientDatum) {
+		verbs, _ := clientData.ListVerbs(clientDatum)
+		for _, verb := range verbs {
 			client.Invoke(mobDatum, "<<", types.String("found verb: "+verb))
 		}
 	default:
@@ -180,13 +181,14 @@ func PullClientRequests(client *types.Datum) (textDisplay []string, sounds []spr
 	return textDisplay, sounds
 }
 
-func (w *World) RenderClientView(client types.Value) (center types.Value, viewAtoms []types.Value, stat sprite.StatDisplay, verbs []string) {
+func (w *World) RenderClientView(client types.Value) (center types.Value, viewAtoms []types.Value, stat sprite.StatDisplay, verbs []string, verbsOn map[*types.Datum][]string) {
 	cdatum, cc := ClientDataChunk(client)
 	util.FIXME("actually do this correctly")
 	eye := client.Var("eye").(*types.Datum)
 	veye := client.Var("virtual_eye").(*types.Datum)
 	view := types.Unuint(client.Var("view"))
-	return veye, w.ViewX(view, veye, eye, atoms.ViewVisual), cc.statDisplay, cc.ListVerbs(cdatum)
+	verbs, verbsOn = cc.ListVerbs(cdatum)
+	return veye, w.ViewX(view, veye, eye, atoms.ViewVisual), cc.statDisplay, verbs, verbsOn
 }
 
 func (w *World) constructNewMob() types.Value {
@@ -254,7 +256,7 @@ func (d *ClientData) ResolveVerb(src *types.Datum, verbName string, args []strin
 	src.Invoke(verbUsr, "<<", types.String(fmt.Sprintf("Not a known verb: %q", verbName)))
 }
 
-func (d *ClientData) ListVerbs(src *types.Datum) (verbs []string) {
+func (d *ClientData) ListVerbs(src *types.Datum) (verbs []string, available map[*types.Datum][]string) {
 	mob := src.Var("mob")
 	if mob == nil {
 		util.FIXME("see if there are cases where verbs can be executed without a mob")
@@ -262,14 +264,20 @@ func (d *ClientData) ListVerbs(src *types.Datum) (verbs []string) {
 		return
 	}
 	verbUsr := mob.(*types.Datum)
+	available = map[*types.Datum][]string{}
 	for _, verbSrc := range atoms.WorldOf(src).FindAllType("/atom") {
+		var verbsOnAtom []string
 		for _, verbVal := range datum.Elements(verbSrc.Var("verbs")) {
 			verb := verbVal.(atoms.Verb)
 			if verb.Matches(verb.VisibleName, verbSrc.(*types.Datum), verbUsr, nil) {
 				verbs = append(verbs, verb.VisibleName)
+				verbsOnAtom = append(verbsOnAtom, verb.VisibleName)
 			}
+		}
+		if verbSrc != mob && len(verbsOnAtom) > 0 {
+			available[verbSrc.(*types.Datum)] = verbsOnAtom
 		}
 	}
 	sort.Strings(verbs)
-	return verbs
+	return verbs, available
 }

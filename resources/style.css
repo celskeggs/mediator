@@ -125,3 +125,27 @@
     padding: 0;
     margin: 0;
 }
+
+.contextmenu {
+    position: fixed;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid black;
+    background-color: #EEEEEE;
+}
+
+.contextmenu div {
+    flex: 0 0 32px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+.contextmenu div:hover {
+    background-color: deepskyblue;
+}
+
+.contextmenu div span {
+    padding: 6px;
+}

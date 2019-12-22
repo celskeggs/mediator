@@ -1,15 +1,36 @@
 package sprite
 
 type GameSprite struct {
-	Icon         string `json:"icon"`
-	SourceX      uint   `json:"sx"`
-	SourceY      uint   `json:"sy"`
-	SourceWidth  uint   `json:"sw"`
-	SourceHeight uint   `json:"sh"`
-	X            uint   `json:"x"`
-	Y            uint   `json:"y"`
-	Width        uint   `json:"w"`
-	Height       uint   `json:"h"`
+	Icon         string   `json:"icon"`
+	SourceX      uint     `json:"sx"`
+	SourceY      uint     `json:"sy"`
+	SourceWidth  uint     `json:"sw"`
+	SourceHeight uint     `json:"sh"`
+	X            uint     `json:"x"`
+	Y            uint     `json:"y"`
+	Width        uint     `json:"w"`
+	Height       uint     `json:"h"`
+	Name         string   `json:"name"`
+	Verbs        []string `json:"verbs"`
+}
+
+func (s GameSprite) Equal(o GameSprite) bool {
+	if !(s.Icon == o.Icon &&
+		s.SourceX == o.SourceX && s.SourceY == o.SourceY &&
+		s.SourceWidth == o.SourceWidth && s.SourceHeight == o.SourceHeight &&
+		s.X == o.X && s.Y == o.Y && s.Width == o.Width && s.Height == o.Height &&
+		s.Name == o.Name) {
+		return false
+	}
+	if len(s.Verbs) != len(o.Verbs) {
+		return false
+	}
+	for i, v := range s.Verbs {
+		if o.Verbs[i] != v {
+			return false
+		}
+	}
+	return true
 }
 
 type StatEntry struct {
@@ -107,15 +128,19 @@ func (a SpriteView) Equal(b SpriteView) bool {
 	if len(a.Sprites) != len(b.Sprites) {
 		return false
 	}
-	spritemap := map[GameSprite]uint{}
-	for _, sprite := range a.Sprites {
-		spritemap[sprite] += 1
-	}
+	used := make([]bool, len(a.Sprites))
 	for _, sprite := range b.Sprites {
-		if spritemap[sprite] == 0 {
+		found := false
+		for i, cmp := range a.Sprites {
+			if !used[i] && sprite.Equal(cmp) {
+				used[i] = true
+				found = true
+				break
+			}
+		}
+		if !found {
 			return false
 		}
-		spritemap[sprite] -= 1
 	}
 	// at this point, we know that:
 	//  - A and B have the same number of elements
