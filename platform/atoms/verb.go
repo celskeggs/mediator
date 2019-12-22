@@ -95,7 +95,6 @@ func (v Verb) ResolveArgs(src *types.Datum, usr *types.Datum, args []string) ([]
 }
 
 func (v Verb) Apply(src *types.Datum, usr *types.Datum, args []types.Value) {
-	util.FIXME("include usr somehow")
 	src.Invoke(usr, v.ProcName, args...)
 }
 

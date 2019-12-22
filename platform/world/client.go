@@ -71,10 +71,7 @@ func (d *ClientData) GetVirtualEye(src *types.Datum) types.Value {
 
 func InvokeVerb(client types.Value, verb string) {
 	clientDatum, clientData := ClientDataChunk(client)
-	util.FIXME("handle defined verbs, not just built-in verbs")
 	util.FIXME("support expanding partially-typed verbs")
-	util.FIXME("support on-screen verb panels")
-	util.FIXME("support right-clicking to access context menu verbs")
 	mob := clientData.GetMob(clientDatum)
 	var mobDatum *types.Datum
 	if mob != nil {

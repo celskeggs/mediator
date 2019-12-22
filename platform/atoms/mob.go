@@ -100,7 +100,6 @@ func (m *MobData) ProcLogin(src *types.Datum, usr *types.Datum) types.Value {
 }
 
 func (m *MobData) StatContext() *StatContext {
-	util.FIXME("implement stat display")
 	return m.stat
 }
 
