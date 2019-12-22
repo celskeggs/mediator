@@ -9,6 +9,7 @@ import (
 	"github.com/celskeggs/mediator/util"
 	"github.com/celskeggs/mediator/webclient/sprite"
 	"log"
+	"sort"
 	"strings"
 )
 
@@ -179,13 +180,13 @@ func PullClientRequests(client *types.Datum) (textDisplay []string, sounds []spr
 	return textDisplay, sounds
 }
 
-func (w *World) RenderClientView(client types.Value) (center types.Value, viewAtoms []types.Value, stat sprite.StatDisplay) {
-	_, cc := ClientDataChunk(client)
+func (w *World) RenderClientView(client types.Value) (center types.Value, viewAtoms []types.Value, stat sprite.StatDisplay, verbs []string) {
+	cdatum, cc := ClientDataChunk(client)
 	util.FIXME("actually do this correctly")
 	eye := client.Var("eye").(*types.Datum)
 	veye := client.Var("virtual_eye").(*types.Datum)
 	view := types.Unuint(client.Var("view"))
-	return veye, w.ViewX(view, veye, eye, atoms.ViewVisual), cc.statDisplay
+	return veye, w.ViewX(view, veye, eye, atoms.ViewVisual), cc.statDisplay, cc.ListVerbs(cdatum)
 }
 
 func (w *World) constructNewMob() types.Value {
@@ -269,5 +270,6 @@ func (d *ClientData) ListVerbs(src *types.Datum) (verbs []string) {
 			}
 		}
 	}
+	sort.Strings(verbs)
 	return verbs
 }

@@ -86,6 +86,7 @@ type SpriteView struct {
 	ViewPortHeight uint         `json:"viewportheight"`
 	Sprites        []GameSprite `json:"sprites"`
 	Stats          StatDisplay  `json:"stats"`
+	Verbs          []string     `json:"verbs"`
 }
 
 func (a SpriteView) Equal(b SpriteView) bool {
@@ -94,6 +95,14 @@ func (a SpriteView) Equal(b SpriteView) bool {
 	}
 	if !a.Stats.Equal(b.Stats) {
 		return false
+	}
+	if len(a.Verbs) != len(b.Verbs) {
+		return false
+	}
+	for i, verb := range a.Verbs {
+		if b.Verbs[i] != verb {
+			return false
+		}
 	}
 	if len(a.Sprites) != len(b.Sprites) {
 		return false

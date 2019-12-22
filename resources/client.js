@@ -198,6 +198,7 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
     var aspectShiftX = 0, aspectShiftY = 0;
     var gameSprites = [];
     var statPanels = {};
+    var verbs = [];
     var selectedStatPanel = null;
     var keyDirection = null;
     var sendMessage = function (message) {
@@ -331,64 +332,90 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
         }
     }
 
-    function renderPanelData(entries) {
+    function renderPanelData(entries, areVerbs) {
+        if (areVerbs) {
+            if (!panelbody.classList.contains("verbpanel")) {
+                while (panelbody.children.length > 0) {
+                    panelbody.children[0].remove();
+                }
+            }
+            panelbody.classList.add("verbpanel");
+            panelbody.classList.remove("statpanel");
+        } else {
+            if (!panelbody.classList.contains("statpanel")) {
+                while (panelbody.children.length > 0) {
+                    panelbody.children[0].remove();
+                }
+            }
+            panelbody.classList.add("statpanel");
+            panelbody.classList.remove("verbpanel");
+        }
         while (panelbody.children.length > entries.length) {
             panelbody.children[panelbody.children.length-1].remove();
         }
         while (panelbody.children.length < entries.length) {
             var child = document.createElement("div");
-            var statlabel = document.createElement("span");
-            statlabel.classList.add("statlabel");
-            child.appendChild(statlabel);
-            child.appendChild(document.createElement("div"));
-            child.appendChild(document.createElement("span"));
-            var statsuffix = document.createElement("span");
-            statsuffix.classList.add("statsuffix");
-            child.appendChild(statsuffix);
+            if (!areVerbs) {
+                var statlabel = document.createElement("span");
+                statlabel.classList.add("statlabel");
+                child.appendChild(statlabel);
+                child.appendChild(document.createElement("div"));
+                child.appendChild(document.createElement("span"));
+                var statsuffix = document.createElement("span");
+                statsuffix.classList.add("statsuffix");
+                child.appendChild(statsuffix);
+            } else {
+                child.addEventListener("click", function (e) {
+                    sendVerb(this.textContent);
+                });
+            }
             panelbody.appendChild(child);
         }
         for (var i = 0; i < panelbody.children.length; i++) {
             var data = entries[i];
             var entry = panelbody.children[i];
-            var labelSpan = entry.children[0];
-            var iconDiv = entry.children[1];
-            var nameSpan = entry.children[2];
-            var suffixSpan = entry.children[3];
+            if (areVerbs) {
+                entry.textContent = data;
+            } else {
+                var labelSpan = entry.children[0];
+                var iconDiv = entry.children[1];
+                var nameSpan = entry.children[2];
+                var suffixSpan = entry.children[3];
 
-            labelSpan.textContent = data.label;
-            nameSpan.textContent = data.name;
-            suffixSpan.textContent = data.suffix;
+                labelSpan.textContent = data.label;
+                nameSpan.textContent = data.name;
+                suffixSpan.textContent = data.suffix;
 
-            if (images !== null) {
-                var wantedImage = null;
-                if (data.icon !== "" && data.icon in images) {
-                    wantedImage = images[data.icon];
-                }
-                if (wantedImage === null) {
-                    if (iconDiv.children.length > 0) {
-                        iconDiv.children[0].remove();
+                if (images !== null) {
+                    var wantedImage = null;
+                    if (data.icon !== "" && data.icon in images) {
+                        wantedImage = images[data.icon];
                     }
-                    iconDiv.style.width = "";
-                    iconDiv.style.height = "";
-                    iconDiv.style.overflow = "";
-                } else {
-                    if (iconDiv.children.length > 0 && iconDiv.children[0].src !== wantedImage.src) {
-                        iconDiv.children[0].remove();
-                    }
-                    iconDiv.style.width = (data.sw || wantedImage.width) + "px";
-                    iconDiv.style.height = (data.sh || wantedImage.height) + "px";
-                    iconDiv.style.overflow = "hidden";
-                    var img;
-                    if (iconDiv.children.length === 0) {
-                        img = wantedImage.cloneNode(true);
-                        iconDiv.appendChild(img);
+                    if (wantedImage === null) {
+                        if (iconDiv.children.length > 0) {
+                            iconDiv.children[0].remove();
+                        }
+                        iconDiv.style.width = "";
+                        iconDiv.style.height = "";
+                        iconDiv.style.overflow = "";
                     } else {
-                        img = iconDiv.children[0];
+                        if (iconDiv.children.length > 0 && iconDiv.children[0].src !== wantedImage.src) {
+                            iconDiv.children[0].remove();
+                        }
+                        iconDiv.style.width = (data.sw || wantedImage.width) + "px";
+                        iconDiv.style.height = (data.sh || wantedImage.height) + "px";
+                        iconDiv.style.overflow = "hidden";
+                        var img;
+                        if (iconDiv.children.length === 0) {
+                            img = wantedImage.cloneNode(true);
+                            iconDiv.appendChild(img);
+                        } else {
+                            img = iconDiv.children[0];
+                        }
+                        img.marginLeft = "-" + (data.sx || 0) + "px";
+                        img.marginTop = "-" + (data.sy || 0) + "px";
                     }
-                    img.marginLeft = "-" + (data.sx || 0) + "px";
-                    img.marginTop = "-" + (data.sy || 0) + "px";
                 }
-
             }
         }
     }
@@ -406,13 +433,22 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
             }
         }
         allPanels.sort();
+        if (verbs.length > 0) {
+            allPanels.push("Commands");
+            if (selectedStatPanel === "Commands") {
+                canUseStatPanel = true;
+            }
+        }
         if (!canUseStatPanel) {
             selectedStatPanel = allPanels.length > 0 ? allPanels[0] : null;
         }
         renderPanelTabs(allPanels, selectedStatPanel);
-        if (selectedStatPanel !== null) {
+        console.log("selected", selectedStatPanel);
+        if (selectedStatPanel === "Commands") {
+            renderPanelData(verbs, true);
+        } else if (selectedStatPanel !== null) {
             var paneldata = panels[selectedStatPanel];
-            renderPanelData(paneldata.entries || []);
+            renderPanelData(paneldata.entries || [], false);
         } else {
             renderPanelData([]);
         }
@@ -429,6 +465,8 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
                 document.getElementsByTagName("title")[0].textContent = message.newstate.windowtitle;
             }
             statPanels = message.newstate.stats.panels || {};
+            console.log("state", message.newstate);
+            verbs = message.newstate.verbs || [];
             updateStatPanels();
         }
         if (message.textlines) {

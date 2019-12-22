@@ -59,14 +59,39 @@
     background-color: #DDD;
 }
 
-#panelbody {
+#paneltabs button.selected {
+    background-color: #EEE;
+}
+
+#panelbody.verbpanel {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    border: 1px solid black;
+    margin-bottom: 6px;
+    box-sizing: border-box;
+    padding: 6px;
+}
+
+#panelbody.verbpanel div:hover {
+    color: darkgreen;
+}
+
+#panelbody.verbpanel div {
+    min-width: 50px;
+    height: 20px;
+}
+
+#panelbody.statpanel {
     flex: 1;
     border: 1px solid black;
     margin-bottom: 6px;
     box-sizing: border-box;
+    padding: 6px;
 }
 
-#panelbody div {
+#panelbody.statpanel div {
     display: flex;
     align-items: center;
 }

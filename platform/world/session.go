@@ -90,7 +90,7 @@ func (p playerAPI) Command(cmd webclient.Command) {
 const SpriteSize = 32
 
 func (p playerAPI) Render() sprite.SpriteView {
-	center, viewAtoms, stats := p.API.World.RenderClientView(p.Client)
+	center, viewAtoms, stats, verbs := p.API.World.RenderClientView(p.Client)
 
 	util.FIXME("don't use hardcoded tile sizes here")
 	util.FIXME("add adjacent cell movement animations")
@@ -104,6 +104,7 @@ func (p playerAPI) Render() sprite.SpriteView {
 	view.ViewPortWidth = viewportSize
 	view.ViewPortHeight = viewportSize
 	view.Stats = stats
+	view.Verbs = verbs
 
 	if center != nil {
 		cX, cY := XY(center)
