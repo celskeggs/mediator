@@ -104,11 +104,13 @@ func (m *MobData) StatContext() *StatContext {
 	return m.stat
 }
 
-func (m *MobData) StartStatContext() {
+func (m *MobData) StartStatContext(src *types.Datum) {
 	if m.stat != nil {
 		panic("stat context already started!")
 	}
-	m.stat = &StatContext{}
+	m.stat = &StatContext{
+		client: m.GetClient(src),
+	}
 }
 
 func (m *MobData) EndStatContext() sprite.StatDisplay {

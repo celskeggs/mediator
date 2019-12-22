@@ -34,14 +34,33 @@ func (s GameSprite) Equal(o GameSprite) bool {
 }
 
 type StatEntry struct {
-	Label        string `json:"label"`
-	Icon         string `json:"icon"`
-	SourceX      uint   `json:"sx"`
-	SourceY      uint   `json:"sy"`
-	SourceWidth  uint   `json:"sw"`
-	SourceHeight uint   `json:"sh"`
-	Name         string `json:"name"`
-	Suffix       string `json:"suffix"`
+	Label        string   `json:"label"`
+	Icon         string   `json:"icon"`
+	SourceX      uint     `json:"sx"`
+	SourceY      uint     `json:"sy"`
+	SourceWidth  uint     `json:"sw"`
+	SourceHeight uint     `json:"sh"`
+	Name         string   `json:"name"`
+	Suffix       string   `json:"suffix"`
+	Verbs        []string `json:"verbs"`
+}
+
+func (s StatEntry) Equal(o StatEntry) bool {
+	if !(s.Label == o.Label && s.Icon == o.Icon &&
+		s.SourceX == o.SourceX && s.SourceY == o.SourceY &&
+		s.SourceWidth == o.SourceWidth && s.SourceHeight == o.SourceHeight &&
+		s.Name == o.Name && s.Suffix == o.Suffix) {
+		return false
+	}
+	if len(s.Verbs) != len(o.Verbs) {
+		return false
+	}
+	for i, v := range s.Verbs {
+		if o.Verbs[i] != v {
+			return false
+		}
+	}
+	return true
 }
 
 type StatPanel struct {
@@ -72,7 +91,7 @@ func (p StatPanel) Equal(o StatPanel) bool {
 		return false
 	}
 	for i, ent := range p.Entries {
-		if o.Entries[i] != ent {
+		if !o.Entries[i].Equal(ent) {
 			return false
 		}
 	}

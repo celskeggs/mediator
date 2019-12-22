@@ -12,10 +12,11 @@ import (
 type StatContext struct {
 	// currentPanel == "" means the default panel, which is titled "Stats", but is not the same as the "Stats" panel
 	currentPanel string
+	client       types.Value
 	display      sprite.StatDisplay
 }
 
-func renderDatumToStat(datum types.Value) sprite.StatEntry {
+func (s *StatContext) renderDatumToStat(datum types.Value) sprite.StatEntry {
 	if str, ok := datum.(types.String); ok {
 		return sprite.StatEntry{
 			Name: string(str),
@@ -30,6 +31,7 @@ func renderDatumToStat(datum types.Value) sprite.StatEntry {
 			// make sure that no icon is used
 			gameSprite = sprite.GameSprite{}
 		}
+		verbs := WorldOf(datum.(*types.Datum)).ListVerbsOnAtom(s.client, datum.(*types.Datum))
 		return sprite.StatEntry{
 			Icon:         gameSprite.Icon,
 			SourceX:      gameSprite.SourceX,
@@ -38,6 +40,7 @@ func renderDatumToStat(datum types.Value) sprite.StatEntry {
 			SourceHeight: gameSprite.SourceHeight,
 			Name:         types.Unstring(datum.Var("name")),
 			Suffix:       types.Unstring(datum.Var("suffix")),
+			Verbs:        verbs,
 		}
 	} else {
 		util.FIXME("figure out what we should actually do when given an unknown datum")
@@ -57,7 +60,7 @@ func (s *StatContext) Stat(name string, value types.Value) {
 			if element == nil {
 				continue
 			}
-			panel.Add(renderDatumToStat(element))
+			panel.Add(s.renderDatumToStat(element))
 		}
 	} else if value == nil {
 		if name != "" {
@@ -66,7 +69,7 @@ func (s *StatContext) Stat(name string, value types.Value) {
 			})
 		}
 	} else {
-		stat := renderDatumToStat(value)
+		stat := s.renderDatumToStat(value)
 		stat.Label = name
 		panel.Add(stat)
 	}

@@ -39,7 +39,7 @@ func (w *worldAPI) Tick() {
 		mob := p.Var("mob")
 		md, ok := atoms.MobDataChunk(mob)
 		if ok {
-			md.StartStatContext()
+			md.StartStatContext(mob.(*types.Datum))
 			util.FIXME("handle Stat sleeping correctly")
 			p.Invoke(mob.(*types.Datum), "Stat")
 			client.statDisplay = md.EndStatContext()

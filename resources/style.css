@@ -104,6 +104,10 @@
     margin-right: 10px;
 }
 
+.statobject:hover {
+    color: darkgreen;
+}
+
 .textcontainer {
     display: flex;
     flex-direction: column;

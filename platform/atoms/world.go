@@ -26,6 +26,7 @@ type World interface {
 	FindOneType(tp types.TypePath) types.Value
 	View(distance uint, centerD *types.Datum, mode ViewMode) []types.Value
 	View1(centerD *types.Datum, mode ViewMode) []types.Value
+	ListVerbsOnAtom(client types.Value, atom *types.Datum) (verbs []string)
 }
 
 func WorldOf(t *types.Datum) World {

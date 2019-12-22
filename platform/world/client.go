@@ -256,6 +256,27 @@ func (d *ClientData) ResolveVerb(src *types.Datum, verbName string, args []strin
 	src.Invoke(verbUsr, "<<", types.String(fmt.Sprintf("Not a known verb: %q", verbName)))
 }
 
+func (d *ClientData) listVerbsOnAtomInternal(src *types.Datum, usr *types.Datum, atom *types.Datum) (verbs []string) {
+	for _, verbVal := range datum.Elements(atom.Var("verbs")) {
+		verb := verbVal.(atoms.Verb)
+		if verb.Matches(verb.VisibleName, atom, usr, nil) {
+			verbs = append(verbs, verb.VisibleName)
+		}
+	}
+	return verbs
+}
+
+func (w *World) ListVerbsOnAtom(client types.Value, atom *types.Datum) (verbs []string) {
+	cdatum, cd := ClientDataChunk(client)
+	mob := client.Var("mob")
+	if mob == nil {
+		util.FIXME("see if there are cases where verbs can be executed without a mob")
+		// cannot execute verbs without a mob
+		return nil
+	}
+	return cd.listVerbsOnAtomInternal(cdatum, mob.(*types.Datum), atom)
+}
+
 func (d *ClientData) ListVerbs(src *types.Datum) (verbs []string, available map[*types.Datum][]string) {
 	mob := src.Var("mob")
 	if mob == nil {
@@ -264,19 +285,19 @@ func (d *ClientData) ListVerbs(src *types.Datum) (verbs []string, available map[
 		return
 	}
 	verbUsr := mob.(*types.Datum)
+	allVerbs := map[string]struct{}{}
 	available = map[*types.Datum][]string{}
 	for _, verbSrc := range atoms.WorldOf(src).FindAllType("/atom") {
-		var verbsOnAtom []string
-		for _, verbVal := range datum.Elements(verbSrc.Var("verbs")) {
-			verb := verbVal.(atoms.Verb)
-			if verb.Matches(verb.VisibleName, verbSrc.(*types.Datum), verbUsr, nil) {
-				verbs = append(verbs, verb.VisibleName)
-				verbsOnAtom = append(verbsOnAtom, verb.VisibleName)
-			}
+		verbsOnAtom := d.listVerbsOnAtomInternal(src, verbUsr, verbSrc.(*types.Datum))
+		for _, verb := range verbsOnAtom {
+			allVerbs[verb] = struct{}{}
 		}
 		if verbSrc != mob && len(verbsOnAtom) > 0 {
 			available[verbSrc.(*types.Datum)] = verbsOnAtom
 		}
+	}
+	for verb := range allVerbs {
+		verbs = append(verbs, verb)
 	}
 	sort.Strings(verbs)
 	return verbs, available

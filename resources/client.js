@@ -429,8 +429,28 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
                 var statlabel = document.createElement("span");
                 statlabel.classList.add("statlabel");
                 child.appendChild(statlabel);
-                child.appendChild(document.createElement("div"));
-                child.appendChild(document.createElement("span"));
+                var object = document.createElement("div");
+                object.appendChild(document.createElement("div"));
+                object.appendChild(document.createElement("span"));
+                object.entry = null;
+                object.addEventListener("contextmenu", function (ev) {
+                    if (this.entry !== null && this.entry.verbs && this.entry.verbs.length > 0) {
+                        var menu = [];
+                        for (var j = 0; j < this.entry.verbs.length; j++) {
+                            menu.push({
+                                "name": this.entry.verbs[j],
+                                "targetName": this.entry.name,
+                                "select": function () {
+                                    // TODO: uniquely identify atoms, rather than using names
+                                    sendVerb(this.name + " " + this.targetName);
+                                },
+                            });
+                        }
+                        dismissContextMenu();
+                        contextMenu = new ContextMenu(ev.pageX, ev.pageY, menu, images);
+                    }
+                });
+                child.appendChild(object);
                 var statsuffix = document.createElement("span");
                 statsuffix.classList.add("statsuffix");
                 child.appendChild(statsuffix);
@@ -448,9 +468,15 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
                 entry.textContent = data;
             } else {
                 var labelSpan = entry.children[0];
-                var iconDiv = entry.children[1];
-                var nameSpan = entry.children[2];
-                var suffixSpan = entry.children[3];
+                var statObject = entry.children[1];
+                var iconDiv = statObject.children[0];
+                var nameSpan = statObject.children[1];
+                var suffixSpan = entry.children[2];
+
+                if (data.verbs && data.verbs.length > 0) {
+                    statObject.classList.add("statobject");
+                }
+                statObject.entry = data;
 
                 labelSpan.textContent = data.label;
                 nameSpan.textContent = data.name;
@@ -655,7 +681,7 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
                     "targetName": sprite.name,
                     "select": function () {
                         // TODO: uniquely identify atoms, rather than using names
-                        sendVerb(this.name + " " + this.targetName)
+                        sendVerb(this.name + " " + this.targetName);
                     },
                 });
             }
