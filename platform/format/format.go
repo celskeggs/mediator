@@ -15,7 +15,9 @@ func isUpperCase(s string) bool {
 
 func FormatMacro(macro string, atom types.Value) string {
 	util.FIXME("support more types of non-atoms")
-	if s, ok := atom.(types.String); ok {
+	if atom == nil {
+		return ""
+	} else if s, ok := atom.(types.String); ok {
 		return types.Unstring(s)
 	} else if macro == "the" || macro == "The" {
 		name := types.Unstring(atom.Var("name"))
