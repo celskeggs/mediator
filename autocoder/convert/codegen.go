@@ -31,9 +31,16 @@ type CodeGenContext struct {
 	WorldRef string
 	Tree     *gen.DefinedTree
 	VarTypes map[string]dtype.DType
+	VarsUsed map[string]struct{}
 	Result   string
 	ThisProc string
 	DefIndex uint
+}
+
+func (ctx CodeGenContext) UseVar(v string) {
+	if ctx.VarsUsed != nil {
+		ctx.VarsUsed[v] = struct{}{}
+	}
 }
 
 func (ctx CodeGenContext) ChunkName() string {
@@ -47,6 +54,7 @@ func (ctx CodeGenContext) ChunkName() string {
 
 func (ctx CodeGenContext) UsrRef() string {
 	if _, hasusr := ctx.VarTypes["usr"]; hasusr {
+		ctx.UseVar("usr")
 		return LocalVariablePrefix + "usr"
 	} else {
 		return "nil"
@@ -58,6 +66,7 @@ func (ctx CodeGenContext) WithVar(name string, varType dtype.DType) CodeGenConte
 		util.FIXME("should probably not panic here")
 		panic("duplicate variable " + name)
 	}
+	util.FIXME("does there need to be special handling here for whether vars were used?")
 	vt := map[string]dtype.DType{}
 	for k, v := range ctx.VarTypes {
 		vt[k] = v
@@ -73,6 +82,7 @@ func (ctx CodeGenContext) ResolveNonLocal(name string) (get string, set func(to 
 	if srctype, ok := ctx.VarTypes["src"]; ok && srctype.IsAnyPath() {
 		ftype, found := ctx.Tree.ResolveField(srctype.Path(), name)
 		if found {
+			ctx.UseVar("src")
 			return fmt.Sprintf("%ssrc.Var(%q)", LocalVariablePrefix, name),
 				func(value string) string {
 					return fmt.Sprintf("%ssrc.SetVar(%q, %s)", LocalVariablePrefix, name, value)
@@ -163,6 +173,7 @@ func ExprToGo(expr ast.Expression, ctx CodeGenContext) (exprString string, etype
 				if _, ok := ctx.Tree.ResolveProcedure(srctype.Path(), target.Str); ok {
 					found = true
 					invokeSrc = LocalVariablePrefix + "src"
+					ctx.UseVar("src")
 				}
 			}
 		} else if target.Type == ast.ExprTypeGetField {
@@ -218,23 +229,17 @@ func ExprToGo(expr ast.Expression, ctx CodeGenContext) (exprString string, etype
 			kwargStr += "}"
 			return fmt.Sprintf("procs.KWInvoke(%s, %s, %q, %s%s)", ctx.WorldRef, ctx.UsrRef(), target.Str, kwargStr, strings.Join(convArgs, "")), dtype.Any(), nil
 		} else if super {
-			util.FIXME("should we be passing all original parameters by default if ..() is used without parameters?")
 			if ctx.DefIndex > 0 {
 				di := ctx.Tree.LookupIndexedImpl(ctx.VarTypes["src"].Path(), ctx.ThisProc, ctx.DefIndex-1)
-				slots := make([]string, len(di.Params))
-				if len(convArgs) > len(slots) {
-					util.FIXME("handle additional arguments to redecl by evaluating but dropping them")
-					return "", dtype.None(), fmt.Errorf("passed more arguments to internal redecl than permitted at %v", expr.SourceLoc)
-				}
-				for i := range slots {
-					if i < len(convArgs) {
-						slots[i] = ", " + convArgs[i]
-					} else {
-						slots[i] = ", nil"
-					}
-				}
 				// we're a subsequent declaration on this particular type; we need to call within our struct
-				return fmt.Sprintf("chunk.Shadow%dForProc%s(%s, %s%s)", di.DefIndex, di.Name, LocalVariablePrefix+"src", ctx.UsrRef(), strings.Join(slots, "")), dtype.Any(), nil
+				if len(convArgs) == 0 {
+					// ..() should include all params by default
+					return fmt.Sprintf("chunk.Shadow%dForProc%s(%s, %s, allargs)", di.DefIndex, di.Name, LocalVariablePrefix+"src", ctx.UsrRef()), dtype.Any(), nil
+				}
+				return fmt.Sprintf("chunk.Shadow%dForProc%s(%s, %s, []types.Value{%s})", di.DefIndex, di.Name, LocalVariablePrefix+"src", ctx.UsrRef(), strings.Join(convArgs, ", ")), dtype.Any(), nil
+			}
+			if len(convArgs) == 0 {
+				return fmt.Sprintf("varsrc.SuperInvoke(%s, %q, %q, allargs...)", ctx.UsrRef(), ctx.ChunkName(), ctx.ThisProc), dtype.Any(), nil
 			}
 			return fmt.Sprintf("varsrc.SuperInvoke(%s, %q, %q%s)", ctx.UsrRef(), ctx.ChunkName(), ctx.ThisProc, strings.Join(convArgs, "")), dtype.Any(), nil
 		} else if invokeSrc == "" {
@@ -274,6 +279,7 @@ func ExprToGo(expr ast.Expression, ctx CodeGenContext) (exprString string, etype
 		if !ok {
 			return "", dtype.None(), fmt.Errorf("unexpectedly could not find type for var %q at %v ... there may be a ast.bug", expr.Str, expr.SourceLoc)
 		}
+		ctx.UseVar(expr.Str)
 		return LocalVariablePrefix + expr.Str, vtype, nil
 	case ast.ExprTypeGetField:
 		exprStr, exprType, err := ExprToGo(expr.Children[0], ctx)

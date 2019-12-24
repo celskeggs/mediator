@@ -179,7 +179,7 @@ func (t *{{.Type}}Impl) Proc(src *types.Datum, usr *types.Datum, name string, pa
 	switch name {
 {{- range .Procs}}
 	case "{{.Name}}":
-		return t.{{.StructName}}.{{.ProcName}}(src, usr{{range .ParamNums}}, types.Param(params, {{ . }}){{end}}), true
+		return t.{{.StructName}}.{{.ProcName}}(src, usr{{range .ParamNums}}, types.Param(params, {{ . }}){{end}}{{if .ParamArray}}, params{{end}}), true
 {{- end}}
 	default:
 		return nil, false
@@ -194,7 +194,7 @@ func (t *{{.Type}}Impl) SuperProc(src *types.Datum, usr *types.Datum, chunk stri
 		switch name {
 {{- range .ProcSupers}}
 		case "{{.Name}}":
-			return t.{{.ParentStructName}}.{{.Parent.ProcName}}(src, usr{{range .Parent.ParamNums}}, types.Param(params, {{ . }}){{end}}), true
+			return t.{{.ParentStructName}}.{{.Parent.ProcName}}(src, usr{{range .Parent.ParamNums}}, types.Param(params, {{ . }}){{end}}{{if .Parent.ParamArray}}, params{{end}}), true
 {{- end}}
 		}
 {{- end}}

@@ -24,6 +24,7 @@ type VarInfo struct {
 type ProcInfo struct {
 	Name        string
 	ParamCount  int
+	ParamArray  bool
 	HasSettings bool
 }
 

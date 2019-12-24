@@ -345,12 +345,12 @@ func New{{.DataStructName}}(src *types.Datum, _ *{{.DataStructName}}, _ ...types
 
 {{range .Impls -}}
 {{ if not .DefFinal -}}
-func (chunk *{{$type.DataStructName}}) Shadow{{.DefIndex}}ForProc{{.Name}}({{.This}} *types.Datum, {{.Usr}} *types.Datum{{range .Params}}, {{.}} types.Value{{end}}) (out types.Value) {
+func (chunk *{{$type.DataStructName}}) Shadow{{.DefIndex}}ForProc{{.Name}}({{.This}} *types.Datum, {{.Usr}} *types.Datum, allargs []types.Value) (out types.Value) {
 {{.Body}}
 }
 
 {{ else -}}
-func (chunk *{{$type.DataStructName}}) Proc{{.Name}}({{.This}} *types.Datum, {{.Usr}} *types.Datum{{range .Params}}, {{.}} types.Value{{end}}) (out types.Value) {
+func (chunk *{{$type.DataStructName}}) Proc{{.Name}}({{.This}} *types.Datum, {{.Usr}} *types.Datum, allargs []types.Value) (out types.Value) {
 {{.Body}}
 }
 

@@ -170,6 +170,7 @@ func (source *SourceInfo) LoadProc(fset *token.FileSet, structName string, decl 
 	if len(types) < 2 {
 		return fmt.Errorf("proc %s.%s must take at least src and usr at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
 	}
+	hasVarArgs := false
 	for i, t := range types {
 		if i == 0 {
 			if !IsDatumType(t) {
@@ -179,10 +180,14 @@ func (source *SourceInfo) LoadProc(fset *token.FileSet, structName string, decl 
 			if !IsDatumType(t) {
 				return fmt.Errorf("proc %s.%s must take usr from *types.Datum at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
 			}
-		} else {
-			if !IsValueType(t) {
-				return fmt.Errorf("proc %s.%s must take only types.Value at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
+		} else if arr, ok := t.(*ast.ArrayType); ok && arr.Len == nil && IsValueType(arr.Elt) {
+			if i == len(types)-1 {
+				hasVarArgs = true
+			} else {
+				return fmt.Errorf("proc %s.%s must not have arg array parameter before the end of the parameter list at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
 			}
+		} else if !IsValueType(t) {
+			return fmt.Errorf("proc %s.%s must take only types.Value at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
 		}
 	}
 	if decl.Type.Results != nil && len(decl.Type.Results.List) > 1 {
@@ -195,9 +200,14 @@ func (source *SourceInfo) LoadProc(fset *token.FileSet, structName string, decl 
 	if !IsValueType(resultType) {
 		return fmt.Errorf("proc %s.%s must return a types.Value at %v", structName, decl.Name.Name, fset.Position(decl.Pos()))
 	}
+	paramCount := len(types) - 2
+	if hasVarArgs {
+		paramCount -= 1
+	}
 	source.Procs = append(source.Procs, &ProcInfo{
 		Name:       name,
-		ParamCount: len(types) - 2,
+		ParamCount: paramCount,
+		ParamArray: hasVarArgs,
 	})
 	return nil
 }

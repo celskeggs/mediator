@@ -155,6 +155,8 @@ func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string,
 		vartypes[a.Name] = a.Type
 	}
 
+	varsused := map[string]struct{}{}
+
 	settings, body, err := ParseSettings(dt, path, body)
 	if err != nil {
 		return err
@@ -164,6 +166,7 @@ func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string,
 		WorldRef: "atoms.WorldOf(" + LocalVariablePrefix + "src)",
 		Tree:     dt,
 		VarTypes: vartypes,
+		VarsUsed: varsused,
 		Result:   "out",
 		ThisProc: function,
 		DefIndex: defIndex,
@@ -171,6 +174,14 @@ func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string,
 	if err != nil {
 		return err
 	}
+
+	var prepend []string
+	for i, param := range arguments {
+		if _, ok := varsused[param.Name]; ok {
+			prepend = append(prepend, fmt.Sprintf("%s := types.Param(allargs, %d)", LocalVariablePrefix+param.Name, i))
+		}
+	}
+	lines = append(prepend, lines...)
 
 	defType.Impls = append(defType.Impls, &gen.DefinedImpl{
 		Name:     function,
