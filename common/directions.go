@@ -8,6 +8,7 @@ import (
 type Direction uint8
 
 const (
+	None      Direction = 0
 	North     Direction = 1
 	South     Direction = 2
 	East      Direction = 4
@@ -126,4 +127,32 @@ func (d Direction) Invoke(usr *types.Datum, name string, parameters ...types.Val
 
 func (d Direction) String() string {
 	return "[direction]"
+}
+
+func GetDir(x1, y1, x2, y2 uint) Direction {
+	if x1 < x2 {
+		if y1 < y2 {
+			return Northeast
+		} else if y1 > y2 {
+			return Southeast
+		} else {
+			return East
+		}
+	} else if x1 > x2 {
+		if y1 < y2 {
+			return Northwest
+		} else if y1 > y2 {
+			return Southwest
+		} else {
+			return West
+		}
+	} else {
+		if y1 < y2 {
+			return North
+		} else if y1 > y2 {
+			return South
+		} else {
+			return 0
+		}
+	}
 }

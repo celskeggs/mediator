@@ -2,9 +2,12 @@ package procs
 
 import (
 	"fmt"
+	"github.com/celskeggs/mediator/common"
 	"github.com/celskeggs/mediator/platform/atoms"
 	"github.com/celskeggs/mediator/platform/datum"
 	"github.com/celskeggs/mediator/platform/types"
+	"github.com/celskeggs/mediator/platform/world"
+	"github.com/celskeggs/mediator/util"
 )
 
 func KWInvoke(w atoms.World, usr *types.Datum, name string, kwargs map[string]types.Value, args ...types.Value) types.Value {
@@ -72,7 +75,10 @@ func KWInvoke(w atoms.World, usr *types.Datum, name string, kwargs map[string]ty
 	case "walk_to":
 		panic("unimplemented: walk_to")
 	case "get_dir":
-		panic("unimplemented: get_dir")
+		util.FIXME("should we do anything with the Z direction?")
+		x1, y1 := world.XY(types.Param(args, 0))
+		x2, y2 := world.XY(types.Param(args, 0))
+		return common.GetDir(x1, y1, x2, y2)
 	case "flick":
 		panic("unimplemented: flick")
 	default:
