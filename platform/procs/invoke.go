@@ -24,6 +24,11 @@ func KWInvoke(w atoms.World, usr *types.Datum, name string, kwargs map[string]ty
 			panic("usr was nil when calling oview")
 		}
 		return datum.NewList(w.View1(usr, atoms.ViewExclusive)...)
+	case "view":
+		if usr == nil {
+			panic("usr was nil when calling view")
+		}
+		return datum.NewList(w.View1(usr, atoms.ViewInclusive)...)
 	case "stat":
 		if usr == nil {
 			panic("usr is nil during attempt to use stat()")
@@ -64,6 +69,12 @@ func KWInvoke(w atoms.World, usr *types.Datum, name string, kwargs map[string]ty
 		} else {
 			return types.FromBool(visible)
 		}
+	case "walk_to":
+		panic("unimplemented: walk_to")
+	case "get_dir":
+		panic("unimplemented: get_dir")
+	case "flick":
+		panic("unimplemented: flick")
 	default:
 		panic(fmt.Sprintf("unimplemented global function %q", name))
 	}

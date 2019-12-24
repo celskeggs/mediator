@@ -75,6 +75,7 @@ var platformFields = []FieldInfo{
 	{"opacity", "/atom", dtype.Integer()},
 	{"suffix", "/atom", dtype.String()},
 	{"contents", "/atom", dtype.List()},
+	{"dir", "/atom", dtype.Any()},
 }
 
 var platformProcs = []ProcedureInfo{
@@ -88,8 +89,12 @@ var platformGlobalProcs = []string{
 	"ismob",
 	"sound",
 	"oview",
+	"view",
 	"stat",
 	"statpanel",
+	"walk_to",
+	"get_dir",
+	"flick",
 }
 
 type platformDefiner struct {
