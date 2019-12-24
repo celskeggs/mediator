@@ -214,6 +214,12 @@ func ExprToGo(expr ast.Expression, ctx CodeGenContext) (exprString string, etype
 		}
 		return "", dtype.None(), fmt.Errorf("cannot find nonlocal %s at %v", expr.Str, expr.SourceLoc)
 	case ast.ExprTypeGetLocal:
+		if expr.Str == "." {
+			if ctx.Result == "" {
+				return "", dtype.None(), fmt.Errorf("attempt to use . outside of a proc at %v", expr.SourceLoc)
+			}
+			return ctx.Result, dtype.Any(), nil
+		}
 		vtype, ok := ctx.VarTypes[expr.Str]
 		if !ok {
 			return "", dtype.None(), fmt.Errorf("unexpectedly could not find type for var %q at %v ... there may be a ast.bug", expr.Str, expr.SourceLoc)
@@ -304,9 +310,12 @@ func StatementToGo(statement ast.Statement, ctx CodeGenContext) (lines []string,
 			fmt.Sprintf("(%s).Invoke(%s, \"<<\", %s)", target, ctx.UsrRef(), value),
 		}, nil
 	case ast.StatementTypeReturn:
+		if ctx.Result == "" {
+			panic("should never have an empty result name here")
+		}
 		util.FIXME("support returning values")
 		return []string{
-			"return nil",
+			"return " + ctx.Result,
 		}, nil
 	case ast.StatementTypeEvaluate:
 		value, _, err := ExprToGo(statement.To, ctx)
@@ -331,6 +340,14 @@ func StatementToGo(statement ast.Statement, ctx CodeGenContext) (lines []string,
 				}, nil
 			}
 			return nil, fmt.Errorf("cannot resolve nonlocal %q at %v", name, statement.SourceLoc)
+		} else if statement.To.Type == ast.ExprTypeGetLocal {
+			assign, _, err := ExprToGo(statement.To, ctx)
+			if err != nil {
+				return nil, err
+			}
+			return []string{
+				fmt.Sprintf("%s = %s", assign, value),
+			}, nil
 		} else {
 			return nil, fmt.Errorf("not sure how to handle assignment to expression %v at %v", statement.To, statement.SourceLoc)
 		}
@@ -450,7 +467,10 @@ func FuncBodyToGo(body []ast.Statement, ctx CodeGenContext) (lines []string, err
 		}
 	}
 	if !hadReturn {
-		lines = append(lines, "return nil")
+		if ctx.Result == "" {
+			panic("result should not be nil here")
+		}
+		lines = append(lines, "return "+ctx.Result)
 	}
 	return lines, nil
 }

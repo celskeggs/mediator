@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/celskeggs/mediator/dream/ast"
 	"github.com/celskeggs/mediator/dream/tokenizer"
+	"github.com/celskeggs/mediator/util"
 	"strings"
 )
 
@@ -71,6 +72,11 @@ func parseExpression0(i *input, variables []ast.TypedName) (ast.Expression, erro
 			}
 		}
 		return ast.ExprGetNonLocal(tok.Str, loc), nil
+	} else if i.Accept(tokenizer.TokDot) {
+		util.FIXME("support .()")
+		return ast.ExprGetLocal(".", loc), nil
+	} else if i.Accept(tokenizer.TokDotDot) {
+		return ast.ExprGetNonLocal("..", loc), nil
 	} else {
 		return ast.ExprNone(), fmt.Errorf("invalid token %v when parsing expression at %v", i.Peek(), loc)
 	}

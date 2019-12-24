@@ -157,6 +157,7 @@ func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string,
 		WorldRef: "atoms.WorldOf(" + LocalVariablePrefix + "src)",
 		Tree:     dt,
 		VarTypes: vartypes,
+		Result:   "out",
 	})
 	if err != nil {
 		return err
