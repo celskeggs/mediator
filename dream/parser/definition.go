@@ -49,6 +49,10 @@ func parseFunctionArguments(i *input) ([]ast.TypedName, error) {
 }
 
 func parseFunctionBody(i *input, srcType path.TypePath, arguments []ast.TypedName) ([]ast.Statement, error) {
+	if i.Accept(tokenizer.TokNewline) {
+		// empty function body
+		return nil, nil
+	}
 	variables := make([]ast.TypedName, len(arguments))
 	copy(variables, arguments)
 	variables = append(variables,
