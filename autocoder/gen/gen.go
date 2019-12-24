@@ -106,12 +106,13 @@ func (d *DefinedType) ParentPath() path.TypePath {
 }
 
 type DefinedTree struct {
-	Package   string
-	Types     []DefinedType
-	WorldName string
-	WorldMob  path.TypePath
-	Imports   []string
-	Maps      []string
+	Package       string
+	PackageImport string
+	Types         []DefinedType
+	WorldName     string
+	WorldMob      path.TypePath
+	Imports       []string
+	Maps          []string
 }
 
 var _ predefs.TypeDefiner = &DefinedTree{}

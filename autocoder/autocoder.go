@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/celskeggs/mediator/autocoder/convert"
+	"github.com/celskeggs/mediator/boilerplate/detect"
 	"go/build"
 	"os"
 )
@@ -19,7 +20,11 @@ func Autocode() error {
 	if err != nil {
 		return err
 	}
-	err = convert.ConvertFiles([]string{os.Args[1]}, DeclGoName, ResourcePackName, pkg.Name)
+	importPath, err := detect.DetectImportPath(DeclGoName)
+	if err != nil {
+		return err
+	}
+	err = convert.ConvertFiles([]string{os.Args[1]}, DeclGoName, ResourcePackName, pkg.Name, importPath)
 	if err != nil {
 		return err
 	}

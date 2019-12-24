@@ -3,11 +3,11 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/celskeggs/mediator/boilerplate/detect"
 	"go/build"
 	"go/parser"
 	"go/token"
 	"path"
-	"path/filepath"
 	"strings"
 )
 
@@ -26,38 +26,6 @@ func Unquote(name string) string {
 	return name[1 : len(name)-1]
 }
 
-func ChopSrc(filepath string) (string, bool) {
-	if !path.IsAbs(filepath) {
-		panic("ChopSrc must receive an absolute path")
-	}
-	if filepath == "/" {
-		return "", false
-	}
-	dir, filename := path.Split(filepath)
-	if filename == "src" {
-		return "", true
-	} else {
-		chop, ok := ChopSrc(path.Clean(dir))
-		if !ok {
-			return "", false
-		}
-		return path.Join(chop, filename), true
-	}
-}
-
-func DetectImportPath(filename string) (string, error) {
-	abspath, err := filepath.Abs(filename)
-	if err != nil {
-		return "", err
-	}
-	packagedir, _ := path.Split(abspath)
-	importpath, ok := ChopSrc(packagedir)
-	if !ok {
-		return "", fmt.Errorf("cannot extract import path from %q (abs of %q)", abspath, filename)
-	}
-	return importpath, nil
-}
-
 func EnumeratePackages(filename string) (packages []string, topImport string, topPackage string, e error) {
 	fset := token.NewFileSet()
 	ast, err := parser.ParseFile(fset, filename, nil, parser.ImportsOnly)
@@ -66,7 +34,7 @@ func EnumeratePackages(filename string) (packages []string, topImport string, to
 	}
 
 	var imports []string
-	headerImport, err := DetectImportPath(filename)
+	headerImport, err := detect.DetectImportPath(filename)
 	if err != nil {
 		return nil, "", "", err
 	}

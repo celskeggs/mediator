@@ -11,12 +11,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-func Convert(dmf *ast.File, packageName string) (*gen.DefinedTree, error) {
+func Convert(dmf *ast.File, packageName string, importPath string) (*gen.DefinedTree, error) {
 	dt := &gen.DefinedTree{
-		Package:   packageName,
-		WorldMob:  path.ConstTypePath("/mob"),
-		WorldName: "World",
-		Maps:      dmf.Maps,
+		Package:       packageName,
+		PackageImport: importPath,
+		WorldMob:      path.ConstTypePath("/mob"),
+		WorldName:     "World",
+		Maps:          dmf.Maps,
 	}
 	// define all types
 	for _, def := range dmf.Definitions {
@@ -85,12 +86,12 @@ func Convert(dmf *ast.File, packageName string) (*gen.DefinedTree, error) {
 	return dt, nil
 }
 
-func ConvertFiles(inputFiles []string, outputGo string, outputPack string, packageName string) error {
+func ConvertFiles(inputFiles []string, outputGo string, outputPack string, packageName string, importPath string) error {
 	dmf, err := parser.ParseFiles(inputFiles)
 	if err != nil {
 		return errors.Wrap(err, "while parsing input files")
 	}
-	tree, err := Convert(dmf, packageName)
+	tree, err := Convert(dmf, packageName, importPath)
 	if err != nil {
 		return errors.Wrap(err, "while building tree")
 	}
