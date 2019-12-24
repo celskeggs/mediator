@@ -14,6 +14,7 @@ type PreparedChunk struct {
 	PackageShort string
 	StructName   string
 	Vars         []VarInfo
+	ProcSupers   []PreparedSuperProc
 }
 
 func (c PreparedChunk) PackageDot() string {
@@ -40,9 +41,15 @@ type PreparedProc struct {
 	StructName string
 }
 
+type PreparedSuperProc struct {
+	*ProcInfo
+	Parent           *ProcInfo
+	ParentStructName string
+}
+
 type PreparedImplementation struct {
 	Imports     []string
-	Chunks      []PreparedChunk
+	Chunks      []*PreparedChunk
 	Vars        []PreparedVar
 	Getters     []PreparedGetter
 	Procs       []PreparedProc
@@ -177,6 +184,23 @@ func (t *{{.Type}}Impl) Proc(src *types.Datum, usr *types.Datum, name string, pa
 	default:
 		return nil, false
 	}
+}
+
+func (t *{{.Type}}Impl) SuperProc(src *types.Datum, usr *types.Datum, chunk string, name string, params ...types.Value) (types.Value, bool) {
+	switch chunk {
+{{- range .Chunks}}
+{{- if .ProcSupers }}
+	case "{{.Package}}.{{.StructName}}":
+		switch name {
+{{- range .ProcSupers}}
+		case "{{.Name}}":
+			return t.{{.ParentStructName}}.{{.Parent.ProcName}}(src, usr{{range .Parent.ParamNums}}, types.Param(params, {{ . }}){{end}}), true
+{{- end}}
+		}
+{{- end}}
+{{- end}}
+	}
+	return nil, false
 }
 
 func (t *{{.Type}}Impl) ProcSettings(name string) (types.ProcSettings, bool) {

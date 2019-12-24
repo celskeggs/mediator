@@ -31,6 +31,18 @@ type CodeGenContext struct {
 	WorldRef string
 	Tree     *gen.DefinedTree
 	VarTypes map[string]dtype.DType
+	Result   string
+	ThisProc string
+	DefIndex uint
+}
+
+func (ctx CodeGenContext) ChunkName() string {
+	src, ok := ctx.VarTypes["src"]
+	if !ok || ctx.Tree.PackageImport == "" {
+		return ""
+	}
+	structName := ctx.Tree.GetTypeByPath(src.Path()).DataStructName()
+	return ctx.Tree.PackageImport + "." + structName
 }
 
 func (ctx CodeGenContext) UsrRef() string {
@@ -134,19 +146,37 @@ func ExprToGo(expr ast.Expression, ctx CodeGenContext) (exprString string, etype
 		target := expr.Children[0]
 		args := expr.Children[1:]
 
-		if target.Type != ast.ExprTypeGetNonLocal {
-			return "", dtype.None(), fmt.Errorf("calling non-global functions is not yet implemented")
-		}
-
 		var invokeSrc string
+		var super bool
 		var found bool
-		if ctx.Tree.GlobalProcedureExists(target.Str) {
-			found = true
-		} else if srctype, ok := ctx.VarTypes["src"]; ok && srctype.IsAnyPath() {
-			if _, ok := ctx.Tree.ResolveProcedure(srctype.Path(), target.Str); ok {
+
+		if target.Type == ast.ExprTypeGetNonLocal {
+			if target.Str == ".." {
+				if ctx.ChunkName() == "" || ctx.ThisProc == "" {
+					return "", dtype.None(), fmt.Errorf("cannot use ..() in this non-proc location at %v", target.SourceLoc)
+				}
+				super = true
 				found = true
-				invokeSrc = LocalVariablePrefix + "src"
+			} else if ctx.Tree.GlobalProcedureExists(target.Str) {
+				found = true
+			} else if srctype, ok := ctx.VarTypes["src"]; ok && srctype.IsAnyPath() {
+				if _, ok := ctx.Tree.ResolveProcedure(srctype.Path(), target.Str); ok {
+					found = true
+					invokeSrc = LocalVariablePrefix + "src"
+				}
 			}
+		} else if target.Type == ast.ExprTypeGetField {
+			evchild, dt, err := ExprToGo(target.Children[0], ctx)
+			if err != nil {
+				return "", dtype.None(), err
+			}
+			if !dt.IsAnyPath() {
+				return "", dtype.None(), fmt.Errorf("calling functions on non-datum type %v at %v", dt, expr.SourceLoc)
+			}
+			invokeSrc = evchild
+			_, found = ctx.Tree.ResolveProcedure(dt.Path(), target.Str)
+		} else {
+			return "", dtype.None(), fmt.Errorf("calling functions like %v is not yet implemented at %v", target, expr.SourceLoc)
 		}
 		if !found {
 			return "", dtype.None(), fmt.Errorf("no such function %s at %v", target.Str, target.SourceLoc)
@@ -172,7 +202,7 @@ func ExprToGo(expr ast.Expression, ctx CodeGenContext) (exprString string, etype
 		}
 
 		if len(kwargs) != 0 {
-			if invokeSrc != "" {
+			if invokeSrc != "" || super {
 				return "", dtype.None(), fmt.Errorf("no support for keyword arguments in datum procedure invocations at %v", expr.SourceLoc)
 			}
 			kwargStr := "map[string]types.Value{"
@@ -187,6 +217,26 @@ func ExprToGo(expr ast.Expression, ctx CodeGenContext) (exprString string, etype
 			}
 			kwargStr += "}"
 			return fmt.Sprintf("procs.KWInvoke(%s, %s, %q, %s%s)", ctx.WorldRef, ctx.UsrRef(), target.Str, kwargStr, strings.Join(convArgs, "")), dtype.Any(), nil
+		} else if super {
+			util.FIXME("should we be passing all original parameters by default if ..() is used without parameters?")
+			if ctx.DefIndex > 0 {
+				di := ctx.Tree.LookupIndexedImpl(ctx.VarTypes["src"].Path(), ctx.ThisProc, ctx.DefIndex-1)
+				slots := make([]string, len(di.Params))
+				if len(convArgs) > len(slots) {
+					util.FIXME("handle additional arguments to redecl by evaluating but dropping them")
+					return "", dtype.None(), fmt.Errorf("passed more arguments to internal redecl than permitted at %v", expr.SourceLoc)
+				}
+				for i := range slots {
+					if i < len(convArgs) {
+						slots[i] = ", " + convArgs[i]
+					} else {
+						slots[i] = ", nil"
+					}
+				}
+				// we're a subsequent declaration on this particular type; we need to call within our struct
+				return fmt.Sprintf("chunk.Shadow%dForProc%s(%s, %s%s)", di.DefIndex, di.Name, LocalVariablePrefix+"src", ctx.UsrRef(), strings.Join(slots, "")), dtype.Any(), nil
+			}
+			return fmt.Sprintf("varsrc.SuperInvoke(%s, %q, %q%s)", ctx.UsrRef(), ctx.ChunkName(), ctx.ThisProc, strings.Join(convArgs, "")), dtype.Any(), nil
 		} else if invokeSrc == "" {
 			return fmt.Sprintf("procs.Invoke(%s, %s, %q%s)", ctx.WorldRef, ctx.UsrRef(), target.Str, strings.Join(convArgs, "")), dtype.Any(), nil
 		} else {

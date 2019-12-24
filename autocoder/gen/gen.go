@@ -39,6 +39,8 @@ type DefinedImpl struct {
 	Params   []string
 	Body     string
 	Settings types.ProcSettings
+	DefIndex uint
+	DefFinal bool
 }
 
 type DefinedProc struct {
@@ -51,7 +53,7 @@ type DefinedType struct {
 
 	Fields []DefinedField
 	Procs  []DefinedProc
-	Impls  []DefinedImpl
+	Impls  []*DefinedImpl
 	Inits  []DefinedInit
 
 	Verbs []string
@@ -252,6 +254,19 @@ func (d *DefinedTree) AllImports() (imports []string) {
 	return imports
 }
 
+func (d *DefinedTree) LookupIndexedImpl(path path.TypePath, proc string, defIndex uint) *DefinedImpl {
+	t := d.GetTypeByPath(path)
+	if t == nil {
+		panic("existing proc type must exist")
+	}
+	for _, impl := range t.Impls {
+		if impl.DefIndex == defIndex && impl.Name == proc {
+			return impl
+		}
+	}
+	panic("previous defindex of proc must exist")
+}
+
 var templateFile = template.New("world")
 
 func init() {
@@ -329,7 +344,13 @@ func New{{.DataStructName}}(src *types.Datum, _ *{{.DataStructName}}, _ ...types
 }
 
 {{range .Impls -}}
-func (*{{$type.DataStructName}}) Proc{{.Name}}({{.This}} *types.Datum, {{.Usr}} *types.Datum{{range .Params}}, {{.}} types.Value{{end}}) types.Value {
+{{ if not .DefFinal -}}
+func (chunk *{{$type.DataStructName}}) Shadow{{.DefIndex}}ForProc{{.Name}}({{.This}} *types.Datum, {{.Usr}} *types.Datum{{range .Params}}, {{.}} types.Value{{end}}) (out types.Value) {
+{{.Body}}
+}
+
+{{ else -}}
+func (chunk *{{$type.DataStructName}}) Proc{{.Name}}({{.This}} *types.Datum, {{.Usr}} *types.Datum{{range .Params}}, {{.}} types.Value{{end}}) (out types.Value) {
 {{.Body}}
 }
 
@@ -349,6 +370,8 @@ func (*{{$type.DataStructName}}) SettingsForProc{{.Name}}() types.ProcSettings {
 {{- end }}
 	}
 }
+
+{{end -}}
 {{end -}}
 {{end -}}
 

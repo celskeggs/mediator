@@ -10,7 +10,7 @@ import (
 	"unicode"
 )
 
-func (t *PreparedProc) ParamNums() []int {
+func (t *ProcInfo) ParamNums() []int {
 	var result []int
 	for i := 0; i < t.ParamCount; i++ {
 		result = append(result, i)
@@ -18,7 +18,7 @@ func (t *PreparedProc) ParamNums() []int {
 	return result
 }
 
-func (i *PreparedProc) ProcName() string {
+func (i *ProcInfo) ProcName() string {
 	name := i.Name
 	if name == "<<" {
 		return "OperatorWrite"
@@ -118,12 +118,13 @@ func (t *TypeInfo) Chunks(tree *TreeInfo) ([]*TypeInfo, error) {
 	return append([]*TypeInfo{t}, chunks...), nil
 }
 
-func (t *TypeInfo) EncodedChunks(tree *TreeInfo) ([]PreparedChunk, error) {
+func (t *TypeInfo) EncodedChunks(tree *TreeInfo) ([]*PreparedChunk, error) {
 	chunks, err := t.Chunks(tree)
 	if err != nil {
 		return nil, err
 	}
-	var encodedChunks []PreparedChunk
+	var encodedChunks []*PreparedChunk
+	encodeMap := map[*SourceInfo]*PreparedChunk{}
 	for _, chunk := range chunks {
 		for _, source := range chunk.Sources {
 			enc, err := source.Encode(tree, chunk)
@@ -137,6 +138,30 @@ func (t *TypeInfo) EncodedChunks(tree *TreeInfo) ([]PreparedChunk, error) {
 				}
 			}
 			encodedChunks = append(encodedChunks, enc)
+			encodeMap[source] = enc
+		}
+	}
+	lastSeenProc := map[string]PreparedProc{}
+	for i := len(chunks) - 1; i >= 0; i-- {
+		chunk := chunks[i]
+		for j := len(chunk.Sources) - 1; j >= 0; j-- {
+			source := chunk.Sources[j]
+			var preparedSuperProcs []PreparedSuperProc
+			for _, proc := range source.Procs {
+				last, found := lastSeenProc[proc.Name]
+				if found {
+					preparedSuperProcs = append(preparedSuperProcs, PreparedSuperProc{
+						ProcInfo:         proc,
+						Parent:           last.ProcInfo,
+						ParentStructName: last.StructName,
+					})
+				}
+				lastSeenProc[proc.Name] = PreparedProc{
+					ProcInfo:   proc,
+					StructName: source.StructName,
+				}
+			}
+			encodeMap[source].ProcSupers = preparedSuperProcs
 		}
 	}
 	return encodedChunks, nil
@@ -246,20 +271,21 @@ func (t *TypeInfo) AllVars(tree *TreeInfo) ([]PreparedGetter, []PreparedVar, []P
 	return getters, vars, procs, nil
 }
 
-func (source *SourceInfo) Encode(tree *TreeInfo, t *TypeInfo) (PreparedChunk, error) {
+func (source *SourceInfo) Encode(tree *TreeInfo, t *TypeInfo) (*PreparedChunk, error) {
 	if !source.FoundConstructor {
-		return PreparedChunk{}, fmt.Errorf("no constructor for %s source %s.%s", t.Path, source.Package, source.StructName)
+		return nil, fmt.Errorf("no constructor for %s source %s.%s", t.Path, source.Package, source.StructName)
 	}
-	return PreparedChunk{
+	return &PreparedChunk{
 		PackageShort: source.PackageShort,
 		Package:      source.Package,
 		StructName:   source.StructName,
 		Vars:         source.Vars,
+		// ProcSupers is populated later
 	}, nil
 }
 
-func (p *PreparedImplementation) RevChunks() []PreparedChunk {
-	nchunks := make([]PreparedChunk, len(p.Chunks))
+func (p *PreparedImplementation) RevChunks() []*PreparedChunk {
+	nchunks := make([]*PreparedChunk, len(p.Chunks))
 	for i := 0; i < len(nchunks); i++ {
 		nchunks[i] = p.Chunks[len(nchunks)-1-i]
 	}

@@ -133,6 +133,13 @@ func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string,
 	if defType == nil {
 		panic("expected non-nil type " + path.String())
 	}
+	var defIndex uint
+	for _, existing := range defType.Impls {
+		if existing.Name == function {
+			defIndex += 1
+			existing.DefFinal = false
+		}
+	}
 
 	_, found := dt.ResolveProcedure(path, function)
 	if !found {
@@ -158,18 +165,22 @@ func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string,
 		Tree:     dt,
 		VarTypes: vartypes,
 		Result:   "out",
+		ThisProc: function,
+		DefIndex: defIndex,
 	})
 	if err != nil {
 		return err
 	}
 
-	defType.Impls = append(defType.Impls, gen.DefinedImpl{
+	defType.Impls = append(defType.Impls, &gen.DefinedImpl{
 		Name:     function,
 		This:     LocalVariablePrefix + "src",
 		Usr:      LocalVariablePrefix + "usr",
 		Params:   params,
 		Settings: settings,
 		Body:     MergeGoLines(lines),
+		DefIndex: defIndex,
+		DefFinal: true,
 	})
 	return nil
 }

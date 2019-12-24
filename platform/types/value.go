@@ -99,6 +99,7 @@ type DatumImpl interface {
 	Var(src *Datum, name string) (Value, bool)
 	SetVar(src *Datum, name string, value Value) SetResult
 	Proc(src *Datum, usr *Datum, name string, params ...Value) (Value, bool)
+	SuperProc(src *Datum, usr *Datum, chunk string, name string, params ...Value) (Value, bool)
 	ProcSettings(name string) (ProcSettings, bool)
 	Chunk(ref string) interface{}
 }
@@ -171,6 +172,17 @@ func (d *Datum) Invoke(usr *Datum, name string, params ...Value) Value {
 	result, ok := d.impl.Proc(d, usr, name, params...)
 	if !ok {
 		panic(fmt.Sprintf("no such procedure %s found on type %v", name, d.Type()))
+	}
+	return result
+}
+
+func (d *Datum) SuperInvoke(usr *Datum, chunk string, name string, params ...Value) Value {
+	if d.impl == nil {
+		panic("attempt to invoke super proc on deleted datum")
+	}
+	result, ok := d.impl.SuperProc(d, usr, chunk, name, params...)
+	if !ok {
+		panic(fmt.Sprintf("no such super procedure %s.%s found on type %v", chunk, name, d.Type()))
 	}
 	return result
 }
