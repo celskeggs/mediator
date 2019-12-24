@@ -37,9 +37,9 @@ type ProcedureInfo struct {
 type TypeDefiner interface {
 	Exists(typePath path.TypePath) bool
 	ParentOf(typePath path.TypePath) path.TypePath
-	ResolveField(typePath path.TypePath, name string) (dtype dtype.DType, found bool)
+	ResolveFieldExact(typePath path.TypePath, name string) (dtype dtype.DType, found bool)
 	GlobalProcedureExists(name string) bool
-	ResolveProcedure(typePath path.TypePath, shortName string) (ProcedureInfo, bool)
+	ResolveProcedureExact(typePath path.TypePath, shortName string) (ProcedureInfo, bool)
 }
 
 type TypeInfo struct {
@@ -119,31 +119,23 @@ func (p platformDefiner) ParentOf(typePath path.TypePath) path.TypePath {
 	return path.ConstTypePath(p.GetTypeInfo(typePath).Parent)
 }
 
-func (p platformDefiner) ResolveField(typePath path.TypePath, name string) (dType dtype.DType, found bool) {
+func (p platformDefiner) ResolveFieldExact(typePath path.TypePath, name string) (dType dtype.DType, found bool) {
 	util.FIXME("retrieve field and procedure info from source scanning, rather than a hard-coded table")
 	for _, field := range platformFields {
 		if field.DefPath == typePath.String() && name == field.Name {
 			return field.Type, true
 		}
 	}
-	parentPath := p.ParentOf(typePath)
-	if parentPath.IsEmpty() {
-		return dtype.None(), false
-	}
-	return p.ResolveField(parentPath, name)
+	return dtype.None(), false
 }
 
-func (p platformDefiner) ResolveProcedure(typePath path.TypePath, name string) (ProcedureInfo, bool) {
+func (p platformDefiner) ResolveProcedureExact(typePath path.TypePath, name string) (ProcedureInfo, bool) {
 	for _, proc := range platformProcs {
 		if proc.DefPath.Equals(typePath) && name == proc.Name {
 			return proc, true
 		}
 	}
-	parentPath := p.ParentOf(typePath)
-	if parentPath.IsEmpty() {
-		return ProcedureInfo{}, false
-	}
-	return p.ResolveProcedure(parentPath, name)
+	return ProcedureInfo{}, false
 }
 
 func (p platformDefiner) GlobalProcedureExists(name string) bool {

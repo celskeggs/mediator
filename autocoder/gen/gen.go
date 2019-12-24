@@ -151,33 +151,55 @@ func (t *DefinedTree) ParentOf(path path.TypePath) path.TypePath {
 	return t.GetTypeByPath(path).ParentPath()
 }
 
-func (t *DefinedTree) ResolveField(typePath path.TypePath, name string) (dtype dtype.DType, found bool) {
+func (t *DefinedTree) ResolveFieldExact(typePath path.TypePath, name string) (dType dtype.DType, found bool) {
 	defType := t.GetTypeByPath(typePath)
-	if defType == nil {
-		return predefs.PlatformDefiner.ResolveField(typePath, name)
-	}
-	for _, field := range defType.Fields {
-		if field.Name == name {
-			return field.Type, true
+	if defType != nil {
+		for _, field := range defType.Fields {
+			if field.Name == name {
+				return field.Type, true
+			}
 		}
 	}
-	return t.ResolveField(t.ParentOf(typePath), name)
+	return predefs.PlatformDefiner.ResolveFieldExact(typePath, name)
+}
+
+func (t *DefinedTree) ResolveField(typePath path.TypePath, name string) (dType dtype.DType, found bool) {
+	dType, found = t.ResolveFieldExact(typePath, name)
+	if found {
+		return dType, true
+	}
+	parent := t.ParentOf(typePath)
+	if parent.IsEmpty() {
+		return dtype.None(), false
+	}
+	return t.ResolveField(parent, name)
+}
+
+func (t DefinedTree) ResolveProcedureExact(typePath path.TypePath, name string) (predefs.ProcedureInfo, bool) {
+	defType := t.GetTypeByPath(typePath)
+	if defType != nil {
+		for _, proc := range defType.Procs {
+			if proc.Name == name {
+				return predefs.ProcedureInfo{
+					Name:    proc.Name,
+					DefPath: defType.TypePath,
+				}, true
+			}
+		}
+	}
+	return predefs.PlatformDefiner.ResolveProcedureExact(typePath, name)
 }
 
 func (t DefinedTree) ResolveProcedure(typePath path.TypePath, name string) (predefs.ProcedureInfo, bool) {
-	defType := t.GetTypeByPath(typePath)
-	if defType == nil {
-		return predefs.PlatformDefiner.ResolveProcedure(typePath, name)
+	info, found := t.ResolveProcedureExact(typePath, name)
+	if found {
+		return info, true
 	}
-	for _, proc := range defType.Procs {
-		if proc.Name == name {
-			return predefs.ProcedureInfo{
-				Name:    proc.Name,
-				DefPath: defType.TypePath,
-			}, true
-		}
+	parent := t.ParentOf(typePath)
+	if parent.IsEmpty() {
+		return predefs.ProcedureInfo{}, false
 	}
-	return t.ResolveProcedure(t.ParentOf(typePath), name)
+	return t.ResolveProcedure(parent, name)
 }
 
 func (t DefinedTree) GlobalProcedureExists(name string) bool {
