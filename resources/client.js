@@ -24,44 +24,6 @@ function imageLoader(images, callback) {
     }
 }
 
-function getWebSocketURL() {
-    var url = new URL("/websocket", window.location.href);
-    url.protocol = (url.protocol === "http:") ? "ws:" : "wss:";
-    return url.href;
-}
-
-function startWebSocket(url, open, message, close) {
-    var reportedClose = false;
-    var socket = new WebSocket(url);
-
-    function reportClose() {
-        if (!reportedClose) {
-            reportedClose = true;
-            close()
-        }
-    }
-
-    function sendMessage(message) {
-        socket.send(JSON.stringify(message));
-    }
-
-    socket.addEventListener('open', function () {
-        console.log("connection opened");
-        open(sendMessage);
-    });
-    socket.addEventListener('error', function () {
-        console.log("connection error");
-        reportClose();
-    });
-    socket.addEventListener('message', function (ev) {
-        message(JSON.parse(ev.data));
-    });
-    socket.addEventListener('close', function () {
-        console.log("connection terminated");
-        reportClose();
-    });
-}
-
 function ContextMenu(x, y, menu, icons) {
     x -= 1;
     y -= 1;
@@ -133,7 +95,6 @@ ContextMenu.prototype.close = function() {
 
 function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, textoutput) {
     var images = null;
-    var isTerminated = false;
     var gameActive = false;
     var width = 672, height = 672;
     var aspectRatio = width / height;
@@ -144,8 +105,7 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
     var selectedStatPanel = null;
     var keyDirection = null;
     var contextMenu = null;
-    var sendMessage = function (message) {
-    };
+    const session = new Session();
     var Player = new SoundPlayer();
 
     function renderLoading(ctx) {
@@ -155,7 +115,7 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
         ctx.textBaseline = 'middle';
         ctx.textAlign = 'center';
         var message;
-        if (isTerminated) {
+        if (session.terminated) {
             if (gameActive) {
                 message = "Disconnected.";
             } else {
@@ -195,7 +155,7 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
 
     function sendVerb(verb) {
         console.log("send verb", verb);
-        sendMessage({"verb": verb})
+        session.sendMessage({"verb": verb})
     }
 
     function handleKeys() {
@@ -209,16 +169,12 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
         canvas.height = height;
         var ctx = canvas.getContext('2d');
         ctx.font = "24px mono";
-        if (!gameActive || isTerminated) {
+        if (!gameActive || session.terminated) {
             renderLoading(ctx);
         } else {
             handleKeys();
             renderGame(ctx);
         }
-    }
-
-    function onConnectionOpen(send) {
-        sendMessage = send;
     }
 
     function updateWidthHeight(newwidth, newheight) {
@@ -422,7 +378,7 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
         }
     }
 
-    function onMessage(message) {
+    session.onmessage = function(message) {
         if (!gameActive) {
             gameActive = true;
         }
@@ -447,12 +403,11 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
                 Player.playSound(sound);
             }
         }
-    }
+    };
 
-    function onConnectionClosed() {
+    session.onclose = function() {
         Player.cancelAllSounds();
-        isTerminated = true;
-    }
+    };
 
     if (resources === undefined) {
         console.log("expected resources.js to be included for resource list");
@@ -585,9 +540,7 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
 
     imageLoader(resources, function (receivedImages) {
         images = receivedImages;
-        var url = getWebSocketURL();
-        console.log("connecting to", url);
-        startWebSocket(url, onConnectionOpen, onMessage, onConnectionClosed);
+        session.connect();
     });
 
     draw();
