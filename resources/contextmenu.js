@@ -1,12 +1,13 @@
 "use strict";
 
-function MenuDisplay() {
+function MenuDisplay(imageLoader) {
     this.menu = null;
+    this.imageLoader = imageLoader;
 }
 
-MenuDisplay.prototype.display = function (x, y, menu, icons) {
+MenuDisplay.prototype.display = function (x, y, menu) {
     this.dismiss();
-    this.menu = new ContextMenu(x, y, menu, icons);
+    this.menu = new ContextMenu(x, y, menu, this.imageLoader);
 };
 
 MenuDisplay.prototype.dismiss = function () {
@@ -15,10 +16,10 @@ MenuDisplay.prototype.dismiss = function () {
     }
 };
 
-function ContextMenu(x, y, menu, icons) {
+function ContextMenu(x, y, menu, imageLoader) {
     x -= 1;
     y -= 1;
-    this.icons = icons;
+    this.imageLoader = imageLoader;
     this.submenu = null;
     this.div = document.createElement("div");
     this.div.classList.add("contextmenu");
@@ -44,16 +45,18 @@ ContextMenu.prototype.replaceSubMenu = function (menu) {
 ContextMenu.prototype.renderEntry = function (data) {
     const entry = document.createElement("div");
     if (data.icon) {
-        const imgBox = document.createElement("div");
-        imgBox.style.overflow = "hidden";
-        const baseImg = this.icons[data.icon];
-        imgBox.style.width = (data.sw || baseImg.width) + "px";
-        imgBox.style.height = (data.sh || baseImg.height) + "px";
-        const img = baseImg.cloneNode(true);
-        img.marginLeft = "-" + (data.sx || 0) + "px";
-        img.marginTop = "-" + (data.sy || 0) + "px";
-        imgBox.appendChild(img);
-        entry.appendChild(imgBox);
+        const baseImg = this.imageLoader.getImage(data.icon);
+        if (baseImg) {
+            const imgBox = document.createElement("div");
+            imgBox.style.overflow = "hidden";
+            imgBox.style.width = (data.sw || baseImg.width) + "px";
+            imgBox.style.height = (data.sh || baseImg.height) + "px";
+            const img = baseImg.cloneNode(true);
+            img.marginLeft = "-" + (data.sx || 0) + "px";
+            img.marginTop = "-" + (data.sy || 0) + "px";
+            imgBox.appendChild(img);
+            entry.appendChild(imgBox);
+        }
     }
     const span = document.createElement("span");
     span.textContent = data.name;

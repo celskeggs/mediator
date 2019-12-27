@@ -1,31 +1,6 @@
 "use strict";
 
-function imageLoader(images, callback) {
-    var elements = {};
-
-    function loadImage(filename, done) {
-        var img = new Image();
-        img.addEventListener("load", function () {
-            elements[filename] = img;
-            done();
-        }, false);
-        img.src = "resource/" + filename;
-    }
-
-    var totalLoaded = 0;
-    for (var i = 0; i < images.length; i++) {
-        loadImage(images[i], function () {
-            totalLoaded += 1;
-            if (totalLoaded >= images.length) {
-                callback(elements);
-                callback = null;
-            }
-        })
-    }
-}
-
 function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, textoutput) {
-    var images = null;
     var gameActive = false;
     var width = 672, height = 672;
     var aspectRatio = width / height;
@@ -35,7 +10,8 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
     var verbs = [];
     var selectedStatPanel = null;
     var keyDirection = null;
-    const contextMenu = new MenuDisplay();
+    const imageLoader = new ImageLoader("resource");
+    const contextMenu = new MenuDisplay(imageLoader);
     const session = new Session();
     var Player = new SoundPlayer();
 
@@ -52,7 +28,7 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
             } else {
                 message = "Could not connect.";
             }
-        } else if (images === null) {
+        } else if (!imageLoader.isLoaded()) {
             message = "Loading resources...";
         } else {
             message = "Establishing connection...";
@@ -66,9 +42,8 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
         for (var i = 0; i < gameSprites.length; i++) {
             var sprite = gameSprites[i];
             if (sprite.icon && sprite.x !== undefined && sprite.y !== undefined) {
-                var image = images[sprite.icon];
+                const image = imageLoader.getImage(sprite.icon);
                 if (!image) {
-                    console.log("no such icon:", sprite.icon);
                     continue;
                 }
                 var sw = sprite.sw || image.width;
@@ -206,7 +181,7 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
                                 },
                             });
                         }
-                        contextMenu.display(ev.pageX, ev.pageY, menu, images);
+                        contextMenu.display(ev.pageX, ev.pageY, menu);
                     }
                 });
                 child.appendChild(object);
@@ -241,35 +216,30 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
                 nameSpan.textContent = data.name;
                 suffixSpan.textContent = data.suffix;
 
-                if (images !== null) {
-                    var wantedImage = null;
-                    if (data.icon !== "" && data.icon in images) {
-                        wantedImage = images[data.icon];
+                const wantedImage = imageLoader.getImage(data.icon);
+                if (wantedImage === null) {
+                    if (iconDiv.children.length > 0) {
+                        iconDiv.children[0].remove();
                     }
-                    if (wantedImage === null) {
-                        if (iconDiv.children.length > 0) {
-                            iconDiv.children[0].remove();
-                        }
-                        iconDiv.style.width = "";
-                        iconDiv.style.height = "";
-                        iconDiv.style.overflow = "";
+                    iconDiv.style.width = "";
+                    iconDiv.style.height = "";
+                    iconDiv.style.overflow = "";
+                } else {
+                    if (iconDiv.children.length > 0 && iconDiv.children[0].src !== wantedImage.src) {
+                        iconDiv.children[0].remove();
+                    }
+                    iconDiv.style.width = (data.sw || wantedImage.width) + "px";
+                    iconDiv.style.height = (data.sh || wantedImage.height) + "px";
+                    iconDiv.style.overflow = "hidden";
+                    var img;
+                    if (iconDiv.children.length === 0) {
+                        img = wantedImage.cloneNode(true);
+                        iconDiv.appendChild(img);
                     } else {
-                        if (iconDiv.children.length > 0 && iconDiv.children[0].src !== wantedImage.src) {
-                            iconDiv.children[0].remove();
-                        }
-                        iconDiv.style.width = (data.sw || wantedImage.width) + "px";
-                        iconDiv.style.height = (data.sh || wantedImage.height) + "px";
-                        iconDiv.style.overflow = "hidden";
-                        var img;
-                        if (iconDiv.children.length === 0) {
-                            img = wantedImage.cloneNode(true);
-                            iconDiv.appendChild(img);
-                        } else {
-                            img = iconDiv.children[0];
-                        }
-                        img.marginLeft = "-" + (data.sx || 0) + "px";
-                        img.marginTop = "-" + (data.sy || 0) + "px";
+                        img = iconDiv.children[0];
                     }
+                    img.marginLeft = "-" + (data.sx || 0) + "px";
+                    img.marginTop = "-" + (data.sy || 0) + "px";
                 }
             }
         }
@@ -396,9 +366,8 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
         for (var i = 0; i < gameSprites.length; i++) {
             var sprite = gameSprites[i];
             if (sprite.icon && sprite.x !== undefined && sprite.y !== undefined) {
-                var image = images[sprite.icon];
+                const image = imageLoader.getImage(sprite.icon);
                 if (!image) {
-                    console.log("no such icon:", sprite.icon);
                     continue;
                 }
                 var sw = sprite.sw || image.width;
@@ -447,7 +416,7 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
             });
         }
         if (menu.length > 0) {
-            contextMenu.display(ev.pageX, ev.pageY, menu, images);
+            contextMenu.display(ev.pageX, ev.pageY, menu);
         }
         ev.preventDefault();
     });
@@ -461,10 +430,11 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
         }
     });
 
-    imageLoader(resources, function (receivedImages) {
-        images = receivedImages;
+    imageLoader.onload = function () {
         session.connect();
-    });
+    };
+
+    imageLoader.load(resources);
 
     draw();
     setInterval(draw, 100);
