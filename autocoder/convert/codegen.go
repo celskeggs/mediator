@@ -236,6 +236,7 @@ func ExprToGo(expr ast.Expression, ctx CodeGenContext) (exprString string, etype
 					// ..() should include all params by default
 					return fmt.Sprintf("chunk.Shadow%dForProc%s(%s, %s, allargs)", di.DefIndex, di.Name, LocalVariablePrefix+"src", ctx.UsrRef()), dtype.Any(), nil
 				}
+				util.FIXME("see whether other arguments are passed along from allargs, or whether this is correct and we just pass the specified arguments")
 				return fmt.Sprintf("chunk.Shadow%dForProc%s(%s, %s, []types.Value{%s})", di.DefIndex, di.Name, LocalVariablePrefix+"src", ctx.UsrRef(), strings.Join(convArgs, ", ")), dtype.Any(), nil
 			}
 			if len(convArgs) == 0 {
@@ -320,7 +321,7 @@ func StatementToGo(statement ast.Statement, ctx CodeGenContext) (lines []string,
 		if err != nil {
 			return nil, err
 		}
-		lines = append(lines, fmt.Sprintf("if (types.AsBool(%v)) {", condition))
+		lines = append(lines, fmt.Sprintf("if types.AsBool(%s) {", condition))
 		for _, bodyStatement := range statement.Body {
 			extraLines, err := StatementToGo(bodyStatement, ctx)
 			if err != nil {

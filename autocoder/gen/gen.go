@@ -320,19 +320,14 @@ import (
 
 {{if .IsOverride -}}
 //mediator:extend {{.DataStructName}} {{.TypePath}}
-type {{.DataStructName}} struct {
-	{{- range .Fields}}
-	Var{{.LongName}} types.Value
-	{{- end}}
-}
 {{- else -}}
 //mediator:declare {{.DataStructName}} {{.TypePath}} {{.ParentPath}}
+{{- end}}
 type {{.DataStructName}} struct {
 	{{- range .Fields}}
 	Var{{.LongName}} types.Value
 	{{- end}}
 }
-{{- end}}
 
 func New{{.DataStructName}}(src *types.Datum, _ *{{.DataStructName}}, _ ...types.Value) {
 	{{- range .Inits}}
