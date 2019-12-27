@@ -6,11 +6,9 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
     var aspectRatio = width / height;
     var aspectShiftX = 0, aspectShiftY = 0;
     var gameSprites = [];
-    var statPanels = {};
-    var verbs = [];
-    var selectedStatPanel = null;
     var keyDirection = null;
     const imageLoader = new ImageLoader("resource");
+    const statPanels = new StatPanel(paneltabs, panelbody, imageLoader);
     const contextMenu = new MenuDisplay(imageLoader);
     const session = new Session();
     var Player = new SoundPlayer();
@@ -114,169 +112,27 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
         }
     }
 
-    function renderPanelTabs(tabs, selected) {
-        while (paneltabs.children.length > tabs.length) {
-            paneltabs.children[paneltabs.children.length-1].remove();
-        }
-        while (paneltabs.children.length < tabs.length) {
-            var button = document.createElement("button");
-            button.addEventListener("click", function () {
-                selectedStatPanel = this.textContent;
-                updateStatPanels();
-            });
-            paneltabs.appendChild(button);
-        }
-        for (var i = 0; i < paneltabs.children.length; i++) {
-            paneltabs.children[i].textContent = tabs[i];
-            var isSelected = tabs[i] === selected;
-            if (isSelected) {
-                paneltabs.children[i].classList.add("selected");
-            } else {
-                paneltabs.children[i].classList.remove("selected");
-            }
-        }
-    }
-
-    function renderPanelData(entries, areVerbs) {
-        if (areVerbs) {
-            if (!panelbody.classList.contains("verbpanel")) {
-                while (panelbody.children.length > 0) {
-                    panelbody.children[0].remove();
-                }
-            }
-            panelbody.classList.add("verbpanel");
-            panelbody.classList.remove("statpanel");
-        } else {
-            if (!panelbody.classList.contains("statpanel")) {
-                while (panelbody.children.length > 0) {
-                    panelbody.children[0].remove();
-                }
-            }
-            panelbody.classList.add("statpanel");
-            panelbody.classList.remove("verbpanel");
-        }
-        while (panelbody.children.length > entries.length) {
-            panelbody.children[panelbody.children.length-1].remove();
-        }
-        while (panelbody.children.length < entries.length) {
-            var child = document.createElement("div");
-            if (!areVerbs) {
-                var statlabel = document.createElement("span");
-                statlabel.classList.add("statlabel");
-                child.appendChild(statlabel);
-                var object = document.createElement("div");
-                object.appendChild(document.createElement("div"));
-                object.appendChild(document.createElement("span"));
-                object.entry = null;
-                object.addEventListener("contextmenu", function (ev) {
-                    if (this.entry !== null && this.entry.verbs && this.entry.verbs.length > 0) {
-                        var menu = [];
-                        for (var j = 0; j < this.entry.verbs.length; j++) {
-                            menu.push({
-                                "name": this.entry.verbs[j],
-                                "targetName": this.entry.name,
-                                "select": function () {
-                                    // TODO: uniquely identify atoms, rather than using names
-                                    sendVerb(this.name + " " + this.targetName);
-                                },
-                            });
-                        }
-                        contextMenu.display(ev.pageX, ev.pageY, menu);
-                    }
-                });
-                child.appendChild(object);
-                var statsuffix = document.createElement("span");
-                statsuffix.classList.add("statsuffix");
-                child.appendChild(statsuffix);
-            } else {
-                child.addEventListener("click", function (e) {
-                    sendVerb(this.textContent);
+    // FIXME: can this be merged with the other context-menu-opening code on the regular canvas?
+    statPanels.oncontextmenu = function(ev, entry) {
+        if (entry.verbs && entry.verbs.length > 0) {
+            const menu = [];
+            for (let j = 0; j < entry.verbs.length; j++) {
+                menu.push({
+                    "name": entry.verbs[j],
+                    "targetName": entry.name,
+                    "select": function () {
+                        // FIXME: uniquely identify atoms, rather than using names
+                        sendVerb(this.name + " " + this.targetName);
+                    },
                 });
             }
-            panelbody.appendChild(child);
+            contextMenu.display(ev.pageX, ev.pageY, menu);
         }
-        for (var i = 0; i < panelbody.children.length; i++) {
-            var data = entries[i];
-            var entry = panelbody.children[i];
-            if (areVerbs) {
-                entry.textContent = data;
-            } else {
-                var labelSpan = entry.children[0];
-                var statObject = entry.children[1];
-                var iconDiv = statObject.children[0];
-                var nameSpan = statObject.children[1];
-                var suffixSpan = entry.children[2];
+    };
 
-                if (data.verbs && data.verbs.length > 0) {
-                    statObject.classList.add("statobject");
-                }
-                statObject.entry = data;
-
-                labelSpan.textContent = data.label;
-                nameSpan.textContent = data.name;
-                suffixSpan.textContent = data.suffix;
-
-                const wantedImage = imageLoader.getImage(data.icon);
-                if (wantedImage === null) {
-                    if (iconDiv.children.length > 0) {
-                        iconDiv.children[0].remove();
-                    }
-                    iconDiv.style.width = "";
-                    iconDiv.style.height = "";
-                    iconDiv.style.overflow = "";
-                } else {
-                    if (iconDiv.children.length > 0 && iconDiv.children[0].src !== wantedImage.src) {
-                        iconDiv.children[0].remove();
-                    }
-                    iconDiv.style.width = (data.sw || wantedImage.width) + "px";
-                    iconDiv.style.height = (data.sh || wantedImage.height) + "px";
-                    iconDiv.style.overflow = "hidden";
-                    var img;
-                    if (iconDiv.children.length === 0) {
-                        img = wantedImage.cloneNode(true);
-                        iconDiv.appendChild(img);
-                    } else {
-                        img = iconDiv.children[0];
-                    }
-                    img.marginLeft = "-" + (data.sx || 0) + "px";
-                    img.marginTop = "-" + (data.sy || 0) + "px";
-                }
-            }
-        }
-    }
-
-    function updateStatPanels() {
-        var panels = statPanels;
-        var allPanels = [];
-        var canUseStatPanel = false;
-        for (var panel in panels) {
-            if (panels.hasOwnProperty(panel)) {
-                allPanels.push(panel);
-                if (selectedStatPanel !== null && selectedStatPanel === panel) {
-                    canUseStatPanel = true;
-                }
-            }
-        }
-        allPanels.sort();
-        if (verbs.length > 0) {
-            allPanels.push("Commands");
-            if (selectedStatPanel === "Commands") {
-                canUseStatPanel = true;
-            }
-        }
-        if (!canUseStatPanel) {
-            selectedStatPanel = allPanels.length > 0 ? allPanels[0] : null;
-        }
-        renderPanelTabs(allPanels, selectedStatPanel);
-        if (selectedStatPanel === "Commands") {
-            renderPanelData(verbs, true);
-        } else if (selectedStatPanel !== null) {
-            var paneldata = panels[selectedStatPanel];
-            renderPanelData(paneldata.entries || [], false);
-        } else {
-            renderPanelData([]);
-        }
-    }
+    statPanels.onverb = function (verb) {
+        sendVerb(verb);
+    };
 
     session.onmessage = function(message) {
         if (!gameActive) {
@@ -288,9 +144,7 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
             if (message.newstate.windowtitle) {
                 document.getElementsByTagName("title")[0].textContent = message.newstate.windowtitle;
             }
-            statPanels = message.newstate.stats.panels || {};
-            verbs = message.newstate.verbs || [];
-            updateStatPanels();
+            statPanels.update(message.newstate.verbs || [], message.newstate.stats.panels || {});
         }
         if (message.textlines) {
             for (var i = 0; i < message.textlines.length; i++) {
