@@ -8,7 +8,9 @@ function Canvas(canvas, imageLoader) {
     this.width = this.height = 100;
     this.aspectShiftX = this.aspectShiftY = 0;
     this.scaleFactor = 1;
+    this.frameID = 1;
     this.gameSprites = [];
+    this.animationInfo = {};
 }
 
 Canvas.prototype.updateSprites = function (sprites) {
@@ -35,8 +37,8 @@ Canvas.prototype.renderLoading = function (message) {
     ctx.fillText(message, this.canvas.width / 2, this.canvas.height / 2);
 };
 
-Canvas.prototype.prepareRenderImage = function (sprite) {
-    const info = this.imageLoader.prepareImage(sprite);
+Canvas.prototype.prepareRenderImage = function (sprite, animationInfo, frameID) {
+    const info = this.imageLoader.prepareImage(sprite, animationInfo, frameID);
     if (!info) {
         return null;
     }
@@ -59,7 +61,7 @@ Canvas.prototype.renderGame = function () {
     for (let i = 0; i < this.gameSprites.length; i++) {
         const sprite = this.gameSprites[i];
         if (sprite.icon && sprite.x !== undefined && sprite.y !== undefined) {
-            const info = this.prepareRenderImage(sprite);
+            const info = this.prepareRenderImage(sprite, this.animationInfo, this.frameID);
             if (!info) {
                 continue;
             }
@@ -68,6 +70,7 @@ Canvas.prototype.renderGame = function () {
                 info.dx, info.dy, info.dw, info.dh);
         }
     }
+    this.frameID += 1;
 };
 
 Canvas.prototype.findSprites = function (ev) {
@@ -76,7 +79,7 @@ Canvas.prototype.findSprites = function (ev) {
     for (let i = 0; i < this.gameSprites.length; i++) {
         const sprite = this.gameSprites[i];
         if (sprite.icon && sprite.x !== undefined && sprite.y !== undefined) {
-            const info = this.prepareRenderImage(sprite);
+            const info = this.prepareRenderImage(sprite, null, null);
             if (info && pos.x >= info.dx && pos.y >= info.dy && pos.x < info.dx + info.dw && pos.y < info.dy + info.dh) {
                 sprites.push(sprite);
             }

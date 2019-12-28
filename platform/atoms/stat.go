@@ -34,8 +34,7 @@ func (s *StatContext) renderDatumToStat(datum types.Value) sprite.StatEntry {
 		verbs := WorldOf(datum.(*types.Datum)).ListVerbsOnAtom(s.client, datum.(*types.Datum))
 		return sprite.StatEntry{
 			Icon:         gameSprite.Icon,
-			SourceX:      gameSprite.SourceX,
-			SourceY:      gameSprite.SourceY,
+			Frames:       gameSprite.Frames,
 			SourceWidth:  gameSprite.SourceWidth,
 			SourceHeight: gameSprite.SourceHeight,
 			Name:         types.Unstring(datum.Var("name")),

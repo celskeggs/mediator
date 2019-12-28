@@ -73,13 +73,42 @@ ImageLoader.prototype.getImage = function (image) {
     return loaded;
 };
 
-ImageLoader.prototype.prepareImage = function (sprite) {
+function framesEq(a, b) {
+    if (a.length !== b.length) {
+        return false;
+    }
+    for (let i = 0; i < a.length; i++) {
+        if (a[i].x !== b[i].x || a[i].y !== b[i].y) {
+            return false;
+        }
+    }
+    return true;
+}
+
+ImageLoader.prototype.prepareImage = function (sprite, animationInfoMap, frameID) {
     const image = this.getImage(sprite.icon);
     if (!image) {
         return null;
     }
-    const sx = sprite.sx || 0;
-    const sy = sprite.sy || 0;
+    let frame = 0;
+    if (animationInfoMap && sprite.frames.length > 1) {
+        let animationInfo = animationInfoMap["#" + sprite.uid];
+        if (!animationInfo) {
+            animationInfoMap["#" + sprite.uid] = animationInfo = {
+                "icon": null,
+                "frames": [],  // sentinel value; no actual frames list will be empty
+                "start": 0,
+            };
+        }
+        if (animationInfo.icon !== sprite.icon || !framesEq(animationInfo.frames, sprite.frames)) {
+            animationInfo.icon = sprite.icon;
+            animationInfo.frames = sprite.frames;
+            animationInfo.start = frameID;
+        }
+        frame = (frameID - animationInfo.start) % sprite.frames.length;
+    }
+    const sx = sprite.frames[frame].x || 0;
+    const sy = sprite.frames[frame].y || 0;
     const sw = sprite.sw || image.width;
     const sh = sprite.sh || image.height;
     const drawW = sprite.w || sw;
@@ -96,7 +125,7 @@ ImageLoader.prototype.prepareImage = function (sprite) {
 };
 
 ImageLoader.prototype.updateHTMLIcon = function (sprite, imgBox) {
-    const info = this.prepareImage(sprite);
+    const info = this.prepareImage(sprite, null, null);
     if (!info) {
         if (imgBox.children.length > 0) {
             imgBox.children[0].remove();

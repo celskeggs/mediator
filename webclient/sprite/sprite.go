@@ -1,27 +1,35 @@
 package sprite
 
+import "github.com/celskeggs/mediator/platform/icon"
+
 type GameSprite struct {
-	Icon         string   `json:"icon"`
-	SourceX      uint     `json:"sx"`
-	SourceY      uint     `json:"sy"`
-	SourceWidth  uint     `json:"sw"`
-	SourceHeight uint     `json:"sh"`
-	X            uint     `json:"x"`
-	Y            uint     `json:"y"`
-	Width        uint     `json:"w"`
-	Height       uint     `json:"h"`
-	Name         string   `json:"name"`
-	Verbs        []string `json:"verbs"`
-	UID          uint64   `json:"uid"`
+	Icon         string          `json:"icon"`
+	Frames       []icon.SourceXY `json:"frames"`
+	SourceWidth  uint            `json:"sw"`
+	SourceHeight uint            `json:"sh"`
+	X            uint            `json:"x"`
+	Y            uint            `json:"y"`
+	Width        uint            `json:"w"`
+	Height       uint            `json:"h"`
+	Name         string          `json:"name"`
+	Verbs        []string        `json:"verbs"`
+	UID          uint64          `json:"uid"`
 }
 
 func (s GameSprite) Equal(o GameSprite) bool {
 	if !(s.Icon == o.Icon &&
-		s.SourceX == o.SourceX && s.SourceY == o.SourceY &&
 		s.SourceWidth == o.SourceWidth && s.SourceHeight == o.SourceHeight &&
 		s.X == o.X && s.Y == o.Y && s.Width == o.Width && s.Height == o.Height &&
 		s.Name == o.Name && s.UID == o.UID) {
 		return false
+	}
+	if len(s.Frames) != len(o.Frames) {
+		return false
+	}
+	for i, v := range s.Frames {
+		if o.Frames[i] != v {
+			return false
+		}
 	}
 	if len(s.Verbs) != len(o.Verbs) {
 		return false
@@ -35,24 +43,30 @@ func (s GameSprite) Equal(o GameSprite) bool {
 }
 
 type StatEntry struct {
-	Label        string   `json:"label"`
-	Icon         string   `json:"icon"`
-	SourceX      uint     `json:"sx"`
-	SourceY      uint     `json:"sy"`
-	SourceWidth  uint     `json:"sw"`
-	SourceHeight uint     `json:"sh"`
-	Name         string   `json:"name"`
-	Suffix       string   `json:"suffix"`
-	Verbs        []string `json:"verbs"`
-	UID          uint64   `json:"uid"`
+	Label        string          `json:"label"`
+	Icon         string          `json:"icon"`
+	Frames       []icon.SourceXY `json:"frames"`
+	SourceWidth  uint            `json:"sw"`
+	SourceHeight uint            `json:"sh"`
+	Name         string          `json:"name"`
+	Suffix       string          `json:"suffix"`
+	Verbs        []string        `json:"verbs"`
+	UID          uint64          `json:"uid"`
 }
 
 func (s StatEntry) Equal(o StatEntry) bool {
 	if !(s.Label == o.Label && s.Icon == o.Icon &&
-		s.SourceX == o.SourceX && s.SourceY == o.SourceY &&
 		s.SourceWidth == o.SourceWidth && s.SourceHeight == o.SourceHeight &&
 		s.Name == o.Name && s.Suffix == o.Suffix && s.UID == o.UID) {
 		return false
+	}
+	if len(s.Frames) != len(o.Frames) {
+		return false
+	}
+	for i, v := range s.Frames {
+		if o.Frames[i] != v {
+			return false
+		}
 	}
 	if len(s.Verbs) != len(o.Verbs) {
 		return false

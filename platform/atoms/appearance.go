@@ -31,11 +31,10 @@ func (a Appearance) ToSprite(x, y uint, dir common.Direction) (bool, int, sprite
 	if a.Icon == nil {
 		return false, 0, sprite.GameSprite{}
 	}
-	iconName, sourceX, sourceY, sourceWidth, sourceHeight := a.Icon.Render(a.IconState, dir)
+	iconName, frames, sourceWidth, sourceHeight := a.Icon.Render(a.IconState, dir)
 	return true, a.Layer, sprite.GameSprite{
 		Icon:         iconName,
-		SourceX:      sourceX,
-		SourceY:      sourceY,
+		Frames:       frames,
 		SourceWidth:  sourceWidth,
 		SourceHeight: sourceHeight,
 		X:            x,

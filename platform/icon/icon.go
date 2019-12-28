@@ -26,30 +26,50 @@ func directionToIndex(direction common.Direction, dirs int) uint {
 	}
 }
 
-func (icon *Icon) lookupIndex(state string, direction common.Direction, frame uint) (index uint) {
+func (icon *Icon) countFrames(state string) int {
+	return icon.dmiInfo.States[state].Frames
+}
+
+func (icon *Icon) lookupIndex(state string, direction common.Direction, frame int) (index uint) {
 	dmiState := icon.dmiInfo.States[state]
-	if frame >= uint(dmiState.Frames) {
+	if frame < 0 || frame >= dmiState.Frames {
 		util.FIXME("don't panic here")
 		panic("invalid frame number")
 	}
 	return icon.stateIndexes[state] +
-		frame*uint(dmiState.Directions) +
+		uint(frame*dmiState.Directions) +
 		directionToIndex(direction, dmiState.Directions)
 }
 
-func (icon *Icon) indexToPosition(index, width, height uint) (x, y uint) {
-	if icon.stride == 0 {
-		return 0, 0
-	}
-	return (index % icon.stride) * width, (index / icon.stride) * height
+type SourceXY struct {
+	X uint `json:"x"`
+	Y uint `json:"y"`
 }
 
-func (icon *Icon) Render(state string, dir common.Direction) (iconname string, sourceX, sourceY, sourceWidth, sourceHeight uint) {
-	util.FIXME("implement animations")
-	index := icon.lookupIndex(state, dir, 0)
+func (icon *Icon) indexToPosition(index, width, height uint) SourceXY {
+	if icon.stride == 0 {
+		return SourceXY{
+			X: 0,
+			Y: 0,
+		}
+	}
+	return SourceXY{
+		X: (index % icon.stride) * width,
+		Y: (index / icon.stride) * height,
+	}
+}
+
+func (icon *Icon) Render(state string, dir common.Direction) (iconname string, frames []SourceXY, sourceWidth, sourceHeight uint) {
 	util.FIXME("implement icon sizes correctly")
-	sourceX, sourceY = icon.indexToPosition(index, 32, 32)
-	return icon.dmiPath, sourceX, sourceY, 32, 32
+	frames = make([]SourceXY, icon.countFrames(state))
+	if len(frames) == 0 {
+		panic("should never be NO frames to render")
+	}
+	for i := 0; i < len(frames); i++ {
+		index := icon.lookupIndex(state, dir, i)
+		frames[i] = icon.indexToPosition(index, 32, 32)
+	}
+	return icon.dmiPath, frames, 32, 32
 }
 
 var _ types.Value = &Icon{}

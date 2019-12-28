@@ -128,8 +128,7 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
                 menu.push({
                     "name": sprite.name,
                     "icon": sprite.icon,
-                    "sx": sprite.sx,
-                    "sy": sprite.sy,
+                    "frames": sprite.frames,
                     "sw": sprite.sw,
                     "sh": sprite.sh,
                     "contents": contents,
