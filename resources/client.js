@@ -2,60 +2,14 @@
 
 function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, textoutput) {
     var gameActive = false;
-    var width = 672, height = 672;
-    var aspectRatio = width / height;
-    var aspectShiftX = 0, aspectShiftY = 0;
     var gameSprites = [];
     var keyDirection = null;
     const imageLoader = new ImageLoader("resource");
     const statPanels = new StatPanel(paneltabs, panelbody, imageLoader);
     const contextMenu = new MenuDisplay(imageLoader);
     const session = new Session();
+    const render = new Canvas(canvas, imageLoader);
     var Player = new SoundPlayer();
-
-    function renderLoading(ctx) {
-        ctx.fillStyle = 'rgb(240,240,240)';
-        ctx.fillRect(0, 0, width, height);
-        ctx.fillStyle = 'rgb(0,0,0)';
-        ctx.textBaseline = 'middle';
-        ctx.textAlign = 'center';
-        var message;
-        if (session.terminated) {
-            if (gameActive) {
-                message = "Disconnected.";
-            } else {
-                message = "Could not connect.";
-            }
-        } else if (!imageLoader.isLoaded()) {
-            message = "Loading resources...";
-        } else {
-            message = "Establishing connection...";
-        }
-        ctx.fillText(message, width / 2, height / 2);
-    }
-
-    function renderGame(ctx) {
-        ctx.fillStyle = 'rgb(0,0,0)';
-        ctx.fillRect(0, 0, width, height);
-        for (var i = 0; i < gameSprites.length; i++) {
-            var sprite = gameSprites[i];
-            if (sprite.icon && sprite.x !== undefined && sprite.y !== undefined) {
-                const image = imageLoader.getImage(sprite.icon);
-                if (!image) {
-                    continue;
-                }
-                var sw = sprite.sw || image.width;
-                var sh = sprite.sh || image.height;
-                var drawW = sprite.w || sw;
-                var drawH = sprite.h || sh;
-                var drawX = aspectShiftX + sprite.x;
-                var drawY = aspectShiftY + height - sprite.y - drawH;
-                ctx.drawImage(image,
-                    sprite.sx || 0, sprite.sy || 0, sw, sh,
-                    drawX, drawY, drawW, drawH);
-            }
-        }
-    }
 
     function sendVerb(verb) {
         console.log("send verb", verb);
@@ -68,37 +22,26 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
         }
     }
 
-    function draw() {
-        canvas.width = width;
-        canvas.height = height;
-        var ctx = canvas.getContext('2d');
-        ctx.font = "24px mono";
-        if (!gameActive || session.terminated) {
-            renderLoading(ctx);
+    function getLoadingMessage() {
+        if (session.terminated) {
+            if (gameActive) {
+                return "Disconnected.";
+            } else {
+                return "Could not connect.";
+            }
+        } else if (!imageLoader.isLoaded()) {
+            return "Loading resources...";
         } else {
-            handleKeys();
-            renderGame(ctx);
+            return "Establishing connection...";
         }
     }
 
-    function updateWidthHeight(newwidth, newheight) {
-        if (!newwidth || !newheight) {
-            return;
-        }
-        if (newheight * aspectRatio > newwidth) {
-            width = Math.round(newheight * aspectRatio);
-            height = newheight;
-            aspectShiftX = Math.floor((width - newwidth) / 2);
-            aspectShiftY = 0;
-        } else if (newwidth / aspectRatio > newheight) {
-            width = newwidth;
-            height = Math.round(newwidth / aspectRatio);
-            aspectShiftX = 0;
-            aspectShiftY = Math.floor((height - newheight) / 2);
+    function draw() {
+        if (!gameActive || session.terminated) {
+            render.renderLoading(getLoadingMessage());
         } else {
-            width = newwidth;
-            height = newheight;
-            aspectShiftX = aspectShiftY = 0;
+            handleKeys();
+            render.renderGame(gameSprites);
         }
     }
 
@@ -140,7 +83,7 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
         }
         if (message.newstate) {
             gameSprites = message.newstate.sprites || [];
-            updateWidthHeight(message.newstate.viewportwidth, message.newstate.viewportheight);
+            render.updateSize(message.newstate.viewportwidth, message.newstate.viewportheight);
             if (message.newstate.windowtitle) {
                 document.getElementsByTagName("title")[0].textContent = message.newstate.windowtitle;
             }
@@ -162,11 +105,6 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
     session.onclose = function() {
         Player.cancelAllSounds();
     };
-
-    if (resources === undefined) {
-        console.log("expected resources.js to be included for resource list");
-        return;
-    }
 
     function keyCodeToDirection(code) {
         if (code === "ArrowUp") {
@@ -206,50 +144,17 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
         contextMenu.dismiss();
     });
 
-    function canvasMousePosition(ev) {
-        const rect = canvas.getBoundingClientRect();
-        var x = ev.clientX - rect.left;
-        var y = ev.clientY - rect.top;
-        x = x / rect.width * width;
-        y = y / rect.height * height;
-        return {x: x, y: y};
-    }
-
-    function findSprites(x, y) {
-        var sprites = [];
-        for (var i = 0; i < gameSprites.length; i++) {
-            var sprite = gameSprites[i];
-            if (sprite.icon && sprite.x !== undefined && sprite.y !== undefined) {
-                const image = imageLoader.getImage(sprite.icon);
-                if (!image) {
-                    continue;
-                }
-                var sw = sprite.sw || image.width;
-                var sh = sprite.sh || image.height;
-                var drawW = sprite.w || sw;
-                var drawH = sprite.h || sh;
-                var drawX = aspectShiftX + sprite.x;
-                var drawY = aspectShiftY + height - sprite.y - drawH;
-                if (x >= drawX && y >= drawY && x < drawX + drawW && y < drawY + drawH) {
-                    sprites.push(sprite);
-                }
-            }
-        }
-        return sprites;
-    }
-
     canvas.addEventListener("contextmenu", function (ev) {
         contextMenu.dismiss();
-        var pos = canvasMousePosition(ev);
-        var sprites = findSprites(pos.x, pos.y);
-        var menu = [];
-        for (var i = 0; i < sprites.length; i++) {
-            var sprite = sprites[i];
+        const sprites = render.findSprites(ev, gameSprites);
+        const menu = [];
+        for (let i = 0; i < sprites.length; i++) {
+            const sprite = sprites[i];
             if ((sprite.verbs || []).length === 0) {
                 continue;
             }
-            var contents = [];
-            for (var j = 0; j < sprite.verbs.length; j++) {
+            const contents = [];
+            for (let j = 0; j < sprite.verbs.length; j++) {
                 contents.push({
                     "name": sprite.verbs[j],
                     "targetName": sprite.name,
@@ -288,6 +193,10 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
         session.connect();
     };
 
+    if (resources === undefined) {
+        console.log("expected resources.js to be included for resource list");
+        return;
+    }
     imageLoader.load(resources);
 
     draw();
