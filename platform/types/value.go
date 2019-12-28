@@ -82,6 +82,7 @@ type Datum struct {
 	// refcount is the number of Refs to this Datum. the datum only counts as being in the realm when this is nonzero.
 	refCount uint
 	realm    *Realm
+	uid      uint64
 }
 
 var _ Value = &Datum{}
@@ -134,6 +135,10 @@ func (d *Datum) Type() TypePath {
 		panic("attempt to get type of deleted datum")
 	}
 	return d.impl.Type()
+}
+
+func (d *Datum) UID() uint64 {
+	return d.uid
 }
 
 func (d *Datum) Var(name string) Value {

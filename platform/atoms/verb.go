@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/celskeggs/mediator/platform/types"
 	"github.com/celskeggs/mediator/util"
+	"strconv"
+	"strings"
 )
 
 // NOTE: although verbs have a "defining type", which can be inspected, all that ultimately matters is the procedure
@@ -43,8 +45,19 @@ func (v Verb) Matches(name string, src *types.Datum, usr *types.Datum, args []st
 	}
 	if settings.Src.In && len(args) >= 1 {
 		// then we expect the first argument to refer to us; if it doesn't, we don't match.
-		if args[0] != types.Unstring(src.Var("name")) {
-			return false
+		if strings.HasPrefix(args[0], "#") {
+			// reference by UID
+			uid, err := strconv.ParseUint(args[0][1:], 10, 64)
+			if err != nil {
+				return false
+			}
+			if uid != src.UID() {
+				return false
+			}
+		} else {
+			if args[0] != types.Unstring(src.Var("name")) {
+				return false
+			}
 		}
 	}
 	switch settings.Src.Type {

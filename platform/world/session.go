@@ -117,6 +117,7 @@ func (p playerAPI) Render() sprite.SpriteView {
 			if found {
 				s.Name = types.Unstring(visibleAtom.Var("name"))
 				s.Verbs = verbsOn[visibleAtom.(*types.Datum)]
+				s.UID = visibleAtom.(*types.Datum).UID()
 				layers[layer] = append(layers[layer], s)
 			}
 		}

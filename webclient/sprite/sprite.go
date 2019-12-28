@@ -12,6 +12,7 @@ type GameSprite struct {
 	Height       uint     `json:"h"`
 	Name         string   `json:"name"`
 	Verbs        []string `json:"verbs"`
+	UID          uint64   `json:"uid"`
 }
 
 func (s GameSprite) Equal(o GameSprite) bool {
@@ -19,7 +20,7 @@ func (s GameSprite) Equal(o GameSprite) bool {
 		s.SourceX == o.SourceX && s.SourceY == o.SourceY &&
 		s.SourceWidth == o.SourceWidth && s.SourceHeight == o.SourceHeight &&
 		s.X == o.X && s.Y == o.Y && s.Width == o.Width && s.Height == o.Height &&
-		s.Name == o.Name) {
+		s.Name == o.Name && s.UID == o.UID) {
 		return false
 	}
 	if len(s.Verbs) != len(o.Verbs) {
@@ -43,13 +44,14 @@ type StatEntry struct {
 	Name         string   `json:"name"`
 	Suffix       string   `json:"suffix"`
 	Verbs        []string `json:"verbs"`
+	UID          uint64   `json:"uid"`
 }
 
 func (s StatEntry) Equal(o StatEntry) bool {
 	if !(s.Label == o.Label && s.Icon == o.Icon &&
 		s.SourceX == o.SourceX && s.SourceY == o.SourceY &&
 		s.SourceWidth == o.SourceWidth && s.SourceHeight == o.SourceHeight &&
-		s.Name == o.Name && s.Suffix == o.Suffix) {
+		s.Name == o.Name && s.Suffix == o.Suffix && s.UID == o.UID) {
 		return false
 	}
 	if len(s.Verbs) != len(o.Verbs) {

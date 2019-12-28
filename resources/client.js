@@ -58,10 +58,10 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
             for (let j = 0; j < sprite.verbs.length; j++) {
                 menu.push({
                     "name": sprite.verbs[j],
-                    "targetName": sprite.name,
+                    "targetUID": sprite.uid,
                     "select": function () {
-                        // FIXME: uniquely identify atoms, rather than using names
-                        sendVerb(this.name + " " + this.targetName);
+                        // FIXME: when "targetUID" gets large enough, it will stop being able to be accurately represented by javascript's numbers
+                        sendVerb(this.name + " #" + this.targetUID);
                     },
                 });
             }

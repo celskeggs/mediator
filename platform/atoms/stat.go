@@ -41,6 +41,7 @@ func (s *StatContext) renderDatumToStat(datum types.Value) sprite.StatEntry {
 			Name:         types.Unstring(datum.Var("name")),
 			Suffix:       types.Unstring(datum.Var("suffix")),
 			Verbs:        verbs,
+			UID:          datum.(*types.Datum).UID(),
 		}
 	} else {
 		util.FIXME("figure out what we should actually do when given an unknown datum")

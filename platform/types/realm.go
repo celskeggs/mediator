@@ -11,6 +11,11 @@ type Realm struct {
 	busy             bool
 	datums           map[*Datum]struct{}
 	deferredRemovals []*Datum
+
+	datumsByUID map[uint64]*Datum // locked under busy
+	nextUID     uint64            // locked under uidlock
+	uidlock     sync.Mutex
+
 	worldRef         interface{}
 	typeTree         TypeTree
 	TreePrivateState interface{} // populated by the TypeTree
@@ -18,6 +23,9 @@ type Realm struct {
 
 func NewRealm(tree TypeTree) *Realm {
 	realm := &Realm{
+		datumsByUID: map[uint64]*Datum{},
+		nextUID:     1000,
+
 		datums:   map[*Datum]struct{}{},
 		typeTree: tree,
 	}
@@ -42,6 +50,10 @@ func (r *Realm) setBusy(busy bool) {
 				panic("deferred datum removal: datum not found in realm")
 			}
 			delete(r.datums, dr)
+			if _, found := r.datumsByUID[dr.uid]; !found {
+				panic("deferred datum removal: UID not found in realm")
+			}
+			delete(r.datumsByUID, dr.uid)
 		}
 		r.deferredRemovals = nil
 	}
@@ -53,8 +65,12 @@ func (r *Realm) add(d *Datum) {
 	if _, found := r.datums[d]; found {
 		panic("datum already found in realm")
 	}
+	if _, found := r.datumsByUID[d.uid]; found {
+		panic("UID already found in realm")
+	}
 	// no busy check here; it's only really for garbage collection, which means remove
 	r.datums[d] = struct{}{}
+	r.datumsByUID[d.uid] = d
 	if TRACE {
 		println("added datum", d, "of type", d.Type(), "to realm")
 	}
@@ -70,6 +86,10 @@ func (r *Realm) remove(d *Datum) {
 			panic("datum not found in realm")
 		}
 		delete(r.datums, d)
+		if _, found := r.datumsByUID[d.uid]; !found {
+			panic("UID not found in realm")
+		}
+		delete(r.datumsByUID, d.uid)
 	}
 	if TRACE {
 		println("removed datum", d, "of type", d.Type(), "from realm")
@@ -95,6 +115,13 @@ func (r *Realm) FindOne(predicate func(*Datum) bool) Value {
 		if predicate(datum) {
 			return datum
 		}
+	}
+	return nil
+}
+
+func (r *Realm) Lookup(uid uint64) Value {
+	if d, ok := r.datumsByUID[uid]; ok {
+		return d
 	}
 	return nil
 }
@@ -134,7 +161,16 @@ func (realm *Realm) NewDatum(impl DatumImpl) *Datum {
 		impl:     impl,
 		refCount: 0,
 		realm:    realm,
+		uid:      realm.getNextUID(),
 	}
+}
+
+func (realm *Realm) getNextUID() (id uint64) {
+	realm.uidlock.Lock()
+	defer realm.uidlock.Unlock()
+	id = realm.nextUID
+	realm.nextUID += 1
+	return id
 }
 
 func (realm *Realm) IsSubType(path TypePath, of TypePath) bool {
