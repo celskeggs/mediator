@@ -3,10 +3,11 @@
 function Canvas(canvas, imageLoader) {
     this.canvas = canvas;
     this.imageLoader = imageLoader;
-    this.width = 672;
-    this.height = 672;
-    this.aspectRatio = this.width / this.height;
+    // placeholder values
+    this.viewWidth = this.viewHeight = 100;
+    this.width = this.height = 100;
     this.aspectShiftX = this.aspectShiftY = 0;
+    this.scaleFactor = 1;
     this.gameSprites = [];
 }
 
@@ -15,12 +16,14 @@ Canvas.prototype.updateSprites = function (sprites) {
 };
 
 Canvas.prototype.startRender = function (fill) {
-    this.canvas.width = this.width;
-    this.canvas.height = this.height;
-    var ctx = this.canvas.getContext('2d');
+    const rect = this.canvas.getBoundingClientRect();
+    this.canvas.width = rect.width;
+    this.canvas.height = rect.height;
+    this.updateSizing();
+    const ctx = this.canvas.getContext('2d');
     ctx.font = "24px mono";
     ctx.fillStyle = fill;
-    ctx.fillRect(0, 0, this.width, this.height);
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     return ctx;
 };
 
@@ -29,7 +32,7 @@ Canvas.prototype.renderLoading = function (message) {
     ctx.fillStyle = 'rgb(0,0,0)';
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
-    ctx.fillText(message, this.width / 2, this.height / 2);
+    ctx.fillText(message, this.canvas.width / 2, this.canvas.height / 2);
 };
 
 Canvas.prototype.prepareRenderImage = function (sprite) {
@@ -37,13 +40,22 @@ Canvas.prototype.prepareRenderImage = function (sprite) {
     if (!info) {
         return null;
     }
-    info.dx = this.aspectShiftX + sprite.x;
-    info.dy = this.aspectShiftY + this.height - sprite.y - info.dh;
+    // low and high corners computed in floating point
+    const lx = this.aspectShiftX + sprite.x * this.scaleFactor;
+    const ly = this.canvas.height - this.aspectShiftY - (sprite.y + info.dh) * this.scaleFactor;
+    const hx = lx + info.dw * this.scaleFactor;
+    const hy = ly + info.dh * this.scaleFactor;
+    // round positions before converting them back to position/size
+    info.dx = Math.round(lx);
+    info.dy = Math.round(ly);
+    info.dw = Math.round(hx) - Math.round(lx);
+    info.dh = Math.round(hy) - Math.round(ly);
     return info;
 };
 
 Canvas.prototype.renderGame = function () {
     const ctx = this.startRender('rgb(0,0,0)');
+    ctx.imageSmoothingEnabled = false;
     for (let i = 0; i < this.gameSprites.length; i++) {
         const sprite = this.gameSprites[i];
         if (sprite.icon && sprite.x !== undefined && sprite.y !== undefined) {
@@ -73,32 +85,40 @@ Canvas.prototype.findSprites = function (ev) {
     return sprites;
 };
 
+Canvas.prototype.updateSizing = function () {
+    const aspectRatio = this.canvas.width / this.canvas.height;
+    if (this.viewHeight * aspectRatio > this.viewWidth) {
+        this.width = Math.round(this.viewHeight * aspectRatio);
+        this.height = this.viewHeight;
+        this.scaleFactor = (this.canvas.height / this.viewHeight);
+        this.aspectShiftX = Math.floor((this.width - this.viewWidth) * this.scaleFactor / 2);
+        this.aspectShiftY = 0;
+    } else if (this.viewWidth / aspectRatio > this.viewHeight) {
+        this.width = this.viewWidth;
+        this.height = Math.round(this.viewWidth / aspectRatio);
+        this.scaleFactor = (this.canvas.width / this.viewWidth);
+        this.aspectShiftX = 0;
+        this.aspectShiftY = Math.floor((this.height - this.viewHeight) * this.scaleFactor / 2);
+    } else {
+        this.width = this.viewWidth;
+        this.height = this.viewHeight;
+        this.scaleFactor = (this.canvas.width / this.viewWidth);
+        this.aspectShiftX = this.aspectShiftY = 0;
+    }
+};
+
 Canvas.prototype.updateSize = function (newwidth, newheight) {
     if (!newwidth || !newheight) {
         return;
     }
-    if (newheight * this.aspectRatio > newwidth) {
-        this.width = Math.round(newheight * this.aspectRatio);
-        this.height = newheight;
-        this.aspectShiftX = Math.floor((width - newwidth) / 2);
-        this.aspectShiftY = 0;
-    } else if (newwidth / this.aspectRatio > newheight) {
-        this.width = newwidth;
-        this.height = Math.round(newwidth / this.aspectRatio);
-        this.aspectShiftX = 0;
-        this.aspectShiftY = Math.floor((height - newheight) / 2);
-    } else {
-        this.width = newwidth;
-        this.height = newheight;
-        this.aspectShiftX = this.aspectShiftY = 0;
-    }
+    this.viewWidth = newwidth;
+    this.viewHeight = newheight;
+    this.updateSizing();
 };
 
 Canvas.prototype.getMousePosition = function (ev) {
     const rect = this.canvas.getBoundingClientRect();
     let x = ev.clientX - rect.left;
     let y = ev.clientY - rect.top;
-    x = x / rect.width * this.width;
-    y = y / rect.height * this.height;
     return {x: x, y: y};
 };

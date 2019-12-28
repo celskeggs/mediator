@@ -13,6 +13,7 @@
     flex: 1;
     display: flex;
     flex-flow: row nowrap;
+    min-height: 0;
 }
 
 .playcontainer {
@@ -23,6 +24,7 @@
 
 #playspace {
     height: 100%;
+    width: 100%;
 }
 
 .inputcontainer {
@@ -116,6 +118,7 @@
     border: 1px solid black;
     padding-left: 5px;
     box-sizing: border-box;
+    min-height: 0;
 }
 
 #textspace {
