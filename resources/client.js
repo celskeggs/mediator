@@ -52,20 +52,27 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
         }
     }
 
-    // FIXME: can this be merged with the other context-menu-opening code on the regular canvas?
-    statPanels.oncontextmenu = function (ev, entry) {
-        if (entry.verbs && entry.verbs.length > 0) {
-            const menu = [];
-            for (let j = 0; j < entry.verbs.length; j++) {
+    function spriteContextMenu(sprite) {
+        const menu = [];
+        if (sprite.verbs && sprite.verbs.length > 0) {
+            for (let j = 0; j < sprite.verbs.length; j++) {
                 menu.push({
-                    "name": entry.verbs[j],
-                    "targetName": entry.name,
+                    "name": sprite.verbs[j],
+                    "targetName": sprite.name,
                     "select": function () {
                         // FIXME: uniquely identify atoms, rather than using names
                         sendVerb(this.name + " " + this.targetName);
                     },
                 });
             }
+        }
+        return menu;
+    }
+
+    // FIXME: can this be merged with the other context-menu-opening code on the regular canvas?
+    statPanels.oncontextmenu = function (ev, entry) {
+        const menu = spriteContextMenu(entry);
+        if (menu.length !== 0) {
             contextMenu.display(ev.pageX, ev.pageY, menu);
         }
     };
@@ -117,34 +124,22 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
         const menu = [];
         for (let i = 0; i < sprites.length; i++) {
             const sprite = sprites[i];
-            if ((sprite.verbs || []).length === 0) {
-                continue;
-            }
-            const contents = [];
-            for (let j = 0; j < sprite.verbs.length; j++) {
-                contents.push({
-                    "name": sprite.verbs[j],
-                    "targetName": sprite.name,
-                    "select": function () {
-                        // TODO: uniquely identify atoms, rather than using names
-                        sendVerb(this.name + " " + this.targetName);
-                    },
+            const contents = spriteContextMenu(sprite);
+            if (contents.length > 0) {
+                menu.push({
+                    "name": sprite.name,
+                    "icon": sprite.icon,
+                    "sx": sprite.sx,
+                    "sy": sprite.sy,
+                    "sw": sprite.sw,
+                    "sh": sprite.sh,
+                    "contents": contents,
                 });
             }
-            menu.push({
-                "name": sprite.name,
-                "icon": sprite.icon,
-                "sx": sprite.sx,
-                "sy": sprite.sy,
-                "sw": sprite.sw,
-                "sh": sprite.sh,
-                "contents": contents,
-            });
         }
         if (menu.length > 0) {
             contextMenu.display(ev.pageX, ev.pageY, menu);
         }
-        ev.preventDefault();
     });
 
     verbentry.focus();
