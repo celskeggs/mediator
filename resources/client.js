@@ -1,26 +1,24 @@
 "use strict";
 
 function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, textoutput) {
-    var gameActive = false;
-    var gameSprites = [];
-    var keyDirection = null;
+    let gameActive = false;
+    let gameSprites = [];
     const imageLoader = new ImageLoader("resource");
     const statPanels = new StatPanel(paneltabs, panelbody, imageLoader);
     const contextMenu = new MenuDisplay(imageLoader);
     const session = new Session();
     const render = new Canvas(canvas, imageLoader);
-    var Player = new SoundPlayer();
+    const soundPlayer = new SoundPlayer();
+    const keyHandler = new KeyHandler(inputsource);
 
     function sendVerb(verb) {
         console.log("send verb", verb);
         session.sendMessage({"verb": verb})
     }
 
-    function handleKeys() {
-        if (keyDirection != null) {
-            sendVerb("." + keyDirection)
-        }
-    }
+    keyHandler.onmove = function (direction) {
+        sendVerb("." + direction);
+    };
 
     function getLoadingMessage() {
         if (session.terminated) {
@@ -40,7 +38,7 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
         if (!gameActive || session.terminated) {
             render.renderLoading(getLoadingMessage());
         } else {
-            handleKeys();
+            keyHandler.tick();
             render.renderGame(gameSprites);
         }
     }
@@ -97,44 +95,14 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
         if (message.sounds) {
             for (var j = 0; j < message.sounds.length; j++) {
                 var sound = message.sounds[j];
-                Player.playSound(sound);
+                soundPlayer.playSound(sound);
             }
         }
     };
 
     session.onclose = function() {
-        Player.cancelAllSounds();
+        soundPlayer.cancelAllSounds();
     };
-
-    function keyCodeToDirection(code) {
-        if (code === "ArrowUp") {
-            return "north";
-        } else if (code === "ArrowDown") {
-            return "south";
-        } else if (code === "ArrowLeft") {
-            return "west";
-        } else if (code === "ArrowRight") {
-            return "east";
-        } else {
-            return null;
-        }
-    }
-
-    inputsource.addEventListener("keydown", function (ev) {
-        var direction = keyCodeToDirection(ev.code);
-        if (direction !== null) {
-            keyDirection = direction;
-            ev.preventDefault();
-        }
-    });
-
-    inputsource.addEventListener("keyup", function (ev) {
-        var direction = keyCodeToDirection(ev.code);
-        if (direction === keyDirection) {
-            keyDirection = null;
-            ev.preventDefault();
-        }
-    });
 
     inputsource.addEventListener("contextmenu", function (ev) {
         ev.preventDefault();
