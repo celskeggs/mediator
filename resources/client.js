@@ -69,7 +69,6 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
         return menu;
     }
 
-    // FIXME: can this be merged with the other context-menu-opening code on the regular canvas?
     statPanels.oncontextmenu = function (ev, entry) {
         const menu = spriteContextMenu(entry);
         if (menu.length !== 0) {
