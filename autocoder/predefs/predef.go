@@ -69,6 +69,7 @@ var platformDefs = []TypeInfo{
 var platformFields = []FieldInfo{
 	{"name", "/atom", dtype.String()},
 	{"icon", "/atom", dtype.ConstPath("/icon")},
+	{"icon_state", "/atom", dtype.String()},
 	{"desc", "/atom", dtype.String()},
 	{"loc", "/atom", dtype.ConstPath("/atom")},
 	{"density", "/atom", dtype.Integer()},
