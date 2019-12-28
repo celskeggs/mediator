@@ -119,30 +119,7 @@ StatPanel.prototype.renderBody = function (entries, areVerbs) {
             nameSpan.textContent = entry.name;
             suffixSpan.textContent = entry.suffix;
 
-            const wantedImage = panel.imageLoader.getImage(entry.icon);
-            if (wantedImage === null) {
-                removeChildren(iconDiv);
-                iconDiv.style.width = "";
-                iconDiv.style.height = "";
-                iconDiv.style.overflow = "";
-            } else {
-                if (iconDiv.children.length > 0 && iconDiv.children[0].src !== wantedImage.src) {
-                    removeChildren(iconDiv);
-                }
-                // FIXME: can this be merged with the same icon display code used in the context menu?
-                iconDiv.style.width = (entry.sw || wantedImage.width) + "px";
-                iconDiv.style.height = (entry.sh || wantedImage.height) + "px";
-                iconDiv.style.overflow = "hidden";
-                let img;
-                if (iconDiv.children.length === 0) {
-                    img = wantedImage.cloneNode(true);
-                    iconDiv.appendChild(img);
-                } else {
-                    img = iconDiv.children[0];
-                }
-                img.marginLeft = "-" + (entry.sx || 0) + "px";
-                img.marginTop = "-" + (entry.sy || 0) + "px";
-            }
+            panel.imageLoader.updateHTMLIcon(entry, iconDiv);
         });
     }
 };

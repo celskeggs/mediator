@@ -44,19 +44,9 @@ ContextMenu.prototype.replaceSubMenu = function (menu) {
 
 ContextMenu.prototype.renderEntry = function (data) {
     const entry = document.createElement("div");
-    if (data.icon) {
-        const baseImg = this.imageLoader.getImage(data.icon);
-        if (baseImg) {
-            const imgBox = document.createElement("div");
-            imgBox.style.overflow = "hidden";
-            imgBox.style.width = (data.sw || baseImg.width) + "px";
-            imgBox.style.height = (data.sh || baseImg.height) + "px";
-            const img = baseImg.cloneNode(true);
-            img.marginLeft = "-" + (data.sx || 0) + "px";
-            img.marginTop = "-" + (data.sy || 0) + "px";
-            imgBox.appendChild(img);
-            entry.appendChild(imgBox);
-        }
+    const imgBox = this.imageLoader.buildHTMLIcon(data);
+    if (imgBox) {
+        entry.appendChild(imgBox);
     }
     const span = document.createElement("span");
     span.textContent = data.name;
@@ -67,7 +57,7 @@ ContextMenu.prototype.renderEntry = function (data) {
             const rect = entry.getBoundingClientRect();
             const attachX = rect.x + rect.width + 1;
             const attachY = rect.y;
-            outerThis.replaceSubMenu(new ContextMenu(attachX, attachY, data.contents, outerThis.items));
+            outerThis.replaceSubMenu(new ContextMenu(attachX, attachY, data.contents, outerThis.imageLoader));
         });
     }
     if (data.select) {

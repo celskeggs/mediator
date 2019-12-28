@@ -2,7 +2,6 @@
 
 function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, textoutput) {
     let gameActive = false;
-    let gameSprites = [];
     const imageLoader = new ImageLoader("resource");
     const statPanels = new StatPanel(paneltabs, panelbody, imageLoader);
     const contextMenu = new MenuDisplay(imageLoader);
@@ -39,7 +38,7 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
             render.renderLoading(getLoadingMessage());
         } else {
             keyHandler.tick();
-            render.renderGame(gameSprites);
+            render.renderGame();
         }
     }
 
@@ -54,7 +53,7 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
     }
 
     // FIXME: can this be merged with the other context-menu-opening code on the regular canvas?
-    statPanels.oncontextmenu = function(ev, entry) {
+    statPanels.oncontextmenu = function (ev, entry) {
         if (entry.verbs && entry.verbs.length > 0) {
             const menu = [];
             for (let j = 0; j < entry.verbs.length; j++) {
@@ -75,12 +74,12 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
         sendVerb(verb);
     };
 
-    session.onmessage = function(message) {
+    session.onmessage = function (message) {
         if (!gameActive) {
             gameActive = true;
         }
         if (message.newstate) {
-            gameSprites = message.newstate.sprites || [];
+            render.updateSprites(message.newstate.sprites || []);
             render.updateSize(message.newstate.viewportwidth, message.newstate.viewportheight);
             if (message.newstate.windowtitle) {
                 document.getElementsByTagName("title")[0].textContent = message.newstate.windowtitle;
@@ -100,7 +99,7 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
         }
     };
 
-    session.onclose = function() {
+    session.onclose = function () {
         soundPlayer.cancelAllSounds();
     };
 
@@ -114,7 +113,7 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
 
     canvas.addEventListener("contextmenu", function (ev) {
         contextMenu.dismiss();
-        const sprites = render.findSprites(ev, gameSprites);
+        const sprites = render.findSprites(ev);
         const menu = [];
         for (let i = 0; i < sprites.length; i++) {
             const sprite = sprites[i];

@@ -7,7 +7,12 @@ function Canvas(canvas, imageLoader) {
     this.height = 672;
     this.aspectRatio = this.width / this.height;
     this.aspectShiftX = this.aspectShiftY = 0;
+    this.gameSprites = [];
 }
+
+Canvas.prototype.updateSprites = function (sprites) {
+    this.gameSprites = sprites;
+};
 
 Canvas.prototype.startRender = function (fill) {
     this.canvas.width = this.width;
@@ -27,45 +32,40 @@ Canvas.prototype.renderLoading = function (message) {
     ctx.fillText(message, this.width / 2, this.height / 2);
 };
 
-Canvas.prototype.renderGame = function (sprites) {
+Canvas.prototype.prepareRenderImage = function (sprite) {
+    const info = this.imageLoader.prepareImage(sprite);
+    if (!info) {
+        return null;
+    }
+    info.dx = this.aspectShiftX + sprite.x;
+    info.dy = this.aspectShiftY + this.height - sprite.y - info.dh;
+    return info;
+};
+
+Canvas.prototype.renderGame = function () {
     const ctx = this.startRender('rgb(0,0,0)');
-    for (let i = 0; i < sprites.length; i++) {
-        const sprite = sprites[i];
+    for (let i = 0; i < this.gameSprites.length; i++) {
+        const sprite = this.gameSprites[i];
         if (sprite.icon && sprite.x !== undefined && sprite.y !== undefined) {
-            const image = this.imageLoader.getImage(sprite.icon);
-            if (!image) {
+            const info = this.prepareRenderImage(sprite);
+            if (!info) {
                 continue;
             }
-            const sw = sprite.sw || image.width;
-            const sh = sprite.sh || image.height;
-            const drawW = sprite.w || sw;
-            const drawH = sprite.h || sh;
-            const drawX = this.aspectShiftX + sprite.x;
-            const drawY = this.aspectShiftY + this.height - sprite.y - drawH;
-            ctx.drawImage(image,
-                sprite.sx || 0, sprite.sy || 0, sw, sh,
-                drawX, drawY, drawW, drawH);
+            ctx.drawImage(info.img,
+                info.sx, info.sy, info.sw, info.sh,
+                info.dx, info.dy, info.dw, info.dh);
         }
     }
 };
 
-Canvas.prototype.findSprites = function (ev, gameSprites) {
+Canvas.prototype.findSprites = function (ev) {
     const pos = this.getMousePosition(ev);
     const sprites = [];
-    for (let i = 0; i < gameSprites.length; i++) {
-        const sprite = gameSprites[i];
+    for (let i = 0; i < this.gameSprites.length; i++) {
+        const sprite = this.gameSprites[i];
         if (sprite.icon && sprite.x !== undefined && sprite.y !== undefined) {
-            const image = this.imageLoader.getImage(sprite.icon);
-            if (!image) {
-                continue;
-            }
-            const sw = sprite.sw || image.width;
-            const sh = sprite.sh || image.height;
-            const drawW = sprite.w || sw;
-            const drawH = sprite.h || sh;
-            const drawX = this.aspectShiftX + sprite.x;
-            const drawY = this.aspectShiftY + this.height - sprite.y - drawH;
-            if (pos.x >= drawX && pos.y >= drawY && pos.x < drawX + drawW && pos.y < drawY + drawH) {
+            const info = this.prepareRenderImage(sprite);
+            if (info && pos.x >= info.dx && pos.y >= info.dy && pos.x < info.dx + info.dw && pos.y < info.dy + info.dh) {
                 sprites.push(sprite);
             }
         }

@@ -58,7 +58,7 @@ ImageLoader.prototype.load = function (images) {
 };
 
 ImageLoader.prototype.getImage = function (image) {
-    if (image === "") {
+    if (!image) {
         return null;
     }
     if (!this.isLoaded()) {
@@ -71,4 +71,57 @@ ImageLoader.prototype.getImage = function (image) {
         return null;
     }
     return loaded;
+};
+
+ImageLoader.prototype.prepareImage = function (sprite) {
+    const image = this.getImage(sprite.icon);
+    if (!image) {
+        return null;
+    }
+    const sx = sprite.sx || 0;
+    const sy = sprite.sy || 0;
+    const sw = sprite.sw || image.width;
+    const sh = sprite.sh || image.height;
+    const drawW = sprite.w || sw;
+    const drawH = sprite.h || sh;
+    return {
+        "img": image,
+        "sx": sx,
+        "sy": sy,
+        "sw": sw,
+        "sh": sh,
+        "dw": drawW,
+        "dh": drawH,
+    };
+};
+
+ImageLoader.prototype.updateHTMLIcon = function (sprite, imgBox) {
+    const info = this.prepareImage(sprite);
+    if (!info) {
+        if (imgBox.children.length > 0) {
+            imgBox.children[0].remove();
+        }
+        imgBox.style.width = "";
+        imgBox.style.height = "";
+        imgBox.style.overflow = "";
+        return null;
+    } else {
+        imgBox.style.width = info.sw + "px";
+        imgBox.style.height = info.sh + "px";
+        imgBox.style.overflow = "hidden";
+        if (imgBox.children.length > 0 && imgBox.children[0].src !== info.img.src) {
+            imgBox.children[0].remove();
+        }
+        if (imgBox.children.length === 0) {
+            imgBox.appendChild(info.img.cloneNode(true));
+        }
+        imgBox.children[0].marginLeft = "-" + info.sx + "px";
+        imgBox.children[0].marginTop = "-" + info.sy + "px";
+        return imgBox;
+    }
+};
+
+ImageLoader.prototype.buildHTMLIcon = function (sprite) {
+    const imgBox = document.createElement("div");
+    return this.updateHTMLIcon(sprite, imgBox);
 };
