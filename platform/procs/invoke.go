@@ -77,7 +77,7 @@ func KWInvoke(w atoms.World, usr *types.Datum, name string, kwargs map[string]ty
 	case "get_dir":
 		util.FIXME("should we do anything with the Z direction?")
 		x1, y1 := world.XY(types.Param(args, 0))
-		x2, y2 := world.XY(types.Param(args, 0))
+		x2, y2 := world.XY(types.Param(args, 1))
 		return common.GetDir(x1, y1, x2, y2)
 	case "flick":
 		panic("unimplemented: flick")
