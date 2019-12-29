@@ -13,19 +13,34 @@ type AtomData struct {
 	VarAppearance Appearance
 	VarDensity    int
 	VarOpacity    int
-	VarDir        common.Direction
 	VarVerbs      []Verb
+	direction     common.Direction
 	location      *types.Ref
 	contents      []*types.Ref
 }
 
 func NewAtomData(src *types.Datum, data *AtomData, args ...types.Value) {
-	data.VarDir = common.South
+	data.direction = common.South
 	data.VarAppearance = Appearance{
 		Name: "atom",
 	}
 	if len(args) >= 1 {
 		data.SetLoc(src, args[0])
+	}
+}
+
+func (d *AtomData) GetDir(src *types.Datum) types.Value {
+	return d.direction
+}
+
+func (d *AtomData) SetDir(src *types.Datum, value types.Value) {
+	// when we set 'dir' to zero, it should retain its previous value; but other settings are less clear.
+	// in at least some cases (like setting dir=100), the variable does take on the higher integer value.
+	util.FIXME("figure out the right way to handle edge case values")
+
+	dir := value.(common.Direction)
+	if dir.IsValid() {
+		d.direction = dir
 	}
 }
 
