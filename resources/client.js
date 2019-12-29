@@ -93,14 +93,20 @@ function prepareGame(canvas, inputsource, verbentry, paneltabs, panelbody, texto
             statPanels.update(message.newstate.verbs || [], message.newstate.stats.panels || {});
         }
         if (message.textlines) {
-            for (var i = 0; i < message.textlines.length; i++) {
+            for (let i = 0; i < message.textlines.length; i++) {
                 displayText(message.textlines[i]);
             }
         }
         if (message.sounds) {
-            for (var j = 0; j < message.sounds.length; j++) {
-                var sound = message.sounds[j];
+            for (let i = 0; i < message.sounds.length; i++) {
+                const sound = message.sounds[i];
                 soundPlayer.playSound(sound);
+            }
+        }
+        if (message.flicks) {
+            for (let i = 0; i < message.flicks.length; i++) {
+                const flick = message.flicks[i];
+                render.applyFlick(flick);
             }
         }
     };

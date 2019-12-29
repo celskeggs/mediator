@@ -5,6 +5,7 @@ import (
 	"github.com/celskeggs/mediator/common"
 	"github.com/celskeggs/mediator/platform/atoms"
 	"github.com/celskeggs/mediator/platform/datum"
+	"github.com/celskeggs/mediator/platform/icon"
 	"github.com/celskeggs/mediator/platform/types"
 	"github.com/celskeggs/mediator/platform/world"
 	"github.com/celskeggs/mediator/util"
@@ -80,7 +81,19 @@ func KWInvoke(w atoms.World, usr *types.Datum, name string, kwargs map[string]ty
 		x2, y2 := world.XY(types.Param(args, 1))
 		return common.GetDir(x1, y1, x2, y2)
 	case "flick":
-		panic("unimplemented: flick")
+		stateOrIcon := types.Param(args, 0)
+		obj := types.Param(args, 1)
+		if !types.IsType(obj, "/atom") {
+			panic("attempt to flick a non-atom")
+		}
+		if s, ok := stateOrIcon.(types.String); ok {
+			w.Flick(obj.Var("icon").(*icon.Icon), types.Unstring(s), obj)
+		} else if i, ok := stateOrIcon.(*icon.Icon); ok {
+			w.Flick(i, types.Unstring(obj.Var("icon_state")), obj)
+		} else {
+			panic("attempt to flick to something that's not an icon state nor an icon")
+		}
+		return nil
 	default:
 		panic(fmt.Sprintf("unimplemented global function %q", name))
 	}

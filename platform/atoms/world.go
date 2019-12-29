@@ -27,6 +27,7 @@ type World interface {
 	View(distance uint, centerD *types.Datum, mode ViewMode) []types.Value
 	View1(centerD *types.Datum, mode ViewMode) []types.Value
 	ListVerbsOnAtom(client types.Value, atom *types.Datum) (verbs []string)
+	Flick(icon *icon.Icon, icon_state string, target types.Value)
 }
 
 func WorldOf(t *types.Datum) World {

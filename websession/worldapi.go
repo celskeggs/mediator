@@ -12,7 +12,7 @@ type PlayerAPI interface {
 	IsValid() bool
 	Command(cmd webclient.Command)
 	Render() sprite.SpriteView
-	PullRequests() (lines []string, sounds []sprite.Sound)
+	PullRequests() (lines []string, sounds []sprite.Sound, flicks []sprite.Flick)
 }
 
 type WorldAPI interface {

@@ -1,10 +1,12 @@
 package world
 
 import (
+	"github.com/celskeggs/mediator/common"
 	"github.com/celskeggs/mediator/platform/atoms"
 	"github.com/celskeggs/mediator/platform/icon"
 	"github.com/celskeggs/mediator/platform/types"
 	"github.com/celskeggs/mediator/util"
+	"github.com/celskeggs/mediator/webclient/sprite"
 	"github.com/celskeggs/mediator/websession"
 )
 
@@ -128,6 +130,26 @@ func (w *World) UpdateDefaultViewDistance() {
 
 func (w *World) Icon(name string) *icon.Icon {
 	return w.iconCache.LoadOrPanic(name)
+}
+
+func (w *World) Flick(icon *icon.Icon, iconState string, target types.Value) {
+	appearance := target.Var("appearance").(atoms.Appearance)
+	appearance.Icon = icon
+	appearance.IconState = iconState
+	ok, _, s := appearance.ToSprite(0, 0, target.Var("dir").(common.Direction))
+	if !ok {
+		panic("failed to convert appearance to sprite while generating flick")
+	}
+	flick := sprite.Flick{
+		Icon:         s.Icon,
+		Frames:       s.Frames,
+		SourceWidth:  s.SourceWidth,
+		SourceHeight: s.SourceHeight,
+		UID:          target.(*types.Datum).UID(),
+	}
+	for _, client := range w.FindAllType("/client") {
+		FlickClient(client.(*types.Datum), flick)
+	}
 }
 
 func NewWorld(realm *types.Realm, cache *icon.IconCache) *World {

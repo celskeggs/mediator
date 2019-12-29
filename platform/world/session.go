@@ -134,6 +134,6 @@ func (p playerAPI) Render() sprite.SpriteView {
 	return view
 }
 
-func (p playerAPI) PullRequests() (lines []string, sounds []sprite.Sound) {
+func (p playerAPI) PullRequests() (lines []string, sounds []sprite.Sound, flicks []sprite.Flick) {
 	return PullClientRequests(p.Client)
 }

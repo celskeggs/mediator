@@ -22,6 +22,7 @@ type ClientData struct {
 	eye         *types.Ref
 	textBuffer  []string
 	soundBuffer []sprite.Sound
+	flicks      []sprite.Flick
 	statDisplay sprite.StatDisplay
 }
 
@@ -170,12 +171,18 @@ func ClientDataChunk(v types.Value) (*types.Datum, *ClientData) {
 	return v.(*types.Datum), chunk.(*ClientData)
 }
 
-func PullClientRequests(client *types.Datum) (textDisplay []string, sounds []sprite.Sound) {
+func FlickClient(client *types.Datum, flick sprite.Flick) {
 	_, d := ClientDataChunk(client)
-	textDisplay, sounds = d.textBuffer, d.soundBuffer
+	d.flicks = append(d.flicks, flick)
+}
+
+func PullClientRequests(client *types.Datum) (textDisplay []string, sounds []sprite.Sound, flicks []sprite.Flick) {
+	_, d := ClientDataChunk(client)
+	textDisplay, sounds, flicks = d.textBuffer, d.soundBuffer, d.flicks
 	d.textBuffer = nil
 	d.soundBuffer = nil
-	return textDisplay, sounds
+	d.flicks = nil
+	return textDisplay, sounds, flicks
 }
 
 func (w *World) RenderClientView(client types.Value) (center types.Value, viewAtoms []types.Value, stat sprite.StatDisplay, verbs []string, verbsOn map[*types.Datum][]string) {

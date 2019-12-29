@@ -42,6 +42,14 @@ func (s GameSprite) Equal(o GameSprite) bool {
 	return true
 }
 
+type Flick struct {
+	Icon         string          `json:"icon"`
+	Frames       []icon.SourceXY `json:"frames"`
+	SourceWidth  uint            `json:"sw"`
+	SourceHeight uint            `json:"sh"`
+	UID          uint64          `json:"uid"`
+}
+
 type StatEntry struct {
 	Label        string          `json:"label"`
 	Icon         string          `json:"icon"`

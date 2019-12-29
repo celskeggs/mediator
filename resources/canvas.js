@@ -73,6 +73,10 @@ Canvas.prototype.renderGame = function () {
     this.frameID += 1;
 };
 
+Canvas.prototype.applyFlick = function (flick) {
+    this.imageLoader.applyFlick(flick, this.animationInfo);
+};
+
 Canvas.prototype.findSprites = function (ev) {
     const pos = this.getMousePosition(ev);
     const sprites = [];

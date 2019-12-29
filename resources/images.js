@@ -85,30 +85,66 @@ function framesEq(a, b) {
     return true;
 }
 
+ImageLoader.prototype.getAnimationInfo = function (uid, animationInfoMap, create) {
+    let animationInfo = animationInfoMap["#" + uid];
+    if (!animationInfo) {
+        if (!create) {
+            return null;
+        }
+        animationInfoMap["#" + uid] = animationInfo = {
+            "icon": null,
+            "frames": [],  // sentinel value; no actual frames list will be empty
+            "start": 0,
+            "flicking": false,
+        };
+    }
+    return animationInfo;
+};
+
+// this doesn't really belong here, except that this is where the other animationInfoMap handling is kept
+// FIXME: put all of the animation-handling code somewhere more reasonable
+ImageLoader.prototype.applyFlick = function (flick, animationInfoMap) {
+    const animationInfo = this.getAnimationInfo(flick.uid, animationInfoMap, true);
+    animationInfo.flicking = true;
+    animationInfo.icon = flick.icon;
+    animationInfo.frames = flick.frames;
+    animationInfo.start = null;
+};
+
 ImageLoader.prototype.prepareImage = function (sprite, animationInfoMap, frameID) {
-    const image = this.getImage(sprite.icon);
+    let icon = sprite.icon;
+    let frames = sprite.frames;
+    let frame = 0;
+    if (animationInfoMap) {
+        const needed = sprite.frames.length > 1;
+        const animationInfo = this.getAnimationInfo(sprite.uid, animationInfoMap, needed);
+        if (animationInfo !== null && (needed || animationInfo.flicking)) {
+            if (animationInfo.start === null) {
+                animationInfo.start = frameID;
+            }
+            if (animationInfo.flicking && frameID >= animationInfo.start + animationInfo.frames.length) {
+                animationInfo.flicking = false;
+                // reset to sentinel values so we'll always reload the frame state
+                animationInfo.icon = null;
+                animationInfo.frames = [];
+            }
+            if (animationInfo.flicking) {
+                icon = animationInfo.icon;
+                frames = animationInfo.frames;
+            } else if (animationInfo.icon !== sprite.icon || !framesEq(animationInfo.frames, sprite.frames)) {
+                animationInfo.icon = sprite.icon;
+                animationInfo.frames = sprite.frames;
+                animationInfo.start = frameID;
+            }
+            frame = (frameID - animationInfo.start) % animationInfo.frames.length;
+        }
+    }
+    const image = this.getImage(icon);
     if (!image) {
         return null;
     }
-    let frame = 0;
-    if (animationInfoMap && sprite.frames.length > 1) {
-        let animationInfo = animationInfoMap["#" + sprite.uid];
-        if (!animationInfo) {
-            animationInfoMap["#" + sprite.uid] = animationInfo = {
-                "icon": null,
-                "frames": [],  // sentinel value; no actual frames list will be empty
-                "start": 0,
-            };
-        }
-        if (animationInfo.icon !== sprite.icon || !framesEq(animationInfo.frames, sprite.frames)) {
-            animationInfo.icon = sprite.icon;
-            animationInfo.frames = sprite.frames;
-            animationInfo.start = frameID;
-        }
-        frame = (frameID - animationInfo.start) % sprite.frames.length;
-    }
-    const sx = sprite.frames[frame].x || 0;
-    const sy = sprite.frames[frame].y || 0;
+    const sx = frames[frame].x;
+    const sy = frames[frame].y;
     const sw = sprite.sw || image.width;
     const sh = sprite.sh || image.height;
     const drawW = sprite.w || sw;
