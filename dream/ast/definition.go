@@ -94,6 +94,39 @@ func (t ProcArgumentAs) String() string {
 	}
 }
 
+func ProcArgumentFromString(arg string) ProcArgumentAs {
+	switch arg {
+	case "text":
+		return ProcArgumentText
+	case "message":
+		return ProcArgumentMessage
+	case "num":
+		return ProcArgumentNum
+	case "icon":
+		return ProcArgumentIcon
+	case "sound":
+		return ProcArgumentSound
+	case "file":
+		return ProcArgumentFile
+	case "key":
+		return ProcArgumentKey
+	case "null":
+		return ProcArgumentNull
+	case "mob":
+		return ProcArgumentMob
+	case "obj":
+		return ProcArgumentObj
+	case "turf":
+		return ProcArgumentTurf
+	case "area":
+		return ProcArgumentArea
+	case "anything":
+		return ProcArgumentAnything
+	default:
+		return ProcArgumentNone
+	}
+}
+
 /*
  * So here's the weird thing with verb types.
  *

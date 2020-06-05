@@ -33,10 +33,21 @@ func parseFunctionArguments(i *input) ([]ast.ProcArgument, error) {
 		if err != nil {
 			return nil, err
 		}
+		asType := ast.ProcArgumentNone
+		if i.Accept(tokenizer.TokKeywordAs) {
+			tok, err := i.ExpectParam(tokenizer.TokSymbol)
+			if err != nil {
+				return nil, err
+			}
+			asType = ast.ProcArgumentFromString(tok.Str)
+			if asType == ast.ProcArgumentNone {
+				return nil, fmt.Errorf("invalid proc argument 'as' type: %q", tok.Str)
+			}
+		}
 		args = append(args, ast.ProcArgument{
 			Type: dtype.FromPath(typePath),
 			Name: varName,
-			As:   ast.ProcArgumentNone,
+			As:   asType,
 		})
 		if !i.Accept(tokenizer.TokComma) {
 			break
