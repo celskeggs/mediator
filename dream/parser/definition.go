@@ -9,14 +9,14 @@ import (
 	"github.com/celskeggs/mediator/dream/tokenizer"
 )
 
-func parseFunctionArguments(i *input) ([]ast.TypedName, error) {
+func parseFunctionArguments(i *input) ([]ast.ProcArgument, error) {
 	if err := i.Expect(tokenizer.TokParenOpen); err != nil {
 		return nil, err
 	}
 	if i.Accept(tokenizer.TokParenClose) {
 		return nil, nil
 	}
-	var args []ast.TypedName
+	var args []ast.ProcArgument
 	for {
 		loc := i.Peek().Loc
 		declPath, err := parsePath(i)
@@ -33,9 +33,10 @@ func parseFunctionArguments(i *input) ([]ast.TypedName, error) {
 		if err != nil {
 			return nil, err
 		}
-		args = append(args, ast.TypedName{
+		args = append(args, ast.ProcArgument{
 			Type: dtype.FromPath(typePath),
 			Name: varName,
+			As:   ast.ProcArgumentNone,
 		})
 		if !i.Accept(tokenizer.TokComma) {
 			break
@@ -48,13 +49,15 @@ func parseFunctionArguments(i *input) ([]ast.TypedName, error) {
 	return args, nil
 }
 
-func parseFunctionBody(i *input, srcType path.TypePath, arguments []ast.TypedName) ([]ast.Statement, error) {
+func parseFunctionBody(i *input, srcType path.TypePath, arguments []ast.ProcArgument) ([]ast.Statement, error) {
 	if i.Accept(tokenizer.TokNewline) {
 		// empty function body
 		return nil, nil
 	}
 	variables := make([]ast.TypedName, len(arguments))
-	copy(variables, arguments)
+	for j, arg := range arguments {
+		variables[j] = arg.ToTypedName()
+	}
 	variables = append(variables,
 		ast.TypedName{
 			Type: dtype.Path(srcType),

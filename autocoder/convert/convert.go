@@ -125,7 +125,7 @@ func AssignPath(dt *gen.DefinedTree, path path.TypePath, variable string, expr a
 	return nil
 }
 
-func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string, arguments []ast.TypedName, body []ast.Statement, loc tokenizer.SourceLocation) error {
+func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string, arguments []ast.ProcArgument, body []ast.Statement, loc tokenizer.SourceLocation) error {
 	if !dt.Exists(path) {
 		return fmt.Errorf("no such path %v for implementation of function %v at %v", path, function, loc)
 	}

@@ -45,13 +45,89 @@ type TypedName struct {
 	Name string
 }
 
+type ProcArgumentAs int
+
+const (
+	ProcArgumentNone ProcArgumentAs = iota
+	ProcArgumentText
+	ProcArgumentMessage
+	ProcArgumentNum
+	ProcArgumentIcon
+	ProcArgumentSound
+	ProcArgumentFile
+	ProcArgumentKey
+	ProcArgumentNull
+	ProcArgumentMob
+	ProcArgumentObj
+	ProcArgumentTurf
+	ProcArgumentArea
+	ProcArgumentAnything
+)
+
+func (t ProcArgumentAs) String() string {
+	switch t {
+	case ProcArgumentNone:
+		return "none"
+	case ProcArgumentText:
+		return "text"
+	case ProcArgumentMessage:
+		return "message"
+	case ProcArgumentNum:
+		return "num"
+	case ProcArgumentIcon:
+		return "icon"
+	case ProcArgumentSound:
+		return "sound"
+	case ProcArgumentFile:
+		return "file"
+	case ProcArgumentKey:
+		return "key"
+	case ProcArgumentNull:
+		return "null"
+	case ProcArgumentMob:
+		return "mob"
+	case ProcArgumentObj:
+		return "obj"
+	case ProcArgumentTurf:
+		return "turf"
+	case ProcArgumentArea:
+		return "area"
+	case ProcArgumentAnything:
+		return "anything"
+	default:
+		panic(fmt.Sprintf("unexpected proc argument as-type %d", t))
+	}
+}
+
+/*
+ * So here's the weird thing with verb types.
+ *
+ * You can do verb/V(obj/test), and it does the same thing as verb/V(test as obj)
+ * But it's ALSO the same as verb/V(obj/cheese/test)!
+ *
+ * So clearly these are different, orthogonal properties of a verb parameter type.
+ */
+
+type ProcArgument struct {
+	Type dtype.DType
+	Name string
+	As   ProcArgumentAs // for verbs
+}
+
+func (a ProcArgument) ToTypedName() TypedName {
+	return TypedName{
+		Type: a.Type,
+		Name: a.Name,
+	}
+}
+
 type Definition struct {
 	Type       DefType
 	Path       path.TypePath
 	VarType    path.TypePath
 	Variable   string
 	Expression Expression
-	Arguments  []TypedName
+	Arguments  []ProcArgument
 	Body       []Statement
 	SourceLoc  tokenizer.SourceLocation
 }
@@ -102,7 +178,7 @@ func DefVerbDecl(path path.TypePath, variable string, location tokenizer.SourceL
 	}
 }
 
-func DefImplement(path path.TypePath, function string, arguments []TypedName, body []Statement, location tokenizer.SourceLocation) Definition {
+func DefImplement(path path.TypePath, function string, arguments []ProcArgument, body []Statement, location tokenizer.SourceLocation) Definition {
 	return Definition{
 		Type:      DefTypeImplement,
 		Path:      path,
