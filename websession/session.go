@@ -28,7 +28,8 @@ func (ws worldServer) Connect() webclient.ServerSession {
 		Subscription: subscription,
 	}
 	ws.SingleThread.Run("AddPlayer()", func() {
-		session.Player = ws.World.AddPlayer()
+		util.FIXME("actually populate the key, rather than always using a Guest")
+		session.Player = ws.World.AddPlayer("")
 		ws.Subscribers[subscription] = struct{}{}
 	})
 	return session

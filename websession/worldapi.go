@@ -16,7 +16,7 @@ type PlayerAPI interface {
 }
 
 type WorldAPI interface {
-	AddPlayer() PlayerAPI
+	AddPlayer(key string) PlayerAPI
 	Tick()
 	// only a single call to SubscribeToUpdates needs to be supported by the WorldAPI
 	SubscribeToUpdates() <-chan struct{}

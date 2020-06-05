@@ -1,6 +1,7 @@
 package world
 
 import (
+	"fmt"
 	"github.com/celskeggs/mediator/common"
 	"github.com/celskeggs/mediator/platform/atoms"
 	"github.com/celskeggs/mediator/platform/types"
@@ -8,6 +9,7 @@ import (
 	"github.com/celskeggs/mediator/webclient"
 	"github.com/celskeggs/mediator/webclient/sprite"
 	"github.com/celskeggs/mediator/websession"
+	"math/rand"
 	"sort"
 )
 
@@ -18,9 +20,11 @@ type worldAPI struct {
 
 var _ websession.WorldAPI = &worldAPI{}
 
-func (w *worldAPI) AddPlayer() websession.PlayerAPI {
-	util.FIXME("get a key for this")
-	client := w.World.CreateNewPlayer("")
+func (w *worldAPI) AddPlayer(key string) websession.PlayerAPI {
+	if key == "" {
+		key = fmt.Sprintf("Guest-%v", rand.Uint64())
+	}
+	client := w.World.CreateNewPlayer(key)
 	if !types.IsType(client.Var("mob"), "/mob") {
 		panic("nonexistent or invalid mob")
 	}

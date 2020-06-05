@@ -195,12 +195,16 @@ func (w *World) RenderClientView(client types.Value) (center types.Value, viewAt
 	return veye, w.ViewX(view, veye, eye, atoms.ViewVisual), cc.statDisplay, verbs, verbsOn
 }
 
-func (w *World) constructNewMob() types.Value {
+func (w *World) constructNewMob(key string) types.Value {
 	mob := w.Realm().New(w.Mob, nil)
 	if !types.IsType(mob, "/mob") {
 		panic("constructed mob is not a /mob")
 	}
-	util.FIXME("initialize name and gender")
+	if key == "" {
+		panic("not sure what to do when key is an empty string")
+	}
+	mob.SetVar("name", types.String(key))
+	util.FIXME("initialize default gender")
 	return mob
 }
 
@@ -217,7 +221,7 @@ func (d *ClientData) ProcNew(src *types.Datum, _ *types.Datum, usr types.Value) 
 	mob := usr
 	util.FIXME("add support for 'prototype mobs'")
 	if mob == nil {
-		mob = atoms.WorldOf(src).(*World).constructNewMob()
+		mob = atoms.WorldOf(src).(*World).constructNewMob(d.VarKey)
 	}
 	util.NiceToHave("add support for Topics")
 	d.SetMob(src, mob)
