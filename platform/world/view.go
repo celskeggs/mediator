@@ -117,7 +117,10 @@ func (w *World) ViewXLocations(distance uint, center *types.Datum, perspective *
 
 	util.FIXME("include areas")
 
-	location := perspective.Var("loc")
+	var location types.Value = perspective
+	if !types.IsType(location, "/turf") {
+		location = perspective.Var("loc")
+	}
 	if types.IsType(location, "/turf") {
 		tz := types.Unuint(location.Var("z"))
 		turfs := w.FindAll(func(turf *types.Datum) bool {

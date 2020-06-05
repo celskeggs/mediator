@@ -48,6 +48,10 @@ func (w *worldAPI) Tick() {
 			client.statDisplay = sprite.StatDisplay{}
 		}
 	}
+	// update walk
+	for _, movable := range w.World.FindAllType("/atom/movable") {
+		UpdateWalk(movable)
+	}
 	w.Update()
 }
 

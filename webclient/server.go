@@ -86,6 +86,6 @@ func LaunchHTTP(api ServerAPI) error {
 	if err != nil {
 		return errors.Wrap(err, "preparing server")
 	}
-	println("launching server...")
+	println("launching server... visit http://localhost:8080/")
 	return http.ListenAndServe(":8080", mux)
 }

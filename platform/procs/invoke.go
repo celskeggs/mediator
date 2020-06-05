@@ -2,7 +2,6 @@ package procs
 
 import (
 	"fmt"
-	"github.com/celskeggs/mediator/common"
 	"github.com/celskeggs/mediator/platform/atoms"
 	"github.com/celskeggs/mediator/platform/datum"
 	"github.com/celskeggs/mediator/platform/icon"
@@ -29,10 +28,25 @@ func KWInvoke(w atoms.World, usr *types.Datum, name string, kwargs map[string]ty
 		}
 		return datum.NewList(w.View1(usr, atoms.ViewExclusive)...)
 	case "view":
-		if usr == nil {
-			panic("usr was nil when calling view")
+		if len(args) >= 2 {
+			dist := types.Unuint(args[0])
+			d, ok := args[1].(*types.Datum)
+			if !ok {
+				panic("view(center) requires that center be a datum")
+			}
+			return datum.NewList(w.View(dist, d, atoms.ViewInclusive)...)
+		} else if len(args) == 1 {
+			d, ok := args[0].(*types.Datum)
+			if !ok {
+				panic("view(center) requires that center be a datum")
+			}
+			return datum.NewList(w.View1(d, atoms.ViewInclusive)...)
+		} else {
+			if usr == nil {
+				panic("usr was nil when calling view")
+			}
+			return datum.NewList(w.View1(usr, atoms.ViewInclusive)...)
 		}
-		return datum.NewList(w.View1(usr, atoms.ViewInclusive)...)
 	case "stat":
 		if usr == nil {
 			panic("usr is nil during attempt to use stat()")
@@ -74,12 +88,26 @@ func KWInvoke(w atoms.World, usr *types.Datum, name string, kwargs map[string]ty
 			return types.FromBool(visible)
 		}
 	case "walk_to":
-		panic("unimplemented: walk_to")
+		var min, lag int
+		if len(args) > 2 {
+			min = types.Unint(types.Param(args, 2))
+		}
+		if len(args) > 3 {
+			lag = types.Unint(types.Param(args, 3))
+		}
+		world.WalkTo(types.Param(args, 0), types.Param(args, 1), min, lag)
+		return nil
+	case "step_to":
+		var min int
+		if len(args) >= 2 {
+			min = types.Unint(types.Param(args, 2))
+		} else {
+			min = 0
+		}
+		return types.FromBool(world.StepTo(usr, types.Param(args, 0), types.Param(args, 1), min))
 	case "get_dir":
 		util.FIXME("should we do anything with the Z direction?")
-		x1, y1 := world.XY(types.Param(args, 0))
-		x2, y2 := world.XY(types.Param(args, 1))
-		return common.GetDir(x1, y1, x2, y2)
+		return world.GetDir(types.Param(args, 0), types.Param(args, 1))
 	case "flick":
 		stateOrIcon := types.Param(args, 0)
 		obj := types.Param(args, 1)
