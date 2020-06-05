@@ -49,26 +49,18 @@ func parseFunctionArguments(i *input) ([]ast.ProcArgument, error) {
 	return args, nil
 }
 
-func parseFunctionBody(i *input, srcType path.TypePath, arguments []ast.ProcArgument) ([]ast.Statement, error) {
+func parseFunctionBody(i *input, arguments []ast.ProcArgument) ([]ast.Statement, error) {
 	if i.Accept(tokenizer.TokNewline) {
 		// empty function body
 		return nil, nil
 	}
-	variables := make([]ast.TypedName, len(arguments))
-	for j, arg := range arguments {
-		variables[j] = arg.ToTypedName()
+	scope := NewScope()
+	for _, arg := range arguments {
+		scope.AddVar(arg.Name)
 	}
-	variables = append(variables,
-		ast.TypedName{
-			Type: dtype.Path(srcType),
-			Name: "src",
-		},
-		ast.TypedName{
-			Type: dtype.ConstPath("/mob"),
-			Name: "usr",
-		},
-	)
-	return parseStatementBlock(i, variables)
+	scope.AddVar("src")
+	scope.AddVar("usr")
+	return parseStatementBlock(i, scope)
 }
 
 func parseBlock(i *input, basePath declpath.DeclPath) ([]ast.Definition, error) {
@@ -109,7 +101,7 @@ func parseBlock(i *input, basePath declpath.DeclPath) ([]ast.Definition, error) 
 		if err != nil {
 			return nil, err
 		}
-		body, err := parseFunctionBody(i, procTarget, args)
+		body, err := parseFunctionBody(i, args)
 		if err != nil {
 			return nil, err
 		}
@@ -173,7 +165,7 @@ func parseBlock(i *input, basePath declpath.DeclPath) ([]ast.Definition, error) 
 		if err != nil {
 			return nil, err
 		}
-		body, err := parseFunctionBody(i, typePath, args)
+		body, err := parseFunctionBody(i, args)
 		if err != nil {
 			return nil, err
 		}

@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func parseExpression0(i *input, variables []ast.TypedName) (ast.Expression, error) {
+func parseExpression0(i *input, scope *Scope) (ast.Expression, error) {
 	loc := i.Peek().Loc
 	if i.Accept(tokenizer.TokStringStart) {
 		var subexpressions []ast.Expression
@@ -16,7 +16,7 @@ func parseExpression0(i *input, variables []ast.TypedName) (ast.Expression, erro
 		for !i.Accept(tokenizer.TokStringEnd) {
 			partLoc := i.Peek().Loc
 			if i.Accept(tokenizer.TokStringInsertStart) {
-				expr, err := parseExpression(i, variables)
+				expr, err := parseExpression(i, scope)
 				if err != nil {
 					return ast.ExprNone(), err
 				}
@@ -50,7 +50,7 @@ func parseExpression0(i *input, variables []ast.TypedName) (ast.Expression, erro
 		if err != nil {
 			return ast.ExprNone(), err
 		}
-		keywords, exprs, err := parseExpressionArguments(i, variables)
+		keywords, exprs, err := parseExpressionArguments(i, scope)
 		if err != nil {
 			return ast.ExprNone(), err
 		}
@@ -66,12 +66,11 @@ func parseExpression0(i *input, variables []ast.TypedName) (ast.Expression, erro
 		}
 		return ast.ExprPathLiteral(tpath, loc), nil
 	} else if tok, ok := i.AcceptParam(tokenizer.TokSymbol); ok {
-		for _, param := range variables {
-			if tok.Str == param.Name {
-				return ast.ExprGetLocal(tok.Str, loc), nil
-			}
+		if scope.HasVar(tok.Str) {
+			return ast.ExprGetLocal(tok.Str, loc), nil
+		} else {
+			return ast.ExprGetNonLocal(tok.Str, loc), nil
 		}
-		return ast.ExprGetNonLocal(tok.Str, loc), nil
 	} else if i.Accept(tokenizer.TokDot) {
 		util.FIXME("support .()")
 		return ast.ExprGetLocal(".", loc), nil
@@ -82,7 +81,7 @@ func parseExpression0(i *input, variables []ast.TypedName) (ast.Expression, erro
 	}
 }
 
-func parseExpressionArguments(i *input, variables []ast.TypedName) (keywords []string, expressions []ast.Expression, err error) {
+func parseExpressionArguments(i *input, scope *Scope) (keywords []string, expressions []ast.Expression, err error) {
 	if err := i.Expect(tokenizer.TokParenOpen); err != nil {
 		return nil, nil, err
 	}
@@ -101,7 +100,7 @@ func parseExpressionArguments(i *input, variables []ast.TypedName) (keywords []s
 				panic("should have been no way for the next token to not be TokSetEqual")
 			}
 		}
-		expr, err := parseExpression(i, variables)
+		expr, err := parseExpression(i, scope)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -117,15 +116,15 @@ func parseExpressionArguments(i *input, variables []ast.TypedName) (keywords []s
 	return keywords, expressions, nil
 }
 
-func parseExpression1(i *input, variables []ast.TypedName) (ast.Expression, error) {
-	expr, err := parseExpression0(i, variables)
+func parseExpression1(i *input, scope *Scope) (ast.Expression, error) {
+	expr, err := parseExpression0(i, scope)
 	if err != nil {
 		return ast.ExprNone(), err
 	}
 	for {
 		loc := i.Peek().Loc
 		if i.Peek().TokenType == tokenizer.TokParenOpen {
-			keywords, exprs, err := parseExpressionArguments(i, variables)
+			keywords, exprs, err := parseExpressionArguments(i, scope)
 			if err != nil {
 				return ast.ExprNone(), err
 			}
@@ -142,14 +141,14 @@ func parseExpression1(i *input, variables []ast.TypedName) (ast.Expression, erro
 	}
 }
 
-func parseExpression(i *input, variables []ast.TypedName) (ast.Expression, error) {
+func parseExpression(i *input, scope *Scope) (ast.Expression, error) {
 	loc := i.Peek().Loc
 	if i.Accept(tokenizer.TokNot) {
-		expr, err := parseExpression1(i, variables)
+		expr, err := parseExpression1(i, scope)
 		if err != nil {
 			return ast.ExprNone(), err
 		}
 		return ast.ExprBooleanNot(expr, loc), nil
 	}
-	return parseExpression1(i, variables)
+	return parseExpression1(i, scope)
 }

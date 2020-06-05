@@ -8,30 +8,20 @@ import (
 	"github.com/celskeggs/mediator/util"
 )
 
-func addVar(vars []ast.TypedName, varType dtype.DType, varName string) []ast.TypedName {
-	result := make([]ast.TypedName, len(vars)+1)
-	copy(result, vars)
-	result[len(vars)] = ast.TypedName{
-		Type: varType,
-		Name: varName,
-	}
-	return result
-}
-
-func parseStatement(i *input, variables []ast.TypedName) (ast.Statement, error) {
+func parseStatement(i *input, scope *Scope) (ast.Statement, error) {
 	loc := i.Peek().Loc
 	if i.Accept(tokenizer.TokKeywordIf) {
 		if err := i.Expect(tokenizer.TokParenOpen); err != nil {
 			return ast.StatementNone(), err
 		}
-		condition, err := parseExpression(i, variables)
+		condition, err := parseExpression(i, scope)
 		if err != nil {
 			return ast.StatementNone(), err
 		}
 		if err := i.Expect(tokenizer.TokParenClose); err != nil {
 			return ast.StatementNone(), err
 		}
-		statements, err := parseStatementBlock(i, variables)
+		statements, err := parseStatementBlock(i, scope)
 		if err != nil {
 			return ast.StatementNone(), err
 		}
@@ -58,14 +48,16 @@ func parseStatement(i *input, variables []ast.TypedName) (ast.Statement, error) 
 		}
 		var inExpr ast.Expression
 		if i.Accept(tokenizer.TokKeywordIn) {
-			if inExpr, err = parseExpression(i, variables); err != nil {
+			if inExpr, err = parseExpression(i, scope); err != nil {
 				return ast.StatementNone(), err
 			}
 		}
 		if err := i.Expect(tokenizer.TokParenClose); err != nil {
 			return ast.StatementNone(), err
 		}
-		body, err := parseStatementBlock(i, addVar(variables, varType, varName))
+		scope.AddVar(varName)
+		body, err := parseStatementBlock(i, scope)
+		scope.RemoveVar(varName)
 		if err != nil {
 			return ast.StatementNone(), err
 		}
@@ -88,7 +80,7 @@ func parseStatement(i *input, variables []ast.TypedName) (ast.Statement, error) 
 				return ast.StatementNone(), err
 			}
 		}
-		expr, err := parseExpression(i, variables)
+		expr, err := parseExpression(i, scope)
 		if err != nil {
 			return ast.StatementNone(), err
 		}
@@ -101,7 +93,7 @@ func parseStatement(i *input, variables []ast.TypedName) (ast.Statement, error) 
 			return ast.StatementSetTo(sym.Str, expr, loc), nil
 		}
 	} else if i.Accept(tokenizer.TokKeywordDel) {
-		expr, err := parseExpression(i, variables)
+		expr, err := parseExpression(i, scope)
 		if err != nil {
 			return ast.StatementNone(), err
 		}
@@ -110,7 +102,7 @@ func parseStatement(i *input, variables []ast.TypedName) (ast.Statement, error) 
 		}
 		return ast.StatementDel(expr, loc), nil
 	} else {
-		leftHand, err := parseExpression(i, variables)
+		leftHand, err := parseExpression(i, scope)
 		if err != nil {
 			return ast.StatementNone(), err
 		}
@@ -121,7 +113,7 @@ func parseStatement(i *input, variables []ast.TypedName) (ast.Statement, error) 
 			}
 			return ast.StatementEvaluate(leftHand, loc), nil
 		} else if i.Accept(tokenizer.TokLeftShift) {
-			rightHand, err := parseExpression(i, variables)
+			rightHand, err := parseExpression(i, scope)
 			if err != nil {
 				return ast.StatementNone(), err
 			}
@@ -130,7 +122,7 @@ func parseStatement(i *input, variables []ast.TypedName) (ast.Statement, error) 
 			}
 			return ast.StatementWrite(leftHand, rightHand, loc2), nil
 		} else if i.Accept(tokenizer.TokSetEqual) {
-			rightHand, err := parseExpression(i, variables)
+			rightHand, err := parseExpression(i, scope)
 			if err != nil {
 				return ast.StatementNone(), err
 			}
@@ -144,14 +136,14 @@ func parseStatement(i *input, variables []ast.TypedName) (ast.Statement, error) 
 	}
 }
 
-func parseStatementBlock(i *input, variables []ast.TypedName) ([]ast.Statement, error) {
+func parseStatementBlock(i *input, scope *Scope) ([]ast.Statement, error) {
 	err := i.Expect(tokenizer.TokIndent)
 	if err != nil {
 		return nil, err
 	}
 	var statements []ast.Statement
 	for i.Peek().TokenType != tokenizer.TokUnindent {
-		statement, err := parseStatement(i, variables)
+		statement, err := parseStatement(i, scope)
 		if err != nil {
 			return nil, err
 		}

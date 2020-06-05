@@ -40,11 +40,6 @@ func (t DefType) String() string {
 	}
 }
 
-type TypedName struct {
-	Type dtype.DType
-	Name string
-}
-
 type ProcArgumentAs int
 
 const (
@@ -112,13 +107,6 @@ type ProcArgument struct {
 	Type dtype.DType
 	Name string
 	As   ProcArgumentAs // for verbs
-}
-
-func (a ProcArgument) ToTypedName() TypedName {
-	return TypedName{
-		Type: a.Type,
-		Name: a.Name,
-	}
 }
 
 type Definition struct {
