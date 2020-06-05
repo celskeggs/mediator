@@ -7,18 +7,45 @@ import (
 
 // A* search algorithm implementation on a grid, accepting diagonal traversal.
 
+type Cost uint32
+
+// we cannot have diagonal costs be the same as the others, because then the path will zig-zag
+const (
+	HorizontalCost Cost = 2
+	VerticalCost   Cost = 2
+	DiagonalCost   Cost = 3
+)
+
 type Point struct {
 	X, Y uint
 }
 
-func (p Point) Adjacent(exists func(Point) bool) (px []Point) {
+type Link struct {
+	Point
+	Cost
+}
+
+func (p Point) Adjacent(exists func(Point) bool) (px []Link) {
 	for x := -1; x <= 1; x++ {
 		for y := -1; y <= 1; y++ {
-			np := Point{
-				X: p.X + uint(x),
-				Y: p.Y + uint(y),
+			var cost Cost
+			if x == 0 && y == 0 {
+				continue
+			} else if x == 0 {
+				cost = VerticalCost
+			} else if y == 0 {
+				cost = HorizontalCost
+			} else {
+				cost = DiagonalCost
 			}
-			if (x != 0 || y != 0) && exists(np) {
+			np := Link{
+				Point{
+					X: p.X + uint(x),
+					Y: p.Y + uint(y),
+				},
+				cost,
+			}
+			if exists(np.Point) {
 				px = append(px, np)
 			}
 		}
@@ -27,7 +54,7 @@ func (p Point) Adjacent(exists func(Point) bool) (px []Point) {
 }
 
 // compute the largest of the horizontal and vertical distance, because diagonals.
-func (p Point) Heuristic(goal Point) uint32 {
+func (p Point) Heuristic(goal Point) Cost {
 	var distX, distY uint
 	if p.X >= goal.X {
 		distX = p.X - goal.X
@@ -39,11 +66,16 @@ func (p Point) Heuristic(goal Point) uint32 {
 	} else {
 		distY = goal.Y - p.Y
 	}
+
+	var diagonals uint
 	if distX > distY {
-		return uint32(distX)
+		diagonals = distY
 	} else {
-		return uint32(distY)
+		diagonals = distX
 	}
+	distX -= diagonals
+	distY -= diagonals
+	return Cost(diagonals)*DiagonalCost + Cost(distX)*HorizontalCost + Cost(distY)*VerticalCost
 }
 
 type PointEntry struct {
@@ -52,8 +84,8 @@ type PointEntry struct {
 
 	hasCameFrom bool
 	cameFrom    Point
-	gScore      uint32
-	fScore      uint32
+	gScore      Cost
+	fScore      Cost
 }
 
 // based on example from https://golang.org/pkg/container/heap/
@@ -144,9 +176,9 @@ func Search(start Point, goal Point, canTraverse func(Point) bool) []Point {
 			return totalPath
 		}
 
-		tentativeGScore := current.gScore + 1
-		for _, neighborPoint := range current.point.Adjacent(canTraverse) {
-			neighbor := ss.GetEntry(neighborPoint)
+		for _, neighborLink := range current.point.Adjacent(canTraverse) {
+			tentativeGScore := current.gScore + neighborLink.Cost
+			neighbor := ss.GetEntry(neighborLink.Point)
 			if tentativeGScore < neighbor.gScore {
 				neighbor.hasCameFrom = true
 				neighbor.cameFrom = current.point
