@@ -87,12 +87,16 @@ func (w *World) ViewX(distance uint, center *types.Datum, perspective *types.Dat
 	locations := w.ViewXLocations(distance, center, perspective)
 	switch mode {
 	case atoms.ViewInclusive:
+		contents := expandWithContents(locations)
 		// make sure that 'perspective' and its contents are in the list of found objects
+		// but also that perspective is not in the output more than once
 		if perspective != nil {
-			locations = append(locations, perspective)
+			if !containsAtom(contents, perspective) {
+				contents = append(contents, perspective)
+			}
+			contents = append(contents, datum.Elements(perspective.Var("contents"))...)
 		}
-		util.FIXME("make sure that perspective is not in the final output twice")
-		return expandWithContents(locations)
+		return contents
 	case atoms.ViewVisual:
 		// include 'perspective' in the list of found objects, but not its contents
 		contents := expandWithContents(locations)
