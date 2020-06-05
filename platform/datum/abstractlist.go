@@ -60,6 +60,13 @@ func (l List) Invoke(usr *types.Datum, name string, parameters ...types.Value) t
 			refsA := ElementsAsRefs(l)
 			return NewListFromRefs(append(refsA, types.Reference(value))...)
 		}
+	case "<<":
+		for _, element := range Elements(l) {
+			if types.IsType(element, "/mob") {
+				element.Invoke(usr, "<<", parameters...)
+			}
+		}
+		return nil
 	default:
 		panic(fmt.Sprintf("unimplemented: list proc %q", name))
 	}
