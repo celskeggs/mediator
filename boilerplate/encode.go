@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/celskeggs/mediator/autocoder/predefs"
 	"github.com/celskeggs/mediator/util"
 	"go/ast"
 	"sort"
@@ -332,7 +331,7 @@ func (i *TypeInfo) Type() string {
 	}
 	var parts []string
 	for _, part := range strings.Split(i.Path[1:], "/") {
-		parts = append(parts, predefs.ToTitle(part))
+		parts = append(parts, util.ToTitle(part))
 	}
 	return strings.Join(parts, "")
 }

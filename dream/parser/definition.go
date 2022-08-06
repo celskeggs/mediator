@@ -7,6 +7,7 @@ import (
 	"github.com/celskeggs/mediator/dream/declpath"
 	"github.com/celskeggs/mediator/dream/path"
 	"github.com/celskeggs/mediator/dream/tokenizer"
+	"github.com/celskeggs/mediator/platform/types"
 )
 
 func parseFunctionArguments(i *input) ([]ast.ProcArgument, error) {
@@ -33,14 +34,14 @@ func parseFunctionArguments(i *input) ([]ast.ProcArgument, error) {
 		if err != nil {
 			return nil, err
 		}
-		asType := ast.ProcArgumentNone
+		asType := types.ProcArgumentNone
 		if i.Accept(tokenizer.TokKeywordAs) {
 			tok, err := i.ExpectParam(tokenizer.TokSymbol)
 			if err != nil {
 				return nil, err
 			}
-			asType = ast.ProcArgumentFromString(tok.Str)
-			if asType == ast.ProcArgumentNone {
+			asType = types.ProcArgumentFromString(tok.Str)
+			if asType == types.ProcArgumentNone {
 				return nil, fmt.Errorf("invalid proc argument 'as' type: %q", tok.Str)
 			}
 		}

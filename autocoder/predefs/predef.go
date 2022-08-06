@@ -7,13 +7,6 @@ import (
 	"strings"
 )
 
-func ToTitle(name string) string {
-	if name == "" {
-		return ""
-	}
-	return strings.ToUpper(name[0:1]) + name[1:]
-}
-
 func PathToDataStructName(path path.TypePath) string {
 	if path.IsEmpty() {
 		panic("cannot convert empty path to string")
@@ -23,7 +16,7 @@ func PathToDataStructName(path path.TypePath) string {
 	}
 	var title []string
 	for _, part := range path.Segments {
-		title = append(title, ToTitle(part))
+		title = append(title, util.ToTitle(part))
 	}
 	title = append(title, "Data")
 	return strings.Join(title, "")

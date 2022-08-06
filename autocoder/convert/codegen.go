@@ -487,7 +487,7 @@ func ParseSrcSetting(expr ast.Expression, stype ast.StatementType) (types.SrcSet
 	}, nil
 }
 
-func ParseSettings(dt *gen.DefinedTree, typePath path.TypePath, body []ast.Statement) (types.ProcSettings, []ast.Statement, error) {
+func ParseSettings(dt *gen.DefinedTree, typePath path.TypePath, arguments []ast.ProcArgument, body []ast.Statement) (types.ProcSettings, []ast.Statement, error) {
 	settings := types.ProcSettings{}
 	settings.Src = DefaultSrcSetting(dt, typePath)
 	setSrc := false
@@ -504,6 +504,18 @@ func ParseSettings(dt *gen.DefinedTree, typePath path.TypePath, body []ast.State
 			setSrc = true
 		}
 		body = body[1:]
+	}
+
+	// So here's the weird thing with verb types.
+	//
+	// You can write verb/V(obj/test), and it does the same thing as verb/V(test as obj)
+	// But it's ALSO the same as verb/V(obj/cheese/test)!
+	//
+	// So clearly, 'as' and 'type' these are different, orthogonal properties of a verb parameter.
+	util.FIXME("when no 'as' is present, we should derive the options from the regular type")
+
+	for _, arg := range arguments {
+		settings.ArgTypes = append(settings.ArgTypes, arg.As)
 	}
 	return settings, body, nil
 }

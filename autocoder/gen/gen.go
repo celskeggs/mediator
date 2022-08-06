@@ -23,7 +23,7 @@ type DefinedField struct {
 }
 
 func (d DefinedField) LongName() string {
-	return predefs.ToTitle(d.Name)
+	return util.ToTitle(d.Name)
 }
 
 type DefinedInit struct {
@@ -360,6 +360,13 @@ func (*{{$type.DataStructName}}) SettingsForProc{{.Name}}() types.ProcSettings {
 {{- end }}
 {{- if .Settings.Src.In }}
 			In: {{.Settings.Src.In}},
+{{- end }}
+		},
+{{- end }}
+{{- if .Settings.ArgTypes }}
+		ArgTypes: []types.ProcArgumentAs {
+{{- range .Settings.ArgTypes }}
+			types.{{.Expression}},
 {{- end }}
 		},
 {{- end }}

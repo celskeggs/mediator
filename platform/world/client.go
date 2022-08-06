@@ -70,6 +70,49 @@ func (d *ClientData) GetVirtualEye(src *types.Datum) types.Value {
 	return d.GetEye(src)
 }
 
+func parseVerb(verb string, argTypes []types.ProcArgumentAs) ([]string, error) {
+	// note: nArgs includes the command, so if nArgs == 3, then the expected length of the return value is 3.
+	nArgs := len(argTypes) + 1
+	verb = strings.TrimLeft(verb, " ")
+	words := strings.Split(verb, " ")
+
+	util.FIXME("more tests for what happens in the presence of multiple spaces in a row")
+
+	inQuotes := false
+	var collect []string
+	var args []string
+	for _, w := range words {
+		if inQuotes {
+			end := strings.HasSuffix(w, "\"")
+			if end {
+				w = w[:len(w)-1]
+			}
+			collect = append(collect, w)
+			if end {
+				args = append(args, strings.Join(collect, " "))
+				collect = nil
+				inQuotes = false
+			}
+		} else if w == "\"" || (strings.HasPrefix(w, "\"") && !strings.HasSuffix(w, "\"")) {
+			inQuotes = true
+			collect = []string{w[1:]}
+		} else {
+			if strings.HasPrefix(w, "\"") && strings.HasSuffix(w, "\"") {
+				w = w[1:len(w)-1]
+			}
+			if len(args) == nArgs - 1 {
+				collect = append(collect, w)
+			} else {
+				args = append(args, w)
+			}
+		}
+	}
+	if len(collect) > 0 {
+		args = append(args, strings.Join(collect, " "))
+	}
+	return args, nil
+}
+
 func InvokeVerb(client types.Value, verb string) {
 	clientDatum, clientData := ClientDataChunk(client)
 	util.FIXME("support expanding partially-typed verbs")

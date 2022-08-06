@@ -157,7 +157,7 @@ func ImplementFunction(dt *gen.DefinedTree, path path.TypePath, function string,
 
 	varsused := map[string]struct{}{}
 
-	settings, body, err := ParseSettings(dt, path, body)
+	settings, body, err := ParseSettings(dt, path, arguments, body)
 	if err != nil {
 		return err
 	}

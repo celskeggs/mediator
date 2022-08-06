@@ -100,9 +100,13 @@ func (v Verb) ResolveArgs(src *types.Datum, usr *types.Datum, args []string) ([]
 	if settings.Src.In && len(args) >= 1 {
 		args = args[1:]
 	}
+	if len(args) != len(settings.ArgTypes) {
+		return nil, fmt.Errorf("mismatch: verb %v expects %d arguments, but got %d", v, len(settings.ArgTypes), len(args))
+	}
 	results := make([]types.Value, len(args))
-	for _, _ = range args {
-		return nil, fmt.Errorf("unimplemented")
+	for i, a := range args {
+		aType := settings.ArgTypes[i]
+		return nil, fmt.Errorf("unimplemented: processing argument %q of type %v for verb %v", a, aType, v)
 	}
 	return results, nil
 }
